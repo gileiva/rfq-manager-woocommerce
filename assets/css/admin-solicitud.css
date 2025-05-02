@@ -1,0 +1,147 @@
+/**
+ * Estilos para la vista administrativa de solicitudes
+ *
+ * @package    GiVendor\GiPlugin
+ * @since      0.1.0
+ */
+
+/* Estilos generales */
+.rfq-productos-table-container {
+    margin-bottom: 20px;
+}
+
+.rfq-productos-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.rfq-productos-table th {
+    background-color: #f8f8f8;
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #e1e1e1;
+}
+
+.rfq-productos-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.rfq-productos-table tr:hover {
+    background-color: #f9f9f9;
+}
+
+/* Estilos para el pie de la tabla con totales */
+.rfq-productos-table tfoot th {
+    background-color: #f1f1f1;
+    border-top: 2px solid #e1e1e1;
+    font-weight: bold;
+    text-align: right;
+}
+
+.rfq-productos-table tfoot th:nth-child(3) {
+    text-align: center;
+}
+
+.rfq-totals-row {
+    font-weight: bold;
+}
+
+/* Estilos para el metabox de información del cliente */
+.rfq-customer-info {
+    padding: 5px 0;
+}
+
+.rfq-customer-info p {
+    margin: 7px 0;
+}
+
+.rfq-customer-info hr {
+    margin: 12px 0;
+    border: none;
+    border-top: 1px solid #e1e1e1;
+}
+
+.rfq-customer-info h4 {
+    margin: 10px 0 7px;
+}
+
+/* Estilos para el metabox de estado */
+.rfq-status-info {
+    padding: 5px 0;
+}
+
+.rfq-status {
+    display: inline-block;
+    padding: 3px 7px;
+    border-radius: 3px;
+    font-weight: bold;
+    color: white;
+}
+
+.rfq-status-rfq-pending {
+    background-color: #f8931f; /* Naranja para pendiente */
+}
+
+.rfq-status-rfq-accepted {
+    background-color: #7cbb00; /* Verde para aceptada */
+}
+
+.rfq-status-rfq-historic {
+    background-color: #5c6bc0; /* Azul para histórico */
+}
+
+/* Estilos para el campo ahorro */
+.rfq-ahorro {
+    color: #0c963f; /* Verde para resaltar el ahorro */
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+/* Estilos para el campo mejor oferta */
+.rfq-mejor-oferta {
+    font-weight: bold;
+}
+
+.rfq-expiry-date {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border: 1px solid #e1e1e1;
+    border-radius: 3px;
+}
+
+/* Estilos para la sección de ofertas */
+.rfq-ofertas-container {
+    margin-top: 15px;
+}
+
+.rfq-ofertas-placeholder {
+    padding: 15px;
+    background-color: #f9f9f9;
+    border: 1px solid #e1e1e1;
+    border-radius: 3px;
+    margin-bottom: 15px;
+}
+
+.rfq-oferta-item {
+    border: 1px solid #e1e1e1;
+    margin-bottom: 10px;
+}
+
+.rfq-oferta-header {
+    background-color: #f1f1f1;
+    padding: 10px 15px;
+    font-weight: bold;
+    cursor: pointer;
+    position: relative;
+}
+
+.rfq-oferta-header:hover {
+    background-color: #e9e9e9;
+}
+
+.rfq-oferta-content {
+    padding: 15px;
+    border-top: 1px solid #e1e1e1;
+}
