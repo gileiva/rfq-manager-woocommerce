@@ -11,7 +11,7 @@
  * Plugin Name:       RFQ Manager for WooCommerce
  * Plugin URI:        https://weloveweb.eu
  * Description:       Request for Quote management system for WooCommerce
- * Version:           0.1.0
+ * Version:           0.2.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            WeLoveWeb
@@ -36,15 +36,6 @@ define('RFQ_MANAGER_WOO_PLUGIN_BASENAME', plugin_basename(__FILE__));
 if (file_exists(dirname(__FILE__) . '/vendor/autoload.php')) {
     require_once dirname(__FILE__) . '/vendor/autoload.php';
 }
-
-// Activation and deactivation hooks
-register_activation_hook(__FILE__, function() {
-    // Activation tasks will be handled here
-});
-
-register_deactivation_hook(__FILE__, function() {
-    // Deactivation tasks will be handled here
-});
 
 // Initialize the plugin
 add_action('plugins_loaded', function() {

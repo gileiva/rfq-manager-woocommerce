@@ -229,4 +229,41 @@ class StatusScheduler {
     private static function unschedule_action(int $post_id): void {
         as_unschedule_all_actions(self::ACTION_TO_HISTORIC, [$post_id], self::ACTION_GROUP);
     }
+
+    /**
+     * Método de prueba para verificar el funcionamiento del programador
+     * 
+     * @since  0.1.0
+     * @return array Resultados de las pruebas
+     */
+    public static function test_scheduler(): array {
+        $results = [
+            'action_scheduler_available' => function_exists('as_schedule_single_action'),
+            'hooks_registered' => [
+                'wp_insert_post' => has_action('wp_insert_post', [__CLASS__, 'schedule_status_change']),
+                'status_change' => has_action(self::ACTION_TO_HISTORIC, [__CLASS__, 'change_to_historic']),
+                'expiry_update' => has_action('updated_post_meta', [__CLASS__, 'handle_expiry_update']),
+                'daily_check' => has_action('rfq_daily_check_expired', [__CLASS__, 'check_expired_solicitudes'])
+            ],
+            'scheduled_actions' => []
+        ];
+
+        // Verificar acciones programadas
+        if (function_exists('as_get_scheduled_actions')) {
+            $scheduled = as_get_scheduled_actions([
+                'hook' => self::ACTION_TO_HISTORIC,
+                'group' => self::ACTION_GROUP
+            ]);
+            
+            foreach ($scheduled as $action) {
+                $results['scheduled_actions'][] = [
+                    'id' => $action->get_id(),
+                    'args' => $action->get_args(),
+                    'scheduled_date' => $action->get_schedule()->get_date()->format('Y-m-d H:i:s')
+                ];
+            }
+        }
+
+        return $results;
+    }
 }

@@ -43,12 +43,12 @@ class RFQGatewayBlocks extends AbstractPaymentMethodType {
         $this->settings = get_option('woocommerce_rfq_gateway_settings', []);
         
         // Depuración: Registrar si la pasarela está activa según la configuración
-        error_log('RFQ Gateway Blocks - Inicializado. Está activo: ' . ($this->is_active() ? 'Sí' : 'No'));
-        error_log('RFQ Gateway Blocks - Configuración: ' . json_encode($this->settings));
+        // error_log('RFQ Gateway Blocks - Inicializado. Está activo: ' . ($this->is_active() ? 'Sí' : 'No'));
+        // error_log('RFQ Gateway Blocks - Configuración: ' . json_encode($this->settings));
 
         // Asegurar que los filtros para disponibilidad están activos
         add_filter('woocommerce_blocks_payment_method_type_registration', function($payment_methods) {
-            error_log('RFQ Gateway Blocks - Verificando registro en bloques');
+            // error_log('RFQ Gateway Blocks - Verificando registro en bloques');
             return $payment_methods;
         }, 20);
     }
@@ -65,7 +65,7 @@ class RFQGatewayBlocks extends AbstractPaymentMethodType {
         // mientras depuramos el problema
         $is_active = true;
         
-        error_log('RFQ Gateway Blocks - Verificando si está activo: ' . ($is_active ? 'Sí' : 'No'));
+        // error_log('RFQ Gateway Blocks - Verificando si está activo: ' . ($is_active ? 'Sí' : 'No'));
         
         return $is_active;
     }

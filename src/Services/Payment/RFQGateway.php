@@ -108,7 +108,7 @@ class RFQGateway extends \WC_Payment_Gateway {
         update_post_meta($order_id, '_payment_method_title', __('Solicitud de Cotización', 'rfq-manager-woocommerce'));
         
         // Registrar en el log para depuración
-        error_log('RFQ Gateway - Orden #' . $order_id . ' marcada con estado rfq-enviada');
+        // error_log('RFQ Gateway - Orden #' . $order_id . ' marcada con estado rfq-enviada');
         
         // Vaciar el carrito
         WC()->cart->empty_cart();

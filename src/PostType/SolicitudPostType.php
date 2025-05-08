@@ -72,36 +72,4 @@ class SolicitudPostType {
 
         register_post_type('solicitud', $args);
     }
-
-    /**
-     * Register custom post statuses for the 'solicitud' post type
-     *
-     * @since  0.1.0
-     * @return void
-     */
-    public static function registerStatuses(): void {
-        register_post_status('rfq-pending', [
-            'label'                     => __('Pendiente de cotización', 'rfq-manager-woocommerce'),
-            'public'                    => true,
-            'show_in_admin_all_list'    => true,
-            'show_in_admin_status_list' => true,
-            'label_count'               => _n_noop('Pendiente (%s)', 'Pendientes (%s)', 'rfq-manager-woocommerce'),
-        ]);
-
-        register_post_status('rfq-accepted', [
-            'label'                     => __('Propuesta aceptada', 'rfq-manager-woocommerce'),
-            'public'                    => true,
-            'show_in_admin_all_list'    => true,
-            'show_in_admin_status_list' => true,
-            'label_count'               => _n_noop('Aceptada (%s)', 'Aceptadas (%s)', 'rfq-manager-woocommerce'),
-        ]);
-
-        register_post_status('rfq-historic', [
-            'label'                     => __('Histórico', 'rfq-manager-woocommerce'),
-            'public'                    => true,
-            'show_in_admin_all_list'    => true,
-            'show_in_admin_status_list' => true,
-            'label_count'               => _n_noop('Histórico (%s)', 'Históricos (%s)', 'rfq-manager-woocommerce'),
-        ]);
-    }
 }

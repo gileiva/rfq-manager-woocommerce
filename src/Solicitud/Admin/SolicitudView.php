@@ -243,94 +243,77 @@ class SolicitudView {
      * @return void
      */
     public static function render_estado_metabox(\WP_Post $post): void {
-        // Obtener datos relevantes
-        $expiry_date = get_post_meta($post->ID, '_solicitud_expiry', true);
-        $order_id = get_post_meta($post->ID, '_solicitud_order_id', true);
-        $total = get_post_meta($post->ID, '_solicitud_total', true);
+        // Obtener el estado actual
+        $current_status = $post->post_status;
         
-        // Contar ofertas (por el momento es un número simbólico)
-        // En futuras implementaciones, esto deberá obtener las ofertas reales
-        $ofertas_count = 0; // Placeholder para futuras implementaciones
+        // Obtener las cotizaciones para esta solicitud
+        $cotizaciones = get_posts([
+            'post_type'      => 'cotizacion',
+            'posts_per_page' => -1,
+            'meta_key'       => '_solicitud_parent',
+            'meta_value'     => $post->ID,
+            'post_status'    => 'publish',
+        ]);
         
-        // Datos simbólicos para la mejor oferta (a implementar en el futuro)
-        $mejor_oferta = $total * 0.9; // Simulamos un 10% menos como mejor oferta
-        $ahorro = $total > 0 ? (($total - $mejor_oferta) / $total) * 100 : 0;
-        $ahorro = round($ahorro, 2); // Redondeamos a 2 decimales
-        
-        if (empty($expiry_date)) {
-            $expiry_date = date('Y-m-d H:i:s', strtotime('+24 hours'));
+        // Contar cotizaciones únicas
+        $cotizaciones_unicas = [];
+        foreach ($cotizaciones as $cotizacion) {
+            $total = get_post_meta($cotizacion->ID, '_total', true);
+            if ($total > 0) {
+                $cotizaciones_unicas[$cotizacion->ID] = $total;
+            }
         }
         
-        // Formatear la fecha para mejor visualización
-        $expiry_date_formatted = date_i18n(
-            get_option('date_format') . ' ' . get_option('time_format'), 
-            strtotime($expiry_date)
-        );
-        
-        echo '<div class="rfq-status-info">';
-        
-        // Mostrar estado actual
+        // Mostrar el estado actual
         echo '<p><strong>' . __('Estado actual:', 'rfq-manager-woocommerce') . '</strong> ';
-        echo '<span class="rfq-status rfq-status-' . esc_attr($post->post_status) . '">';
-        
-        switch ($post->post_status) {
-            case 'rfq-pending':
-                echo __('Pendiente de cotización', 'rfq-manager-woocommerce');
-                break;
-            case 'rfq-accepted':
-                echo __('Propuesta aceptada', 'rfq-manager-woocommerce');
-                break;
-            case 'rfq-historic':
-                echo __('Histórico', 'rfq-manager-woocommerce');
-                break;
-            default:
-                echo esc_html($post->post_status);
-                break;
-        }
-        
-        echo '</span></p>';
-        
-        // Mostrar valor total de la solicitud (corregido)
-        if (!empty($total)) {
-            echo '<p><strong>' . __('Total solicitud:', 'rfq-manager-woocommerce') . '</strong> ';
-            echo esc_html(number_format($total, 2, ',', '.')) . ' €';
-            echo '</p>';
-        }
-        
-        // Mostrar cantidad de ofertas recibidas
-        echo '<p><strong>' . __('Ofertas recibidas:', 'rfq-manager-woocommerce') . '</strong> ';
-        echo '<span class="rfq-ofertas-count">' . $ofertas_count . '</span>';
+        echo esc_html(self::get_status_label($current_status));
         echo '</p>';
-        
-        // Mostrar la mejor oferta recibida hasta ahora
-        echo '<p><strong>' . __('Mejor oferta:', 'rfq-manager-woocommerce') . '</strong> ';
-        echo '<span class="rfq-mejor-oferta">' . esc_html(number_format($mejor_oferta, 2, ',', '.')) . ' €</span>';
-        echo '</p>';
-        
-        // Mostrar el porcentaje de ahorro
-        echo '<p><strong>' . __('Ahorro:', 'rfq-manager-woocommerce') . '</strong> ';
-        echo '<span class="rfq-ahorro">' . $ahorro . '%</span>';
-        echo '</p>';
-        
-        // Mostrar ID de orden relacionada
-        if ($order_id) {
-            echo '<p><strong>' . __('Orden relacionada:', 'rfq-manager-woocommerce') . '</strong> ';
-            echo '<a href="' . esc_url(admin_url('post.php?post=' . $order_id . '&action=edit')) . '">';
-            echo __('Ver orden #', 'rfq-manager-woocommerce') . esc_html($order_id);
-            echo '</a></p>';
-        }
-        
-        echo '<hr>';
         
         // Campo para ajustar la fecha de vencimiento
+        $expiry_date = get_post_meta($post->ID, '_solicitud_expiry', true);
+        $expiry_date_formatted = $expiry_date ? date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($expiry_date)) : '';
+        
         echo '<div class="rfq-expiry-date">';
         echo '<p><strong>' . __('Fecha de vencimiento:', 'rfq-manager-woocommerce') . '</strong></p>';
         echo '<input type="text" name="rfq_expiry_date" id="rfq-expiry-date" value="' . esc_attr($expiry_date) . '" class="widefat">';
         echo '<p class="description">' . __('Formato: YYYY-MM-DD HH:MM:SS', 'rfq-manager-woocommerce') . '</p>';
-        echo '<p>' . __('Vence el:', 'rfq-manager-woocommerce') . ' <strong>' . $expiry_date_formatted . '</strong></p>';
+        if ($expiry_date) {
+            echo '<p>' . __('Vence el:', 'rfq-manager-woocommerce') . ' <strong>' . esc_html($expiry_date_formatted) . '</strong></p>';
+        }
         echo '</div>';
         
-        echo '</div>';
+        // Mostrar número de cotizaciones
+        echo '<p><strong>' . __('Ofertas recibidas:', 'rfq-manager-woocommerce') . '</strong> ';
+        echo count($cotizaciones_unicas);
+        echo '</p>';
+        
+        // Mostrar fecha de vencimiento si existe
+        $expiry_date = get_post_meta($post->ID, '_solicitud_expiry', true);
+        if ($expiry_date) {
+            echo '<p><strong>' . __('Vence el:', 'rfq-manager-woocommerce') . '</strong> ';
+            echo esc_html(date_i18n(get_option('date_format'), strtotime($expiry_date)));
+            echo '</p>';
+        }
+        
+        // Mostrar lista de cotizaciones
+        if (!empty($cotizaciones_unicas)) {
+            echo '<div class="rfq-cotizaciones-list">';
+            echo '<h4>' . __('Cotizaciones recibidas:', 'rfq-manager-woocommerce') . '</h4>';
+            echo '<ul>';
+            foreach ($cotizaciones_unicas as $cotizacion_id => $total) {
+                $cotizacion = get_post($cotizacion_id);
+                if ($cotizacion) {
+                    echo '<li>';
+                    echo '<a href="' . esc_url(get_edit_post_link($cotizacion_id)) . '">';
+                    echo esc_html($cotizacion->post_title);
+                    echo '</a> - ';
+                    echo wc_price($total);
+                    echo '</li>';
+                }
+            }
+            echo '</ul>';
+            echo '</div>';
+        }
     }
     
     /**
@@ -341,22 +324,51 @@ class SolicitudView {
      * @return void
      */
     public static function render_ofertas_metabox(\WP_Post $post): void {
-        // Esta es una versión básica, se expandirá en el futuro
-        echo '<div class="rfq-ofertas-container">';
-        echo '<div class="rfq-ofertas-placeholder">';
-        echo '<p>' . __('Esta sección mostrará las ofertas recibidas de los proveedores en futuras versiones.', 'rfq-manager-woocommerce') . '</p>';
-        echo '</div>';
-        
-        // Estructura básica para acordeón de ofertas (se implementará en el futuro)
-        echo '<div class="rfq-ofertas-accordion">';
-        echo '<div class="rfq-oferta-item">';
-        echo '<div class="rfq-oferta-header">' . __('Ejemplo: Oferta del Proveedor 1', 'rfq-manager-woocommerce') . '</div>';
-        echo '<div class="rfq-oferta-content">';
-        echo '<p>' . __('Esta es una estructura de ejemplo para mostrar ofertas. La funcionalidad completa se implementará en futuras versiones.', 'rfq-manager-woocommerce') . '</p>';
-        echo '</div>';
-        echo '</div>';
-        echo '</div>';
-        
+        // Obtener todas las cotizaciones relacionadas con esta solicitud
+        $cotizaciones = get_posts([
+            'post_type' => 'cotizacion',
+            'meta_key' => '_solicitud_parent',
+            'meta_value' => $post->ID,
+            'posts_per_page' => -1,
+            'orderby' => 'date',
+            'order' => 'DESC'
+        ]);
+
+        if (empty($cotizaciones)) {
+            echo '<p>' . __('No hay cotizaciones recibidas para esta solicitud.', 'rfq-manager-woocommerce') . '</p>';
+            return;
+        }
+
+        echo '<div class="rfq-cotizaciones-container">';
+        echo '<table class="widefat rfq-cotizaciones-table">';
+        echo '<thead>';
+        echo '<tr>';
+        echo '<th>' . __('Fecha', 'rfq-manager-woocommerce') . '</th>';
+        echo '<th>' . __('Proveedor', 'rfq-manager-woocommerce') . '</th>';
+        echo '<th>' . __('Total', 'rfq-manager-woocommerce') . '</th>';
+        echo '<th>' . __('Acciones', 'rfq-manager-woocommerce') . '</th>';
+        echo '</tr>';
+        echo '</thead>';
+        echo '<tbody>';
+
+        foreach ($cotizaciones as $cotizacion) {
+            $proveedor = get_user_by('id', $cotizacion->post_author);
+            $total = get_post_meta($cotizacion->ID, '_total', true);
+
+            echo '<tr>';
+            echo '<td>' . get_the_date('d/m/Y H:i', $cotizacion->ID) . '</td>';
+            echo '<td>' . esc_html($proveedor ? $proveedor->display_name : __('N/A', 'rfq-manager-woocommerce')) . '</td>';
+            echo '<td>' . wc_price($total) . '</td>';
+            echo '<td>';
+            echo '<a href="' . esc_url(get_edit_post_link($cotizacion->ID)) . '" class="button button-small">';
+            echo '<span class="dashicons dashicons-visibility"></span> ' . __('Ver Detalles', 'rfq-manager-woocommerce');
+            echo '</a>';
+            echo '</td>';
+            echo '</tr>';
+        }
+
+        echo '</tbody>';
+        echo '</table>';
         echo '</div>';
     }
     
@@ -433,5 +445,25 @@ class SolicitudView {
             '0.1.0',
             true
         );
+    }
+
+    /**
+     * Obtiene la etiqueta legible para un estado
+     *
+     * @since  0.1.0
+     * @param  string $status Estado a traducir
+     * @return string        Etiqueta traducida
+     */
+    private static function get_status_label(string $status): string {
+        switch ($status) {
+            case 'rfq-pending':
+                return __('Pendiente de cotización', 'rfq-manager-woocommerce');
+            case 'rfq-accepted':
+                return __('Propuesta aceptada', 'rfq-manager-woocommerce');
+            case 'rfq-historic':
+                return __('Histórico', 'rfq-manager-woocommerce');
+            default:
+                return $status;
+        }
     }
 }

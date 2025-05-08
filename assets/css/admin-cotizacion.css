@@ -1,0 +1,56 @@
+.rfq-cotizacion-detalles {
+    margin: 15px 0;
+}
+
+.rfq-cotizacion-detalles table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.rfq-cotizacion-detalles th,
+.rfq-cotizacion-detalles td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.rfq-cotizacion-detalles th {
+    background-color: #f9f9f9;
+    font-weight: 600;
+}
+
+.rfq-total-row {
+    background-color: #f9f9f9;
+    font-weight: bold;
+}
+
+.rfq-total-label {
+    text-align: right;
+}
+
+.rfq-total-amount {
+    text-align: right;
+    font-size: 1.1em;
+}
+
+.rfq-observaciones {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+}
+
+.rfq-observaciones h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.rfq-solicitud-info {
+    padding: 10px;
+}
+
+.rfq-solicitud-info p {
+    margin: 5px 0;
+} 

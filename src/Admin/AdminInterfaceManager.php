@@ -35,6 +35,9 @@ class AdminInterfaceManager {
         add_action('init', function() {
             // error_log('RFQ Manager - AdminInterfaceManager hooks inicializados');
         }, 999);
+
+        add_action('admin_menu', [self::class, 'add_menu_pages']);
+        add_action('admin_init', [self::class, 'register_settings']);
     }
     
     /**
@@ -118,5 +121,122 @@ class AdminInterfaceManager {
                 }
                 break;
         }
+    }
+
+    /**
+     * Registra las páginas del menú de administración
+     *
+     * @since  0.1.0
+     * @return void
+     */
+    public static function add_menu_pages(): void {
+        add_menu_page(
+            __('RFQ Manager', 'rfq-manager-woocommerce'),
+            __('RFQ Manager', 'rfq-manager-woocommerce'),
+            'manage_options',
+            'rfq-manager',
+            [self::class, 'render_main_page'],
+            'dashicons-cart',
+            56
+        );
+
+        add_submenu_page(
+            'rfq-manager',
+            __('Configuración', 'rfq-manager-woocommerce'),
+            __('Configuración', 'rfq-manager-woocommerce'),
+            'manage_options',
+            'rfq-manager-settings',
+            [self::class, 'render_settings_page']
+        );
+    }
+
+    /**
+     * Registra las configuraciones del plugin
+     *
+     * @since  0.1.0
+     * @return void
+     */
+    public static function register_settings(): void {
+        register_setting('rfq_manager_settings', 'rfq_cotizar_page_id');
+    }
+
+    /**
+     * Renderiza la página de configuración
+     *
+     * @since  0.1.0
+     * @return void
+     */
+    public static function render_settings_page(): void {
+        // Verificar si la página de cotización existe
+        $cotizar_page_id = get_option('rfq_cotizar_page_id');
+        $cotizar_page = $cotizar_page_id ? get_post($cotizar_page_id) : null;
+        ?>
+        <div class="wrap">
+            <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
+            
+            <div class="rfq-settings-section">
+                <h2><?php _e('Páginas Requeridas', 'rfq-manager-woocommerce'); ?></h2>
+                
+                <table class="form-table">
+                    <tr>
+                        <th scope="row"><?php _e('Página de Cotización', 'rfq-manager-woocommerce'); ?></th>
+                        <td>
+                            <?php if ($cotizar_page && $cotizar_page->post_status === 'publish'): ?>
+                                <p class="rfq-status-ok">
+                                    <?php _e('Página creada correctamente.', 'rfq-manager-woocommerce'); ?>
+                                    <br>
+                                    <a href="<?php echo get_edit_post_link($cotizar_page_id); ?>">
+                                        <?php _e('Editar página', 'rfq-manager-woocommerce'); ?>
+                                    </a> |
+                                    <a href="<?php echo get_permalink($cotizar_page_id); ?>" target="_blank">
+                                        <?php _e('Ver página', 'rfq-manager-woocommerce'); ?>
+                                    </a>
+                                </p>
+                            <?php else: ?>
+                                <p class="rfq-status-error">
+                                    <?php _e('La página de cotización no está configurada correctamente.', 'rfq-manager-woocommerce'); ?>
+                                </p>
+                                <form method="post" action="">
+                                    <?php wp_nonce_field('rfq_create_pages', 'rfq_create_pages_nonce'); ?>
+                                    <input type="hidden" name="action" value="rfq_create_pages">
+                                    <input type="submit" class="button button-primary" value="<?php _e('Crear Página de Cotización', 'rfq-manager-woocommerce'); ?>">
+                                </form>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
+     * Renderiza la página principal del plugin
+     *
+     * @since  0.1.0
+     * @return void
+     */
+    public static function render_main_page(): void {
+        ?>
+        <div class="wrap">
+            <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
+            
+            <div class="rfq-dashboard">
+                <div class="rfq-dashboard-section">
+                    <h2><?php _e('Resumen de Solicitudes', 'rfq-manager-woocommerce'); ?></h2>
+                    <p><?php _e('Bienvenido al panel de control de RFQ Manager. Aquí podrás gestionar todas las solicitudes de cotización.', 'rfq-manager-woocommerce'); ?></p>
+                    
+                    <div class="rfq-quick-links">
+                        <a href="<?php echo admin_url('edit.php?post_type=solicitud'); ?>" class="button button-primary">
+                            <?php _e('Ver todas las solicitudes', 'rfq-manager-woocommerce'); ?>
+                        </a>
+                        <a href="<?php echo admin_url('admin.php?page=rfq-manager-settings'); ?>" class="button">
+                            <?php _e('Configuración', 'rfq-manager-woocommerce'); ?>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php
     }
 }

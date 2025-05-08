@@ -1,0 +1,654 @@
+/* Variables globales */
+:root {
+    --rfq-primary: #0073aa;
+    --rfq-primary-dark: #005177;
+    --rfq-success: #28a745;
+    --rfq-success-dark: #218838;
+    --rfq-warning: #ffc107;
+    --rfq-warning-dark: #e0a800;
+    --rfq-danger: #dc3545;
+    --rfq-danger-dark: #c82333;
+    --rfq-gray-100: #f8f9fa;
+    --rfq-gray-200: #e9ecef;
+    --rfq-gray-300: #dee2e6;
+    --rfq-gray-400: #ced4da;
+    --rfq-gray-500: #adb5bd;
+    --rfq-gray-600: #6c757d;
+    --rfq-gray-700: #495057;
+    --rfq-gray-800: #343a40;
+    --rfq-gray-900: #212529;
+    --rfq-border-radius: 4px;
+    --rfq-box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    --rfq-transition: all 0.2s ease-in-out;
+}
+
+/* Contenedor principal */
+.rfq-list-container {
+    margin: 2rem 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    color: var(--rfq-gray-800);
+}
+
+/* Filtro de estado */
+.rfq-status-filter {
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.rfq-status-select {
+    width: 100%;
+    max-width: 300px;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--rfq-gray-300);
+    border-radius: var(--rfq-border-radius);
+    background-color: #fff;
+    color: var(--rfq-gray-700);
+    font-size: 0.95rem;
+    transition: var(--rfq-transition);
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236c757d' d='M6 8.825L1.175 4 2.05 3.125 6 7.075 9.95 3.125 10.825 4z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 12px;
+}
+
+.rfq-status-select:hover {
+    border-color: var(--rfq-gray-400);
+}
+
+.rfq-status-select:focus {
+    outline: none;
+    border-color: var(--rfq-primary);
+    box-shadow: 0 0 0 2px rgba(0,115,170,0.2);
+}
+
+.rfq-status-select:disabled {
+    background-color: var(--rfq-gray-100);
+    cursor: not-allowed;
+}
+
+/* Tabla de solicitudes */
+.rfq-list-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-bottom: 1.5rem;
+    background-color: #fff;
+    box-shadow: var(--rfq-box-shadow);
+    border-radius: var(--rfq-border-radius);
+    overflow: hidden;
+}
+
+.rfq-list-table th,
+.rfq-list-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--rfq-gray-200);
+}
+
+.rfq-list-table th {
+    background-color: var(--rfq-gray-100);
+    font-weight: 600;
+    color: var(--rfq-gray-700);
+    white-space: nowrap;
+}
+
+.rfq-list-table tr:last-child td {
+    border-bottom: none;
+}
+
+.rfq-list-table tr:hover {
+    background-color: var(--rfq-gray-100);
+}
+
+/* Estados */
+.rfq-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.75rem;
+    border-radius: 2rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.rfq-status::before {
+    content: '';
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+}
+
+.rfq-status-pending {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.rfq-status-pending::before {
+    background-color: #ffc107;
+}
+
+.rfq-status-active {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.rfq-status-active::before {
+    background-color: #28a745;
+}
+
+.rfq-status-closed {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.rfq-status-closed::before {
+    background-color: #dc3545;
+}
+
+.rfq-status-historic {
+    background-color: #e2e3e5;
+    color: #383d41;
+}
+
+.rfq-status-historic::before {
+    background-color: #6c757d;
+}
+
+/* Botones */
+.rfq-view-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    background-color: var(--rfq-primary);
+    color: #fff;
+    text-decoration: none;
+    border-radius: var(--rfq-border-radius);
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: var(--rfq-transition);
+    border: none;
+    cursor: pointer;
+}
+
+.rfq-view-btn:hover {
+    background-color: var(--rfq-primary-dark);
+    color: #fff;
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.rfq-view-btn:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+/* Paginación */
+.rfq-pagination {
+    margin-top: 1.5rem;
+    text-align: center;
+}
+
+.rfq-pagination .page-numbers {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.5rem;
+    height: 2.5rem;
+    padding: 0 0.75rem;
+    margin: 0 0.25rem;
+    border: 1px solid var(--rfq-gray-300);
+    border-radius: var(--rfq-border-radius);
+    text-decoration: none;
+    color: var(--rfq-gray-700);
+    font-size: 0.875rem;
+    transition: var(--rfq-transition);
+}
+
+.rfq-pagination .page-numbers:hover {
+    background-color: var(--rfq-gray-100);
+    border-color: var(--rfq-gray-400);
+}
+
+.rfq-pagination .page-numbers.current {
+    background-color: var(--rfq-primary);
+    color: #fff;
+    border-color: var(--rfq-primary);
+}
+
+/* Mensajes de estado */
+.rfq-error,
+.rfq-notice {
+    padding: 1rem;
+    border-radius: var(--rfq-border-radius);
+    margin: 1rem 0;
+    font-size: 0.875rem;
+}
+
+.rfq-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.rfq-notice {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+/* Indicador de carga */
+.rfq-loading {
+    text-align: center;
+    padding: 2rem;
+    color: var(--rfq-gray-600);
+    font-size: 0.875rem;
+}
+
+.rfq-spinner {
+    display: inline-block;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-right: 0.5rem;
+    border: 2px solid var(--rfq-gray-300);
+    border-top-color: var(--rfq-primary);
+    border-radius: 50%;
+    animation: rfq-spin 0.8s linear infinite;
+}
+
+@keyframes rfq-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Responsive */
+@media screen and (max-width: 768px) {
+    .rfq-list-table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .rfq-status-filter {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .rfq-status-select {
+        max-width: none;
+    }
+    
+    .rfq-list-table th,
+    .rfq-list-table td {
+        white-space: nowrap;
+    }
+    
+    .rfq-pagination .page-numbers {
+        min-width: 2rem;
+        height: 2rem;
+        padding: 0 0.5rem;
+        font-size: 0.75rem;
+    }
+}
+
+.rfq-toggle-details {
+    display: inline-block;
+    padding: 6px 12px;
+    background-color: #0073aa;
+    color: white;
+    text-decoration: none;
+    border: none;
+    border-radius: 3px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.rfq-toggle-details:hover {
+    background-color: #005177;
+}
+
+.rfq-toggle-details.active {
+    background-color: #005177;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.rfq-details-row {
+    background-color: #f8f9fa;
+}
+
+.rfq-details-cell {
+    padding: 0 !important;
+}
+
+.rfq-details-content {
+    padding: 20px;
+}
+
+.rfq-details-container {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.rfq-details-header {
+    margin-bottom: 20px;
+}
+
+.rfq-details-header h3 {
+    margin: 0 0 10px 0;
+    color: #333;
+}
+
+.rfq-details-meta {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.rfq-meta-item {
+    font-size: 14px;
+    color: #666;
+}
+
+.rfq-items-wrapper {
+    margin-bottom: 20px;
+    overflow-x: auto;
+}
+
+.rfq-items-table {
+    width: 100%;
+    min-width: 400px;
+    border-collapse: collapse;
+    margin-bottom: 15px;
+}
+
+.rfq-items-table th,
+.rfq-items-table td {
+    padding: 12px;
+    border-bottom: 1px solid #ddd;
+}
+
+.rfq-items-table th {
+    background-color: #fff;
+    font-weight: 600;
+    text-align: left;
+}
+
+.rfq-total-row {
+    font-weight: 600;
+    background-color: #f8f9fa;
+}
+
+.rfq-total-label {
+    text-align: right;
+}
+
+.rfq-action-buttons {
+    margin-top: 20px;
+    text-align: right;
+}
+
+.rfq-cotizar-btn {
+    display: inline-block;
+    padding: 8px 16px;
+    background-color: #28a745;
+    color: white;
+    text-decoration: none;
+    border-radius: 3px;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.rfq-cotizar-btn:hover {
+    background-color: #218838;
+    color: white;
+}
+
+.rfq-cotizar-container {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 20px;
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-radius: 4px;
+}
+
+.rfq-cotizar-header {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.rfq-cotizar-header h2 {
+    margin: 0 0 10px 0;
+    color: #333;
+    font-size: 24px;
+}
+
+.rfq-cotizar-meta {
+    color: #666;
+    font-size: 14px;
+    margin: 0;
+}
+
+.rfq-cotizar-form {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.rfq-cotizar-items {
+    overflow-x: auto;
+}
+
+.rfq-cotizar-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.rfq-cotizar-table th,
+.rfq-cotizar-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.rfq-cotizar-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #333;
+}
+
+.rfq-precio-input {
+    width: 120px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    text-align: right;
+}
+
+.rfq-precio-input:focus {
+    border-color: #0073aa;
+    outline: none;
+    box-shadow: 0 0 0 1px #0073aa;
+}
+
+.rfq-subtotal,
+.rfq-total-amount {
+    text-align: right;
+    font-weight: 600;
+}
+
+.rfq-total-row {
+    background-color: #f8f9fa;
+}
+
+.rfq-total-label {
+    text-align: right;
+    font-weight: 600;
+}
+
+.rfq-cotizar-fields {
+    margin-top: 20px;
+}
+
+.rfq-field {
+    margin-bottom: 20px;
+}
+
+.rfq-field label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+}
+
+.rfq-field textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    resize: vertical;
+}
+
+.rfq-field textarea:focus {
+    border-color: #0073aa;
+    outline: none;
+    box-shadow: 0 0 0 1px #0073aa;
+}
+
+.rfq-cotizar-submit {
+    margin-top: 20px;
+    text-align: right;
+}
+
+.rfq-submit-btn {
+    display: inline-block;
+    padding: 12px 24px;
+    background-color: #28a745;
+    color: white;
+    text-decoration: none;
+    border: none;
+    border-radius: 3px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.rfq-submit-btn:hover {
+    background-color: #218838;
+}
+
+/* Modal de confirmación */
+.rfq-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.rfq-modal-content {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+}
+
+.rfq-modal-content h3 {
+    margin-top: 0;
+    color: #333;
+}
+
+.rfq-modal-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.rfq-modal-buttons button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.rfq-modal-cancel {
+    background-color: #6c757d;
+    color: white;
+}
+
+.rfq-modal-confirm {
+    background-color: #dc3545;
+    color: white;
+}
+
+.rfq-modal-buttons button:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+/* Mensajes de notificación */
+.rfq-success-message,
+.rfq-error-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 25px;
+    border-radius: 4px;
+    color: white;
+    font-weight: 500;
+    z-index: 1001;
+    animation: slideIn 0.3s ease;
+}
+
+.rfq-success-message {
+    background-color: #28a745;
+}
+
+.rfq-error-message {
+    background-color: #dc3545;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Estilo del botón de cancelar */
+.rfq-cancel-btn {
+    background-color: #dc3545 !important;
+    opacity: 0.9 !important;
+    transition: all 0.3s ease;
+}
+
+.rfq-cancel-btn:hover {
+    opacity: 1 !important;
+    transform: translateY(-1px);
+} 

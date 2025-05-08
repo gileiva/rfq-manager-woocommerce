@@ -75,7 +75,7 @@ class RFQGatewayBlockSupport {
                 error_log('RFQ Gateway - Script blocks.js encontrado en ubicación alternativa: ' . $alt_script_path);
             }
         } else {
-            error_log('RFQ Gateway - Script blocks.js encontrado en: ' . $script_file_path);
+            // error_log('RFQ Gateway - Script blocks.js encontrado en: ' . $script_file_path);
         }
         
         // Registrar el script con todas las dependencias necesarias
@@ -89,9 +89,9 @@ class RFQGatewayBlockSupport {
         
         // Comprobar si el script está registrado correctamente
         if (!wp_script_is('rfq-gateway-blocks', 'registered')) {
-            error_log('RFQ Gateway - Error: El script rfq-gateway-blocks no se registró correctamente');
+            // error_log('RFQ Gateway - Error: El script rfq-gateway-blocks no se registró correctamente');
         } else {
-            error_log('RFQ Gateway - Script rfq-gateway-blocks registrado correctamente');
+            // error_log('RFQ Gateway - Script rfq-gateway-blocks registrado correctamente');
         }
         
         // Registrar el controlador para los bloques
@@ -101,7 +101,7 @@ class RFQGatewayBlockSupport {
             ['wc-blocks-registry', 'wc-settings']
         );
         
-        error_log('RFQ Gateway - Script handler registrado para bloques');
+        // error_log('RFQ Gateway - Script handler registrado para bloques');
     }
     
     /**
@@ -120,7 +120,7 @@ class RFQGatewayBlockSupport {
                   (function_exists('has_block') && has_block('woocommerce/cart'));
                   
         if ($is_checkout || $is_cart) {
-            error_log('RFQ Gateway - Encolando script en página de checkout/cart');
+            // error_log('RFQ Gateway - Encolando script en página de checkout/cart');
             wp_enqueue_script('rfq-gateway-blocks');
         }
     }
@@ -142,7 +142,7 @@ class RFQGatewayBlockSupport {
         // Obtener instancia de la pasarela
         $gateways = WC()->payment_gateways->get_available_payment_gateways();
         if (!isset($gateways['rfq_gateway'])) {
-            error_log('RFQ Gateway - Error: La pasarela rfq_gateway no está disponible');
+            // error_log('RFQ Gateway - Error: La pasarela rfq_gateway no está disponible');
             return;
         }
         
@@ -177,7 +177,7 @@ class RFQGatewayBlockSupport {
             });
         </script>';
         
-        error_log('RFQ Gateway - Datos de configuración añadidos al frontend: ' . json_encode($gateway_data));
+        // error_log('RFQ Gateway - Datos de configuración añadidos al frontend: ' . json_encode($gateway_data));
     }
     
     /**
@@ -195,7 +195,7 @@ class RFQGatewayBlockSupport {
         if (class_exists('\\GiVendor\\GiPlugin\\Services\\Payment\\RFQGatewayBlocks')) {
             // Registrar el método de pago
             $payment_method_registry->register(new RFQGatewayBlocks());
-            error_log('RFQ Gateway - Método de pago registrado correctamente con bloques');
+            // error_log('RFQ Gateway - Método de pago registrado correctamente con bloques');
         } else {
             error_log('RFQ Gateway - Error: La clase RFQGatewayBlocks no existe');
         }

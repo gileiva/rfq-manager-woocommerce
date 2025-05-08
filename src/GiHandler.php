@@ -12,6 +12,12 @@ use GiVendor\GiPlugin\Services\PriceManager;
 use GiVendor\GiPlugin\Services\PaymentManager;
 use GiVendor\GiPlugin\Solicitud\Admin\SolicitudView;
 use GiVendor\GiPlugin\Solicitud\Scheduler\StatusScheduler;
+use GiVendor\GiPlugin\PostType\SolicitudPostType;
+use GiVendor\GiPlugin\PostType\CotizacionPostType;
+use GiVendor\GiPlugin\Shortcode\SolicitudShortcodes;
+use GiVendor\GiPlugin\Shortcode\CotizacionShortcodes;
+use GiVendor\GiPlugin\Cotizacion\CotizacionHandler;
+use GiVendor\GiPlugin\Solicitud\SolicitudStatusHandler;
 
 /**
  * GiHandler - Main plugin class that handles plugin initialization
@@ -68,6 +74,7 @@ class GiHandler {
         self::loadDependencies();
         self::defineHooks();
         self::initializeComponents();
+        self::create_required_pages();
         
         // Execute the loader to register all the hooks with WordPress
         self::$loader->run();
@@ -83,6 +90,13 @@ class GiHandler {
     private static function loadDependencies() {
         // Core dependencies
         require_once RFQ_MANAGER_WOO_PLUGIN_DIR . 'src/Core/Loader.php';
+        
+        // Shortcodes
+        require_once RFQ_MANAGER_WOO_PLUGIN_DIR . 'src/Shortcode/SolicitudShortcodes.php';
+        require_once RFQ_MANAGER_WOO_PLUGIN_DIR . 'src/Shortcode/CotizacionShortcodes.php';
+        
+        // Cotizacion
+        require_once RFQ_MANAGER_WOO_PLUGIN_DIR . 'src/Cotizacion/CotizacionHandler.php';
         
         // Initialize the loader
         self::$loader = new Core\Loader();
@@ -100,6 +114,9 @@ class GiHandler {
         add_action('init', function() {
             // error_log('RFQ Manager - GiHandler hooks inicializados');
         }, 999);
+
+        // Registrar hooks de activación/desactivación
+        PostType\CotizacionPostType::register_activation_hooks();
     }
     
     /**
@@ -113,9 +130,13 @@ class GiHandler {
      * @return   void
      */
     private static function initializeComponents() {
-        // Register post types and taxonomies
-        add_action('init', ['GiVendor\GiPlugin\PostType\SolicitudPostType', 'register']);
-        add_action('init', ['GiVendor\GiPlugin\PostType\SolicitudPostType', 'registerStatuses']);
+        // Register post types and taxonomies first
+        add_action('init', ['GiVendor\GiPlugin\PostType\SolicitudPostType', 'register'], 0);
+        add_action('init', ['GiVendor\GiPlugin\PostType\CotizacionPostType', 'register'], 0);
+        add_action('init', ['GiVendor\GiPlugin\PostType\CotizacionPostType', 'register_meta_fields'], 0);
+        
+        // Mover la creación de páginas al hook init con prioridad tardía
+        add_action('init', [self::class, 'create_required_pages'], 999);
         
         // Initialize modular components
         Order\OrderStatusManager::init();      // Gestiona estados de órdenes WooCommerce
@@ -130,6 +151,63 @@ class GiHandler {
         // Inicializar la vista personalizada de solicitudes y scheduler
         Solicitud\Admin\SolicitudView::init(); // Gestiona la vista de solicitudes individuales
         Solicitud\Scheduler\StatusScheduler::init(); // Gestiona el cambio automático de estado
+        
+        // Inicializar shortcodes y manejadores de cotizaciones
+        Shortcode\SolicitudShortcodes::init(); // Registra shortcodes de solicitud
+        Shortcode\CotizacionShortcodes::init(); // Registra shortcodes de cotización
+        Cotizacion\CotizacionHandler::init(); // Inicializa el manejador de cotizaciones
+        Cotizacion\View\CotizacionView::init(); // Inicializa la vista de cotizaciones
+
+        // Inicializar manejadores
+        SolicitudStatusHandler::init();
+        CotizacionHandler::init();
+    }
+
+    /**
+     * Crea las páginas necesarias para el funcionamiento del plugin
+     *
+     * @since    0.1.0
+     * @access   private
+     * @return   void
+     */
+    public static function create_required_pages(): void {
+        // Verificar si la página de cotización ya existe
+        $cotizar_page = get_page_by_path('cotizar-solicitud');
+        
+        if (!$cotizar_page) {
+            // Crear la página de cotización
+            $page_id = wp_insert_post([
+                'post_title'    => __('Cotizar Solicitud', 'rfq-manager-woocommerce'),
+                'post_name'     => 'cotizar-solicitud',
+                'post_status'   => 'publish',
+                'post_type'     => 'page',
+                'post_content'  => '[rfq_cotizar]',
+                'post_author'   => 1,
+            ], true);
+
+            if (!is_wp_error($page_id)) {
+                update_option('rfq_cotizar_page_id', $page_id);
+            }
+        }
+
+        // Verificar si la página de vista de solicitud ya existe
+        $view_page = get_page_by_path('ver-solicitud');
+        
+        if (!$view_page) {
+            // Crear la página de vista de solicitud
+            $page_id = wp_insert_post([
+                'post_title'    => __('Ver Solicitud', 'rfq-manager-woocommerce'),
+                'post_name'     => 'ver-solicitud',
+                'post_status'   => 'publish',
+                'post_type'     => 'page',
+                'post_content'  => '[rfq_view_solicitud]',
+                'post_author'   => 1,
+            ], true);
+
+            if (!is_wp_error($page_id)) {
+                update_option('rfq_view_solicitud_page_id', $page_id);
+            }
+        }
     }
 
     /**
