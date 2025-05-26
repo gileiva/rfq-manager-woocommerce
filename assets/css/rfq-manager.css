@@ -412,243 +412,288 @@
     color: white;
 }
 
+/* === RFQ UNIFICADO: Containers, headers, meta, status, etc. === */
 .rfq-cotizar-container {
     max-width: 1200px;
-    margin: 40px auto;
+    margin: 2em auto;
     padding: 20px;
-    background-color: #fff;
+    background: #fff;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     border-radius: 4px;
 }
 
 .rfq-cotizar-header {
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid #eee;
+    margin-bottom: 2em;
+    padding: 1.5em;
+    background: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .rfq-cotizar-header h2 {
-    margin: 0 0 10px 0;
-    color: #333;
-    font-size: 24px;
+    margin: 0 0 1em;
+    color: #23282d;
+    font-size: 1.5em;
+    font-weight: 600;
 }
 
 .rfq-cotizar-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1em;
     color: #666;
     font-size: 14px;
     margin: 0;
 }
 
-.rfq-cotizar-form {
+.rfq-meta-item {
+    margin: 0;
+    padding: 0.5em;
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.rfq-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+.rfq-status-label {
+    margin-left: 4px;
+}
+
+.rfq-status-value {
+    padding: 0.25em 0.75em;
+    border-radius: 12px;
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+.status-pending, .rfq-status-rfq-pending .rfq-status-value {
+    background-color: #fff3cd !important;
+    color: #856404 !important;
+    border: 1px solid #ffeeba;
+}
+
+.status-active, .rfq-status-rfq-active .rfq-status-value {
+    background-color: #d4edda !important;
+    color: #155724 !important;
+    border: 1px solid #c3e6cb;
+}
+
+.status-closed, .rfq-status-rfq-closed .rfq-status-value {
+    background-color: #f8d7da !important;
+    color: #721c24 !important;
+    border: 1px solid #f5c6cb;
+}
+
+.status-historic, .rfq-status-rfq-historic .rfq-status-value {
+    background-color: #e2e3e5 !important;
+    color: #383d41 !important;
+    border: 1px solid #d6d8db;
+}
+
+.rfq-expiry {
     display: flex;
-    flex-direction: column;
-    gap: 30px;
+    align-items: center;
+    gap: 0.5em;
 }
 
-.rfq-cotizar-items {
-    overflow-x: auto;
+.rfq-expiry-value {
+    color: #dc3545;
+    font-weight: 500;
 }
+/* === FIN UNIFICADO === */
 
-.rfq-cotizar-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 20px;
-}
-
-.rfq-cotizar-table th,
-.rfq-cotizar-table td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #eee;
-}
-
-.rfq-cotizar-table th {
-    background-color: #f8f9fa;
-    font-weight: 600;
-    color: #333;
-}
-
-.rfq-precio-input {
-    width: 120px;
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 3px;
-    text-align: right;
-}
-
-.rfq-precio-input:focus {
-    border-color: #0073aa;
-    outline: none;
-    box-shadow: 0 0 0 1px #0073aa;
-}
-
-.rfq-subtotal,
-.rfq-total-amount {
-    text-align: right;
-    font-weight: 600;
-}
-
-.rfq-total-row {
-    background-color: #f8f9fa;
-}
-
-.rfq-total-label {
-    text-align: right;
-    font-weight: 600;
-}
-
-.rfq-cotizar-fields {
-    margin-top: 20px;
-}
-
-.rfq-field {
-    margin-bottom: 20px;
-}
-
-.rfq-field label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
-    color: #333;
-}
-
-.rfq-field textarea {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #ddd;
-    border-radius: 3px;
-    resize: vertical;
-}
-
-.rfq-field textarea:focus {
-    border-color: #0073aa;
-    outline: none;
-    box-shadow: 0 0 0 1px #0073aa;
-}
-
-.rfq-cotizar-submit {
-    margin-top: 20px;
-    text-align: right;
-}
-
-.rfq-submit-btn {
-    display: inline-block;
-    padding: 12px 24px;
-    background-color: #28a745;
-    color: white;
-    text-decoration: none;
-    border: none;
-    border-radius: 3px;
-    font-size: 16px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.rfq-submit-btn:hover {
-    background-color: #218838;
-}
-
-/* Modal de confirmación */
-.rfq-modal {
+/* Estilos para el modal de aceptación */
+#rfq-aceptar-modal {
     display: none;
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 1000;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
 }
 
-.rfq-modal-content {
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    max-width: 400px;
+#rfq-aceptar-modal .rfq-modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    padding: 2rem;
+    border-radius: var(--rfq-border-radius);
+    box-shadow: var(--rfq-box-shadow);
+    max-width: 500px;
     width: 90%;
-    text-align: center;
 }
 
-.rfq-modal-content h3 {
-    margin-top: 0;
-    color: #333;
+#rfq-aceptar-modal h3 {
+    margin: 0 0 1rem;
+    color: var(--rfq-gray-800);
+    font-size: 1.25rem;
 }
 
-.rfq-modal-buttons {
+#rfq-aceptar-modal p {
+    margin: 0 0 1.5rem;
+    color: var(--rfq-gray-700);
+}
+
+#rfq-aceptar-modal .rfq-modal-buttons {
     display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 20px;
+    justify-content: flex-end;
+    gap: 1rem;
 }
 
-.rfq-modal-buttons button {
-    padding: 8px 16px;
+#rfq-aceptar-modal .rfq-modal-buttons button {
+    padding: 0.75rem 1.5rem;
     border: none;
-    border-radius: 4px;
-    cursor: pointer;
+    border-radius: var(--rfq-border-radius);
+    font-size: 0.875rem;
     font-weight: 500;
-    transition: all 0.3s ease;
+    cursor: pointer;
+    transition: var(--rfq-transition);
 }
 
-.rfq-modal-cancel {
-    background-color: #6c757d;
-    color: white;
+#rfq-aceptar-modal .rfq-modal-cancel {
+    background-color: var(--rfq-gray-200);
+    color: var(--rfq-gray-700);
 }
 
-.rfq-modal-confirm {
-    background-color: #dc3545;
-    color: white;
+#rfq-aceptar-modal .rfq-modal-confirm-aceptar {
+    background-color: var(--rfq-success);
+    color: #fff;
 }
 
-.rfq-modal-buttons button:hover {
-    opacity: 0.9;
+#rfq-aceptar-modal .rfq-modal-buttons button:hover {
     transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-/* Mensajes de notificación */
-.rfq-success-message,
-.rfq-error-message {
+#rfq-aceptar-modal .rfq-modal-buttons button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Estilos para las notificaciones toast */
+.rfq-toast-notification {
     position: fixed;
     top: 20px;
     right: 20px;
-    padding: 15px 25px;
-    border-radius: 4px;
+    background: #4caf50;
     color: white;
+    padding: 12px 20px;
+    border-radius: 4px;
+    z-index: 9999;
+    min-width: 300px;
+    max-width: 400px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     font-weight: 500;
-    z-index: 1001;
-    animation: slideIn 0.3s ease;
+    animation: rfqSlideIn 0.3s ease-out;
+    line-height: 1.4;
+    font-size: 14px;
+    margin: 0;
+    height: auto;
+    display: flex;
+    align-items: center;
 }
 
-.rfq-success-message {
-    background-color: #28a745;
+.rfq-toast-notification.error {
+    background: #f44336;
 }
 
-.rfq-error-message {
-    background-color: #dc3545;
+@keyframes rfqSlideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
 }
 
-@keyframes slideIn {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
+/* Estilos para los botones de acción */
+.rfq-aceptar-cotizacion-btn {
+    background-color: var(--rfq-success);
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: var(--rfq-border-radius);
+    cursor: pointer;
+    transition: var(--rfq-transition);
 }
 
-/* Estilo del botón de cancelar */
-.rfq-cancel-btn {
-    background-color: #dc3545 !important;
-    opacity: 0.9 !important;
-    transition: all 0.3s ease;
-}
-
-.rfq-cancel-btn:hover {
-    opacity: 1 !important;
+.rfq-aceptar-cotizacion-btn:hover {
+    background-color: var(--rfq-success-dark);
     transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.rfq-aceptar-cotizacion-btn:disabled {
+    background-color: var(--rfq-gray-400);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.rfq-pagar-cotizacion-btn {
+    background-color: var(--rfq-primary);
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: var(--rfq-border-radius);
+    cursor: pointer;
+    transition: var(--rfq-transition);
+    margin-left: 0.5rem;
+}
+
+.rfq-pagar-cotizacion-btn:hover {
+    background-color: var(--rfq-primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Estilos para las filas de cotizaciones */
+.rfq-cotizacion-aceptada {
+    background-color: #e8f5e9 !important;
+}
+
+.rfq-cotizacion-aceptada td {
+    color: #256029;
+    font-weight: 500;
+}
+
+.rfq-cotizacion-no-aceptada {
+    opacity: 0.6;
+}
+
+.rfq-cotizacion-no-aceptada .rfq-aceptar-cotizacion-btn {
+    display: none !important;
+}
+
+/* Estilos responsivos */
+@media screen and (max-width: 768px) {
+    #rfq-aceptar-modal .rfq-modal-content {
+        width: 95%;
+        padding: 1.5rem;
+    }
+
+    #rfq-aceptar-modal .rfq-modal-buttons {
+        flex-direction: column;
+    }
+
+    #rfq-aceptar-modal .rfq-modal-buttons button {
+        width: 100%;
+    }
+
+    .rfq-toast-notification {
+        left: 1rem;
+        right: 1rem;
+        bottom: 1rem;
+        text-align: center;
+    }
 } 

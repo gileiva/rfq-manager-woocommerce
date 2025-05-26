@@ -8,6 +8,8 @@
 
 namespace GiVendor\GiPlugin\Solicitud\Scheduler;
 
+use GiVendor\GiPlugin\Solicitud\SolicitudStatusHandler;
+
 /**
  * StatusScheduler - Gestiona el cambio automático de estado de solicitudes
  *
@@ -29,6 +31,16 @@ class StatusScheduler {
      * Grupo para acciones relacionadas con solicitudes
      */
     const ACTION_GROUP = 'rfq_scheduler';
+
+    /**
+     * Nombre de la opción para el tiempo de vencimiento por defecto
+     */
+    const OPTION_DEFAULT_EXPIRY = 'rfq_default_expiry_hours';
+    
+    /**
+     * Tiempo de vencimiento por defecto (24 horas)
+     */
+    const DEFAULT_EXPIRY_HOURS = 24;
     
     /**
      * Inicializa los hooks relacionados con la programación de cambios de estado
@@ -37,27 +49,50 @@ class StatusScheduler {
      * @return void
      */
     public static function init(): void {
-        // Verificar que Action Scheduler esté disponible (viene con WooCommerce)
-        if (function_exists('as_schedule_single_action')) {
-            // Hook para programar las acciones al crear una nueva solicitud
+        // Verificar que Action Scheduler esté disponible
+        if (!function_exists('as_schedule_single_action')) {
+            error_log('[RFQ] Action Scheduler no está disponible. Algunas funcionalidades pueden no trabajar correctamente.');
+            return;
+        }
+
+        // Registrar hooks
             add_action('wp_insert_post', [__CLASS__, 'schedule_status_change'], 10, 3);
-            
-            // Hook para manejar el cambio de estado a histórico
             add_action(self::ACTION_TO_HISTORIC, [__CLASS__, 'change_to_historic'], 10, 1);
-            
-            // Hook para reprogramar cuando se actualiza la fecha de vencimiento
             add_action('updated_post_meta', [__CLASS__, 'handle_expiry_update'], 10, 4);
             add_action('added_post_meta', [__CLASS__, 'handle_expiry_update'], 10, 4);
             
-            // Verificar solicitudes vencidas diariamente para garantizar que no se queden solicitudes sin procesar
+        // Programar verificación diaria
             if (!wp_next_scheduled('rfq_daily_check_expired')) {
                 wp_schedule_event(time(), 'daily', 'rfq_daily_check_expired');
             }
             add_action('rfq_daily_check_expired', [__CLASS__, 'check_expired_solicitudes']);
-        } else {
-            // Registrar un error si Action Scheduler no está disponible
-            error_log('RFQ Manager - Action Scheduler no está disponible. Algunas funcionalidades pueden no trabajar correctamente.');
-        }
+
+        // Registrar opción de configuración
+        add_action('admin_init', [__CLASS__, 'register_settings']);
+    }
+
+    /**
+     * Registra las configuraciones del plugin
+     *
+     * @since  0.1.0
+     * @return void
+     */
+    public static function register_settings(): void {
+        register_setting('rfq_manager_settings', self::OPTION_DEFAULT_EXPIRY, [
+            'type' => 'integer',
+            'sanitize_callback' => 'absint',
+            'default' => self::DEFAULT_EXPIRY_HOURS,
+        ]);
+    }
+
+    /**
+     * Obtiene el tiempo de vencimiento por defecto
+     *
+     * @since  0.1.0
+     * @return int Horas hasta el vencimiento
+     */
+    public static function get_default_expiry_hours(): int {
+        return absint(get_option(self::OPTION_DEFAULT_EXPIRY, self::DEFAULT_EXPIRY_HOURS));
     }
     
     /**
@@ -70,12 +105,11 @@ class StatusScheduler {
      * @return void
      */
     public static function schedule_status_change($post_id, $post, $update): void {
-        // Solo procesar nuevas solicitudes (no actualizaciones)
         if ($update || $post->post_type !== 'solicitud') {
             return;
         }
         
-        // Programar el cambio a estado histórico después de 24 horas
+        error_log(sprintf('[RFQ] Programando cambio de estado para solicitud #%d', $post_id));
         self::schedule_change_to_historic($post_id);
     }
     
@@ -87,24 +121,24 @@ class StatusScheduler {
      * @return void
      */
     public static function schedule_change_to_historic(int $post_id): void {
-        // Verificar que el post exista y sea una solicitud
         $post = get_post($post_id);
         if (!$post || $post->post_type !== 'solicitud' || $post->post_status === 'rfq-historic') {
             return;
         }
         
-        // Obtener la fecha de vencimiento o establecer una por defecto (24 horas)
+        // Obtener la fecha de vencimiento
         $expiry_date = get_post_meta($post_id, '_solicitud_expiry', true);
         if (empty($expiry_date)) {
-            $expiry_date = date('Y-m-d H:i:s', strtotime('+24 hours'));
+            $expiry_date = date('Y-m-d H:i:s', strtotime('+' . self::get_default_expiry_hours() . ' hours'));
             update_post_meta($post_id, '_solicitud_expiry', $expiry_date);
         }
         
-        // Cancelar cualquier acción programada previamente
+        // Cancelar acciones previas
         self::unschedule_action($post_id);
         
-        // Programar la nueva acción
+        // Programar nueva acción
         $timestamp = strtotime($expiry_date);
+        if ($timestamp > time()) {
         as_schedule_single_action(
             $timestamp,
             self::ACTION_TO_HISTORIC,
@@ -113,10 +147,11 @@ class StatusScheduler {
         );
         
         error_log(sprintf(
-            'RFQ Manager - Programado cambio a estado histórico para la solicitud #%d en: %s',
+                '[RFQ] Programado cambio a histórico para solicitud #%d en: %s',
             $post_id,
             date('Y-m-d H:i:s', $timestamp)
         ));
+        }
     }
     
     /**
@@ -127,32 +162,31 @@ class StatusScheduler {
      * @return void
      */
     public static function change_to_historic(int $post_id): void {
-        // Verificar que el post exista y sea una solicitud
         $post = get_post($post_id);
         if (!$post || $post->post_type !== 'solicitud') {
             return;
         }
         
-        // Evitar cambios si ya está en algún estado final
-        if ($post->post_status === 'rfq-historic' || $post->post_status === 'rfq-accepted') {
+        // Solo cambiar si está en estado pendiente o activa
+        if (!in_array($post->post_status, ['rfq-pending', 'rfq-active'])) {
             return;
         }
         
         // Cambiar a estado histórico
-        wp_update_post([
-            'ID' => $post_id,
-            'post_status' => 'rfq-historic',
-        ]);
+        SolicitudStatusHandler::update_status($post_id, 'rfq-historic');
         
-        // Registrar una nota interna
-        $note = __('Solicitud pasada a estado Histórico automáticamente por vencimiento.', 'rfq-manager-woocommerce');
+        // Registrar nota
+        $note = sprintf(
+            __('Solicitud pasada a estado Histórico automáticamente por vencimiento (%s).', 'rfq-manager-woocommerce'),
+            date_i18n(get_option('date_format') . ' ' . get_option('time_format'))
+        );
         add_post_meta($post_id, '_rfq_internal_note', $note);
         
-        error_log(sprintf('RFQ Manager - Solicitud #%d cambiada a estado histórico por vencimiento', $post_id));
+        error_log(sprintf('[RFQ] Solicitud #%d cambiada a histórico por vencimiento', $post_id));
     }
     
     /**
-     * Maneja la actualización de la fecha de vencimiento para reprogramar el cambio de estado
+     * Maneja la actualización de la fecha de vencimiento
      *
      * @since  0.1.0
      * @param  int    $meta_id    ID de la metadata
@@ -166,20 +200,23 @@ class StatusScheduler {
             return;
         }
         
-        // Verificar que sea una solicitud
         $post = get_post($post_id);
         if (!$post || $post->post_type !== 'solicitud') {
             return;
         }
         
-        // Reprogramar la acción con la nueva fecha
+        // Validar formato de fecha
+        if (!strtotime($meta_value)) {
+            error_log(sprintf('[RFQ] Fecha de vencimiento inválida para solicitud #%d: %s', $post_id, $meta_value));
+            return;
+        }
+        
+        error_log(sprintf('[RFQ] Programando cambio de estado para solicitud #%d', $post_id));
         self::schedule_change_to_historic($post_id);
     }
     
     /**
-     * Verifica y procesa solicitudes que deberían haber vencido pero no fueron procesadas
-     * 
-     * Este método es importante como respaldo en caso de que Action Scheduler no se ejecute correctamente.
+     * Verifica y procesa solicitudes vencidas
      *
      * @since  0.1.0
      * @return void
@@ -187,11 +224,10 @@ class StatusScheduler {
     public static function check_expired_solicitudes(): void {
         $current_time = current_time('mysql');
         
-        // Buscar solicitudes pendientes con fecha de vencimiento pasada
         $args = [
             'post_type'      => 'solicitud',
-            'post_status'    => 'rfq-pending',
-            'posts_per_page' => 50, // Procesar en lotes para evitar sobrecarga
+            'post_status'    => ['rfq-pending', 'rfq-active'],
+            'posts_per_page' => 50,
             'meta_query'     => [
                 [
                     'key'     => '_solicitud_expiry',
@@ -207,31 +243,28 @@ class StatusScheduler {
         if ($query->have_posts()) {
             while ($query->have_posts()) {
                 $query->the_post();
-                $post_id = get_the_ID();
-                
-                // Cambiar a estado histórico
-                self::change_to_historic($post_id);
+                self::change_to_historic(get_the_ID());
             }
             
-            error_log('RFQ Manager - Procesadas ' . $query->post_count . ' solicitudes vencidas durante la verificación diaria');
+            error_log(sprintf('[RFQ] Procesadas %d solicitudes vencidas durante la verificación diaria', $query->post_count));
         }
         
         wp_reset_postdata();
     }
     
     /**
-     * Cancela cualquier acción programada para una solicitud específica
+     * Cancela acciones programadas para una solicitud
      *
      * @since  0.1.0
      * @param  int $post_id ID de la solicitud
      * @return void
      */
-    private static function unschedule_action(int $post_id): void {
+    public static function unschedule_action(int $post_id): void {
         as_unschedule_all_actions(self::ACTION_TO_HISTORIC, [$post_id], self::ACTION_GROUP);
     }
 
     /**
-     * Método de prueba para verificar el funcionamiento del programador
+     * Verifica el funcionamiento del programador
      * 
      * @since  0.1.0
      * @return array Resultados de las pruebas
@@ -245,10 +278,10 @@ class StatusScheduler {
                 'expiry_update' => has_action('updated_post_meta', [__CLASS__, 'handle_expiry_update']),
                 'daily_check' => has_action('rfq_daily_check_expired', [__CLASS__, 'check_expired_solicitudes'])
             ],
-            'scheduled_actions' => []
+            'scheduled_actions' => [],
+            'default_expiry' => self::get_default_expiry_hours()
         ];
 
-        // Verificar acciones programadas
         if (function_exists('as_get_scheduled_actions')) {
             $scheduled = as_get_scheduled_actions([
                 'hook' => self::ACTION_TO_HISTORIC,

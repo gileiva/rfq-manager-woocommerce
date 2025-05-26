@@ -58,7 +58,7 @@ class CotizacionPostType {
             'rest_base'          => 'cotizaciones',
             'map_meta_cap'       => true,
             'menu_icon'          => 'dashicons-money-alt',
-            'menu_position'      => 56,
+            'menu_position'      => 24,
             'rewrite'            => ['slug' => 'cotizaciones'],
         ];
 
@@ -66,6 +66,14 @@ class CotizacionPostType {
         
         // Registrar capacidades
         self::register_caps();
+
+        // Registrar estados personalizados
+        self::register_statuses();
+
+        // Eliminar el botón "Añadir nueva"
+        add_action('admin_menu', function() {
+            remove_submenu_page('edit.php?post_type=cotizacion', 'post-new.php?post_type=cotizacion');
+        });
     }
     
     /**
@@ -266,5 +274,49 @@ class CotizacionPostType {
             'delete_cotizacion',
             'delete_others_cotizaciones',
         ];
+    }
+
+    /**
+     * Registra estados personalizados para el CPT 'cotizacion'
+     */
+    public static function register_statuses(): void {
+        // Cotización aceptada
+        register_post_status('rfq-accepted', [
+            'label'                     => _x('Aceptada', 'post status', 'rfq-manager-woocommerce'),
+            'public'                    => true,
+            'show_in_admin_all_list'    => true,
+            'show_in_admin_status_list' => true,
+            'label_count'               => _n_noop(
+                'Aceptada <span class="count">(%s)</span>',
+                'Aceptadas <span class="count">(%s)</span>',
+                'rfq-manager-woocommerce'
+            ),
+        ]);
+
+        // Cotización histórica
+        register_post_status('rfq-historic', [
+            'label'                     => _x('Histórica', 'post status', 'rfq-manager-woocommerce'),
+            'public'                    => true,
+            'show_in_admin_all_list'    => true,
+            'show_in_admin_status_list' => true,
+            'label_count'               => _n_noop(
+                'Histórica <span class="count">(%s)</span>',
+                'Históricas <span class="count">(%s)</span>',
+                'rfq-manager-woocommerce'
+            ),
+        ]);
+
+        // (Opcional) Estado cerrado
+        register_post_status('rfq-closed', [
+            'label'                     => _x('Cerrada', 'post status', 'rfq-manager-woocommerce'),
+            'public'                    => true,
+            'show_in_admin_all_list'    => true,
+            'show_in_admin_status_list' => true,
+            'label_count'               => _n_noop(
+                'Cerrada <span class="count">(%s)</span>',
+                'Cerradas <span class="count">(%s)</span>',
+                'rfq-manager-woocommerce'
+            ),
+        ]);
     }
 }

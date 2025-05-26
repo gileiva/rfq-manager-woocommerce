@@ -1,3 +1,7 @@
+/* Los estilos principales de containers, headers, meta, status, etc. están ahora en rfq-manager.css. Este archivo solo debe contener estilos exclusivos o específicos de vistas que no estén en el archivo principal. */
+
+/* Elimina aquí cualquier clase duplicada con rfq-manager.css */
+
 .rfq-iva-select {
     width: 100%;
     padding: 8px;
@@ -16,7 +20,7 @@
     border-color: #dc3232;
 }
 
-.rfq-cotizar-container {
+.rfq-cotizar-container{
     max-width: 1200px;
     margin: 2em auto;
     padding: 20px;
@@ -25,7 +29,7 @@
     border-radius: 4px;
 }
 
-.rfq-cotizar-header {
+.rfq-cotizar-header{
     margin-bottom: 2em;
     padding: 1.5em;
     background: #f8f9fa;
@@ -44,14 +48,6 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1em;
-}
-
-.rfq-meta-item {
-    margin: 0;
-    padding: 0.5em;
-    background: #fff;
-    border-radius: 4px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .rfq-status {
@@ -74,35 +70,28 @@
     font-weight: 500;
 }
 
-.rfq-status-rfq-pending .rfq-status-value {
-    background: #fff3cd;
-    color: #856404;
+.status-pending, .rfq-status-rfq-pending .rfq-status-value {
+    background-color: #fff3cd !important;
+    color: #856404 !important;
+    border: 1px solid #ffeeba;
 }
 
-.rfq-status-rfq-active .rfq-status-value {
-    background: #d4edda;
-    color: #155724;
+.status-active, .rfq-status-rfq-active .rfq-status-value {
+    background-color: #d4edda !important;
+    color: #155724 !important;
+    border: 1px solid #c3e6cb;
 }
 
-.rfq-status-rfq-accepted .rfq-status-value {
-    background: #cce5ff;
-    color: #004085;
+.status-closed, .rfq-status-rfq-closed .rfq-status-value {
+    background-color: #f8d7da !important;
+    color: #721c24 !important;
+    border: 1px solid #f5c6cb;
 }
 
-.rfq-status-rfq-historic .rfq-status-value {
-    background: #e2e3e5;
-    color: #383d41;
-}
-
-.rfq-expiry {
-    display: flex;
-    align-items: center;
-    gap: 0.5em;
-}
-
-.rfq-expiry-value {
-    color: #dc3545;
-    font-weight: 500;
+.status-historic, .rfq-status-rfq-historic .rfq-status-value {
+    background-color: #e2e3e5 !important;
+    color: #383d41 !important;
+    border: 1px solid #d6d8db;
 }
 
 .rfq-cotizar-table {
@@ -454,6 +443,8 @@
     background-color: #f8f8f8;
     border: 1px solid #ddd;
     border-radius: 4px;
+    display: flex;
+    align-items: center;
 }
 
 .rfq-stock-checkbox {
@@ -461,18 +452,15 @@
     align-items: center;
     gap: 10px;
     cursor: pointer;
-}
-
-.rfq-stock-checkbox input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
+    font-size: 15px;
+    font-weight: 500;
 }
 
 .rfq-checkbox-label {
-    font-size: 14px;
+    font-size: 15px;
     color: #333;
     font-weight: 500;
+    margin-left: 8px;
 }
 
 /* Estilo para cuando el checkbox es requerido pero no está marcado */
@@ -490,4 +478,9 @@
 
 .rfq-stock-checkbox input[type="checkbox"]:invalid + .rfq-checkbox-label + .rfq-stock-error {
     display: block;
+}
+
+.rfq-meta-item.rfq-status {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
 } 

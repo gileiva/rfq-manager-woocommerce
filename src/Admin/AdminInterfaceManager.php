@@ -31,13 +31,16 @@ class AdminInterfaceManager {
         add_filter('manage_solicitud_posts_columns', [__CLASS__, 'add_solicitud_columns']);
         add_action('manage_solicitud_posts_custom_column', [__CLASS__, 'display_solicitud_column_content'], 10, 2);
         
-        // Hook de depuración
-        add_action('init', function() {
-            // error_log('RFQ Manager - AdminInterfaceManager hooks inicializados');
-        }, 999);
-
+        // Agregar estilos para los estados
+        add_action('admin_head', [__CLASS__, 'add_admin_styles']);
+        
+        // Hooks para manejar la eliminación
+        add_action('before_delete_post', [__CLASS__, 'handle_solicitud_deletion'], 10, 1);
+        add_action('trash_post', [__CLASS__, 'handle_solicitud_trash'], 10, 1);
+        
         add_action('admin_menu', [self::class, 'add_menu_pages']);
         add_action('admin_init', [self::class, 'register_settings']);
+        add_action('admin_enqueue_scripts', [self::class, 'enqueue_scripts']);
     }
     
     /**
@@ -57,7 +60,8 @@ class AdminInterfaceManager {
             if ($key === 'title') {
                 $new_columns['order_id'] = __('Orden Original', 'rfq-manager-woocommerce');
                 $new_columns['customer'] = __('Cliente', 'rfq-manager-woocommerce');
-                $new_columns['total'] = __('Total', 'rfq-manager-woocommerce');
+                $new_columns['status'] = __('Estado', 'rfq-manager-woocommerce');
+                $new_columns['cotizaciones'] = __('Cotizaciones', 'rfq-manager-woocommerce');
                 $new_columns['expiry'] = __('Expira', 'rfq-manager-woocommerce');
             }
         }
@@ -94,15 +98,36 @@ class AdminInterfaceManager {
                     echo '—';
                 }
                 break;
+
+            case 'status':
+                $status = get_post_status($post_id);
+                $status_labels = [
+                    'rfq-pending' => __('Pendiente', 'rfq-manager-woocommerce'),
+                    'rfq-active' => __('Activa', 'rfq-manager-woocommerce'),
+                    'rfq-accepted' => __('Aceptada', 'rfq-manager-woocommerce'),
+                    'rfq-historic' => __('Histórica', 'rfq-manager-woocommerce'),
+                    'trash' => __('Papelera', 'rfq-manager-woocommerce')
+                ];
                 
-            case 'total':
-                $total = get_post_meta($post_id, '_solicitud_total', true);
-                if ($total) {
-                    // Corregido: usar number_format en lugar de wc_price para evitar HTML sin escapar
-                    echo esc_html(number_format($total, 2, ',', '.')) . ' €';
-                } else {
-                    echo '—';
-                }
+                $status_class = 'rfq-status-' . sanitize_html_class($status);
+                echo '<span class="rfq-status ' . esc_attr($status_class) . '">' . 
+                     esc_html($status_labels[$status] ?? $status) . 
+                     '</span>';
+                break;
+
+            case 'cotizaciones':
+                $cotizaciones = get_posts([
+                    'post_type' => 'cotizacion',
+                    'posts_per_page' => -1,
+                    'meta_query' => [
+                        [
+                            'key' => '_solicitud_parent',
+                            'value' => $post_id
+                        ]
+                    ]
+                ]);
+                
+                echo count($cotizaciones);
                 break;
                 
             case 'expiry':
@@ -137,7 +162,7 @@ class AdminInterfaceManager {
             'rfq-manager',
             [self::class, 'render_main_page'],
             'dashicons-cart',
-            56
+            24
         );
 
         add_submenu_page(
@@ -158,6 +183,10 @@ class AdminInterfaceManager {
      */
     public static function register_settings(): void {
         register_setting('rfq_manager_settings', 'rfq_cotizar_page_id');
+
+        // Nuevas opciones para Stripe
+        register_setting('rfq_manager_settings', 'stripe_secret_key');
+        register_setting('rfq_manager_settings', 'stripe_publishable_key');
     }
 
     /**
@@ -167,45 +196,75 @@ class AdminInterfaceManager {
      * @return void
      */
     public static function render_settings_page(): void {
-        // Verificar si la página de cotización existe
-        $cotizar_page_id = get_option('rfq_cotizar_page_id');
-        $cotizar_page = $cotizar_page_id ? get_post($cotizar_page_id) : null;
         ?>
         <div class="wrap">
             <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
-            
+
+            <form method="post" action="options.php">
+            <?php
+            // Genera los campos nonce y persiste las opciones
+            settings_fields('rfq_manager_settings');
+            do_settings_sections('rfq_manager_settings');
+            ?>
+
             <div class="rfq-settings-section">
-                <h2><?php _e('Páginas Requeridas', 'rfq-manager-woocommerce'); ?></h2>
-                
-                <table class="form-table">
-                    <tr>
-                        <th scope="row"><?php _e('Página de Cotización', 'rfq-manager-woocommerce'); ?></th>
-                        <td>
-                            <?php if ($cotizar_page && $cotizar_page->post_status === 'publish'): ?>
-                                <p class="rfq-status-ok">
-                                    <?php _e('Página creada correctamente.', 'rfq-manager-woocommerce'); ?>
-                                    <br>
-                                    <a href="<?php echo get_edit_post_link($cotizar_page_id); ?>">
-                                        <?php _e('Editar página', 'rfq-manager-woocommerce'); ?>
-                                    </a> |
-                                    <a href="<?php echo get_permalink($cotizar_page_id); ?>" target="_blank">
-                                        <?php _e('Ver página', 'rfq-manager-woocommerce'); ?>
-                                    </a>
-                                </p>
-                            <?php else: ?>
-                                <p class="rfq-status-error">
-                                    <?php _e('La página de cotización no está configurada correctamente.', 'rfq-manager-woocommerce'); ?>
-                                </p>
-                                <form method="post" action="">
-                                    <?php wp_nonce_field('rfq_create_pages', 'rfq_create_pages_nonce'); ?>
-                                    <input type="hidden" name="action" value="rfq_create_pages">
-                                    <input type="submit" class="button button-primary" value="<?php _e('Crear Página de Cotización', 'rfq-manager-woocommerce'); ?>">
-                                </form>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                </table>
+                <h2><?php _e('Configuración General', 'rfq-manager-woocommerce'); ?></h2>
+                <div class="rfq-settings-content">
+                    <!-- Aquí tu campo existente para rfq_cotizar_page_id -->
+                </div>
             </div>
+
+            <div class="rfq-settings-section">
+                <h2><?php _e('Configuración de Notificaciones', 'rfq-manager-woocommerce'); ?></h2>
+                <div class="rfq-settings-content">
+                    <!-- Contenido de notificaciones -->
+                </div>
+            </div>
+
+            <div class="rfq-settings-section">
+                <h2><?php _e('Configuración Avanzada', 'rfq-manager-woocommerce'); ?></h2>
+                <div class="rfq-settings-content">
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row">
+                                <label for="stripe_secret_key"><?php _e('Clave Secreta de Stripe', 'rfq-manager-woocommerce'); ?></label>
+                            </th>
+                            <td>
+                                <input
+                                name="stripe_secret_key"
+                                type="text"
+                                id="stripe_secret_key"
+                                value="<?php echo esc_attr(get_option('stripe_secret_key')); ?>"
+                                class="regular-text"
+                                />
+                                <p class="description">
+                                <?php _e('Tu clave secreta (sk_test_…) se usa en el servidor para crear PaymentIntents.', 'rfq-manager-woocommerce'); ?>
+                                </p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">
+                                <label for="stripe_publishable_key"><?php _e('Clave Publicable de Stripe', 'rfq-manager-woocommerce'); ?></label>
+                            </th>
+                            <td>
+                                <input
+                                name="stripe_publishable_key"
+                                type="text"
+                                id="stripe_publishable_key"
+                                value="<?php echo esc_attr(get_option('stripe_publishable_key')); ?>"
+                                class="regular-text"
+                                />
+                                <p class="description">
+                                <?php _e('Tu clave publicable (pk_test_…) se usa en Stripe.js para el frontend.', 'rfq-manager-woocommerce'); ?>
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <?php submit_button(); ?>
+            </form>
         </div>
         <?php
     }
@@ -238,5 +297,136 @@ class AdminInterfaceManager {
             </div>
         </div>
         <?php
+    }
+
+    /**
+     * Agrega estilos CSS para los estados
+     *
+     * @since  0.1.0
+     * @return void
+     */
+    public static function add_admin_styles(): void {
+        ?>
+        <style>
+            .rfq-status {
+                display: inline-block;
+                padding: 3px 8px;
+                border-radius: 3px;
+                font-size: 12px;
+                line-height: 1.4;
+            }
+            .rfq-status-rfq-pending {
+                background-color: #f0b849;
+                color: #fff;
+            }
+            .rfq-status-rfq-active {
+                background-color: #46b450;
+                color: #fff;
+            }
+            .rfq-status-rfq-closed {
+                background-color: #dc3232;
+                color: #fff;
+            }
+            .rfq-status-rfq-historic {
+                background-color: #999;
+                color: #fff;
+            }
+            .rfq-status-trash {
+                background-color: #dc3232;
+                color: #fff;
+            }
+        </style>
+        <?php
+    }
+
+    /**
+     * Maneja la eliminación de una solicitud
+     *
+     * @since  0.1.0
+     * @param  int $post_id ID del post
+     * @return void
+     */
+    public static function handle_solicitud_deletion($post_id): void {
+        if (get_post_type($post_id) !== 'solicitud') {
+            return;
+        }
+
+        // Eliminar metadatos relacionados
+        delete_post_meta($post_id, '_solicitud_order_id');
+        delete_post_meta($post_id, '_solicitud_customer');
+        delete_post_meta($post_id, '_solicitud_shipping');
+        delete_post_meta($post_id, '_solicitud_total');
+        delete_post_meta($post_id, '_solicitud_date');
+        delete_post_meta($post_id, '_solicitud_expiry');
+        delete_post_meta($post_id, '_solicitud_uuid');
+    }
+
+    /**
+     * Maneja el movimiento a la papelera de una solicitud
+     *
+     * @since  0.1.0
+     * @param  int $post_id ID del post
+     * @return void
+     */
+    public static function handle_solicitud_trash($post_id): void {
+        if (get_post_type($post_id) !== 'solicitud') {
+            return;
+        }
+
+        // Aquí puedes agregar lógica adicional cuando una solicitud se mueve a la papelera
+        error_log('RFQ Manager - Solicitud #' . $post_id . ' movida a la papelera');
+    }
+
+    /**
+     * Carga los scripts y estilos necesarios
+     *
+     * @since  0.1.0
+     * @return void
+     */
+    public static function enqueue_scripts(): void {
+        $screen = get_current_screen();
+        
+        // Solo cargar en páginas de solicitudes o cotizaciones
+        if (!in_array($screen->post_type, ['solicitud', 'cotizacion'], true)) {
+            return;
+        }
+
+        // Flatpickr para el selector de fecha y hora
+        wp_enqueue_style(
+            'flatpickr',
+            'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css',
+            [],
+            '4.6.13'
+        );
+
+        wp_enqueue_script(
+            'flatpickr',
+            'https://cdn.jsdelivr.net/npm/flatpickr',
+            [],
+            '4.6.13',
+            true
+        );
+
+        // Localización de Flatpickr
+        wp_enqueue_script(
+            'flatpickr-es',
+            'https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js',
+            ['flatpickr'],
+            '4.6.13',
+            true
+        );
+
+        // Estilos personalizados
+        wp_enqueue_style(
+            'rfq-admin',
+            RFQ_MANAGER_WOO_PLUGIN_URL . 'assets/css/admin.css',
+            [],
+            RFQ_MANAGER_WOO_VERSION
+        );
+
+        wp_localize_script('rfq-pago', 'RFQData', [
+            'endpoint'    => rest_url('rfq/v1/create-payment-intent'),
+            'publishable' => get_option('stripe_publishable_key', ''),
+        ]);
     }
 }

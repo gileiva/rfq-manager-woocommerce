@@ -1,0 +1,140 @@
+/**
+ * Estilos para la vista de usuario de solicitudes
+ *
+ * @package    GiVendor\GiPlugin
+ * @since      0.1.0
+ */
+
+/* Notificaciones toast */
+.rfq-toast-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #4caf50;
+    color: white;
+    padding: 15px 20px;
+    border-radius: 5px;
+    z-index: 9999;
+    min-width: 300px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    font-weight: 500;
+    animation: rfqSlideIn 0.3s ease-out;
+}
+
+.rfq-toast-notification.error {
+    background: #f44336;
+}
+
+@keyframes rfqSlideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/* Estados para vista de usuario */
+.rfq-status.status-pending { background-color: #f39c12; }
+.rfq-status.status-active { background-color: #27ae60; }
+.rfq-status.status-accepted { background-color: #3498db; }
+.rfq-status.status-closed { background-color: #8b4513; }
+.rfq-status.status-historic { background-color: #95a5a6; }
+.rfq-status { color: white; padding: 5px 10px; border-radius: 3px; display: inline-block; }
+
+/* Estados para lista de customer */
+.rfq-status-cell.status-pending { background-color: #f39c12; color: white; padding: 5px 10px; border-radius: 3px; }
+.rfq-status-cell.status-active { background-color: #27ae60; color: white; padding: 5px 10px; border-radius: 3px; }
+.rfq-status-cell.status-accepted { background-color: #3498db; color: white; padding: 5px 10px; border-radius: 3px; }
+.rfq-status-cell.status-closed { background-color: #8b4513; color: white; padding: 5px 10px; border-radius: 3px; }
+.rfq-status-cell.status-historic { background-color: #95a5a6; color: white; padding: 5px 10px; border-radius: 3px; }
+
+/* Estados para lista general */
+.rfq-list-table .status-pending { background-color: #f39c12; color: white; padding: 5px 10px; border-radius: 3px; }
+.rfq-list-table .status-active { background-color: #27ae60; color: white; padding: 5px 10px; border-radius: 3px; }
+.rfq-list-table .status-accepted { background-color: #3498db; color: white; padding: 5px 10px; border-radius: 3px; }
+.rfq-list-table .status-closed { background-color: #8b4513; color: white; padding: 5px 10px; border-radius: 3px; }
+.rfq-list-table .status-historic { background-color: #95a5a6; color: white; padding: 5px 10px; border-radius: 3px; }
+
+/* Estilos para cotizaciones */
+.rfq-cotizacion-aceptada { background: #e8f5e9 !important; }
+.rfq-cotizacion-aceptada td { color: #256029; font-weight: bold; }
+.rfq-cotizacion-no-aceptada { opacity: 0.6; }
+.rfq-cotizacion-no-aceptada .rfq-aceptar-cotizacion-btn { display: none !important; }
+.rfq-aceptar-cotizacion-btn.rfq-disabled { 
+    background: #ccc !important; 
+    color: #666 !important; 
+    cursor: not-allowed !important; 
+}
+
+/* Botón de pago */
+.rfq-pagar-cotizacion-btn {
+    background: #007cba;
+    border-color: #005a87;
+    color: #fff;
+}
+
+.rfq-pagar-cotizacion-btn:hover {
+    background: #005a87;
+    border-color: #003f5c;
+}
+
+/* Modales */
+.rfq-modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+}
+
+.rfq-modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 500px;
+    border-radius: 5px;
+}
+
+.rfq-modal-buttons {
+    text-align: right;
+    margin-top: 20px;
+}
+
+.rfq-modal-buttons button {
+    margin-left: 10px;
+}
+
+.rfq-modal-cancel {
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    padding: 8px 16px;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.rfq-modal-confirm,
+.rfq-modal-confirm-aceptar {
+    background: #dc3545;
+    color: white;
+    border: 1px solid #dc3545;
+    padding: 8px 16px;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .rfq-modal-content {
+        width: 95%;
+        margin: 10% auto;
+    }
+    
+    .rfq-toast-notification {
+        right: 10px;
+        left: 10px;
+        width: auto;
+    }
+}

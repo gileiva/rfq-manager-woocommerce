@@ -20,18 +20,21 @@
     padding: 10px;
     text-align: left;
     border-bottom: 1px solid #e1e1e1;
+    font-weight: 600;
 }
 
 .rfq-productos-table td {
     padding: 12px 10px;
     border-bottom: 1px solid #f0f0f0;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .rfq-productos-table tr:hover {
     background-color: #f9f9f9;
 }
 
-/* Estilos para el pie de la tabla con totales */
+/* Pie de tabla totales */
 .rfq-productos-table tfoot th {
     background-color: #f1f1f1;
     border-top: 2px solid #e1e1e1;
@@ -43,17 +46,14 @@
     text-align: center;
 }
 
-.rfq-totals-row {
-    font-weight: bold;
-}
-
 /* Estilos para el metabox de información del cliente */
 .rfq-customer-info {
     padding: 5px 0;
 }
 
 .rfq-customer-info p {
-    margin: 7px 0;
+    margin: 8px 0;
+    word-wrap: break-word;
 }
 
 .rfq-customer-info hr {
@@ -80,15 +80,15 @@
 }
 
 .rfq-status-rfq-pending {
-    background-color: #f8931f; /* Naranja para pendiente */
+    background-color: #f39c12; /* Naranja para pendiente */
 }
 
 .rfq-status-rfq-accepted {
-    background-color: #7cbb00; /* Verde para aceptada */
+    background-color: #3498db; /* Verde para aceptada */
 }
 
 .rfq-status-rfq-historic {
-    background-color: #5c6bc0; /* Azul para histórico */
+    background-color: #95a5a6; /* Azul para histórico */
 }
 
 /* Estilos para el campo ahorro */
@@ -144,4 +144,200 @@
 .rfq-oferta-content {
     padding: 15px;
     border-top: 1px solid #e1e1e1;
+}
+
+/* Estados de solicitud en backend */
+.status-label {
+    font-weight: bold;
+    color: white;
+    padding: 3px 8px;
+    border-radius: 3px;
+}
+
+.status-rfq-pending { background-color: #f39c12 !important; }
+.status-rfq-active { background-color: #27ae60 !important; }
+.status-rfq-accepted { background-color: #3498db !important; }
+.status-rfq-closed { background-color: #8b4513 !important; }
+.status-rfq-historic { background-color: #95a5a6 !important; }
+
+.rfq-status-message {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.rfq-status-message.notice-success {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+    border: 1px solid;
+}
+
+.rfq-status-message.notice-error {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+    border: 1px solid;
+}
+
+.rfq-current-status {
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.rfq-form-actions {
+    margin-top: 15px;
+}
+
+/* Lista de estados en el backend - CORREGIDO */
+#the-list .status-pending,
+#the-list .status-active,
+#the-list .status-accepted,
+#the-list .status-closed,
+#the-list .status-historic {
+    color: white;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-weight: bold;
+    display: inline-block;
+    min-width: 60px;
+    text-align: center;
+}
+
+#the-list .status-pending { background-color: #f39c12; }
+#the-list .status-active { background-color: #27ae60; }
+#the-list .status-accepted { background-color: #3498db; }
+#the-list .status-closed { background-color: #8b4513; }
+#the-list .status-historic { background-color: #95a5a6; }
+
+/* Metaboxes específicos padding */
+#rfq_productos_solicitados .inside,
+#rfq_ofertas_recibidas .inside {
+    padding: 0;
+    overflow: hidden;
+}
+
+#rfq_productos_solicitados .rfq-productos-table-container,
+#rfq_ofertas_recibidas .rfq-cotizaciones-container {
+    margin: 12px;
+}
+
+/* Lista de cotizaciones dentro de datos de solicitud */
+.rfq-cotizaciones-list ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.rfq-cotizaciones-list li {
+    padding: 5px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.rfq-cotizaciones-list li:last-child {
+    border-bottom: none;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    #postbox-container-2 {
+        width: 100%;
+    }
+    
+    #postbox-container-1 {
+        width: 100%;
+        margin-left: 0;
+        margin-top: 20px;
+    }
+    
+    .rfq-productos-table th,
+    .rfq-productos-table td,
+    .rfq-cotizaciones-table th,
+    .rfq-cotizaciones-table td {
+        font-size: 12px;
+        padding: 8px 4px;
+    }
+}
+
+/* Cuando no hay cotizaciones */
+.rfq-no-quotes-message {
+    padding: 30px 20px;
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    background-color: #f9f9f9;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    margin: 0;
+}
+
+/* Tablas responsive */
+.rfq-productos-table,
+.rfq-cotizaciones-table {
+    width: 100%;
+    min-width: 600px;
+    border-collapse: collapse;
+    background: white;
+}
+
+/* Estilos para la tabla de cotizaciones */
+.rfq-cotizaciones-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.rfq-cotizaciones-table th,
+.rfq-cotizaciones-table td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+/* Estilos para los estados de cotización */
+.rfq-estado-cotizacion {
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-weight: 500;
+    text-align: center;
+}
+
+.rfq-estado-cotizacion.publish {
+    background-color: #f39c12;
+    color: white;
+}
+
+.rfq-estado-cotizacion.rfq-accepted {
+    background-color: #27ae60;
+    color: white;
+}
+
+.rfq-estado-cotizacion.rfq-historic {
+    background-color: #95a5a6;
+    color: white;
+}
+
+/* Estilos para el porcentaje de descuento */
+.rfq-porcentaje-descuento {
+    text-align: center;
+    font-weight: 500;
+}
+
+.rfq-porcentaje-descuento.descuento-positivo {
+    color: #27ae60;
+    font-weight: 600;
+}
+
+/* Ajustes responsivos */
+@media screen and (max-width: 782px) {
+    .rfq-cotizaciones-table th,
+    .rfq-cotizaciones-table td {
+        padding: 12px 8px;
+    }
+    
+    .rfq-estado-cotizacion,
+    .rfq-porcentaje-descuento {
+        font-size: 13px;
+    }
 }

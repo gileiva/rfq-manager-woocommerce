@@ -16,14 +16,14 @@ jQuery(document).ready(function($) {
             var today = new Date();
             var h = today.getHours();
             var m = today.getMinutes();
-            var s = today.getSeconds();
+            // var s = today.getSeconds();
             
             // Añadir ceros iniciales si es necesario
             h = (h < 10) ? '0' + h : h;
             m = (m < 10) ? '0' + m : m;
-            s = (s < 10) ? '0' + s : s;
+            // s = (s < 10) ? '0' + s : s
             
-            $(this).val(dateText + ' ' + h + ':' + m + ':' + s);
+            $(this).val(dateText + ' ' + h + ':' + m );
         }
     });
     

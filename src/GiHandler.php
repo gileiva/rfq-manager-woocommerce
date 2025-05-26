@@ -87,9 +87,19 @@ class GiHandler {
      * @access   private
      * @return   void
      */
-    private static function loadDependencies() {
+    private static function loadDependencies(): void {
+        // Carga automática de todas las librerías instaladas por Composer
+        require_once RFQ_MANAGER_WOO_PLUGIN_DIR . 'vendor/autoload.php';
+
         // Core dependencies
         require_once RFQ_MANAGER_WOO_PLUGIN_DIR . 'src/Core/Loader.php';
+        
+        // Helpers
+        require_once RFQ_MANAGER_WOO_PLUGIN_DIR . 'src/Helpers/RequestHelper.php';
+        
+        // Templates
+        require_once RFQ_MANAGER_WOO_PLUGIN_DIR . 'src/Templates/TemplateManager.php';
+        require_once RFQ_MANAGER_WOO_PLUGIN_DIR . 'src/Email/Templates/TemplateParser.php';
         
         // Shortcodes
         require_once RFQ_MANAGER_WOO_PLUGIN_DIR . 'src/Shortcode/SolicitudShortcodes.php';
@@ -110,13 +120,53 @@ class GiHandler {
      * @return   void
      */
     private static function defineHooks() {
-        // Hook de depuración
-        add_action('init', function() {
-            // error_log('RFQ Manager - GiHandler hooks inicializados');
-        }, 999);
-
         // Registrar hooks de activación/desactivación
         PostType\CotizacionPostType::register_activation_hooks();
+        
+        // Flush rewrite rules on plugin activation
+        register_activation_hook(RFQ_MANAGER_WOO_PLUGIN_BASENAME, function() {
+            flush_rewrite_rules();
+        });
+        
+                
+        // Add custom rewrite rules
+        add_action('init', function() {
+            // Regla para cotizar-solicitud/[slug] (ahora apunta a solicitud)
+            add_rewrite_rule(
+                '^cotizar-solicitud/([a-zA-Z0-9-]+)/?$',
+                'index.php?post_type=solicitud&name=$matches[1]',
+                'top'
+            );
+            
+            // Regla para ver-solicitud/[slug]
+            add_rewrite_rule(
+                '^ver-solicitud/([^/]+)/?$',
+                'index.php?post_type=solicitud&name=$matches[1]',
+                'top'
+            );
+            
+            // Agregar query vars
+            add_filter('query_vars', function($vars) {
+                $vars[] = 'post_type';
+                $vars[] = 'name';
+                return $vars;
+            });
+            
+            // Forzar flush de reglas
+            if (get_option('rfq_flush_rewrite_rules', false)) {
+                flush_rewrite_rules();
+                delete_option('rfq_flush_rewrite_rules');
+            }
+        }, 10);
+
+        // Flush rewrite rules when needed
+        add_action('after_switch_theme', 'flush_rewrite_rules');
+        add_action('wp_loaded', function() {
+            if (get_option('rfq_flush_rewrite_rules', false)) {
+                flush_rewrite_rules();
+                delete_option('rfq_flush_rewrite_rules');
+            }
+        });
     }
     
     /**
@@ -130,84 +180,91 @@ class GiHandler {
      * @return   void
      */
     private static function initializeComponents() {
-        // Register post types and taxonomies first
+        // Registrar post types y taxonomías primero, con prioridad 0
         add_action('init', ['GiVendor\GiPlugin\PostType\SolicitudPostType', 'register'], 0);
         add_action('init', ['GiVendor\GiPlugin\PostType\CotizacionPostType', 'register'], 0);
         add_action('init', ['GiVendor\GiPlugin\PostType\CotizacionPostType', 'register_meta_fields'], 0);
         
+        // Initialize template manager
+        Templates\TemplateManager::init();
+        
         // Mover la creación de páginas al hook init con prioridad tardía
         add_action('init', [self::class, 'create_required_pages'], 999);
         
-        // Initialize modular components
+        // Initialize core components
         Order\OrderStatusManager::init();      // Gestiona estados de órdenes WooCommerce
         Order\OrderInterceptor::init();        // Intercepta órdenes de WooCommerce
         Email\EmailManager::init();            // Gestiona emails de WooCommerce
-        Admin\AdminInterfaceManager::init();   // Gestiona la interfaz de administración
         
-        // Inicializar servicios de precios y pagos
+        // Crear directorios para templates de emails
+        add_action('admin_init', ['GiVendor\GiPlugin\Email\EmailManager', 'create_template_directories']);
+        
+        // Registrar configuraciones de emails (para uso futuro con Settings API)
+        add_action('admin_init', ['GiVendor\GiPlugin\Email\EmailManager', 'register_settings']);
+        
+        // Initialize admin components
+        Admin\AdminInterfaceManager::init();   // Gestiona la interfaz de administración
+        Solicitud\View\SolicitudView::init();  // Gestiona la vista de solicitudes
+        Cotizacion\View\CotizacionView::init(); // Inicializa la vista de cotizaciones
+        
+         // Configura Stripe justo antes de inicializar el servicio de pagos
+        add_action('init', function(){
+            $secret_key = get_option('stripe_secret_key', '');
+            if ($secret_key) {
+                \Stripe\Stripe::setApiKey($secret_key);
+            }
+        }, 5);  
+
+        // Initialize services
         Services\PriceManager::init();         // Oculta precios en front-end y API
         Services\PaymentManager::init();       // Gestiona pasarelas de pago
         
-        // Inicializar la vista personalizada de solicitudes y scheduler
-        Solicitud\Admin\SolicitudView::init(); // Gestiona la vista de solicitudes individuales
+        // Initialize handlers
+        Solicitud\SolicitudStatusHandler::init(); // Gestiona estados de solicitudes
         Solicitud\Scheduler\StatusScheduler::init(); // Gestiona el cambio automático de estado
+        Cotizacion\CotizacionHandler::init(); // Inicializa el manejador de cotizaciones
         
-        // Inicializar shortcodes y manejadores de cotizaciones
+        // Initialize AJAX handler
+        Ajax\AjaxHandler::init(); // Inicializa el manejador de AJAX
+        
+        // Initialize shortcodes
         Shortcode\SolicitudShortcodes::init(); // Registra shortcodes de solicitud
         Shortcode\CotizacionShortcodes::init(); // Registra shortcodes de cotización
-        Cotizacion\CotizacionHandler::init(); // Inicializa el manejador de cotizaciones
-        Cotizacion\View\CotizacionView::init(); // Inicializa la vista de cotizaciones
-
-        // Inicializar manejadores
-        SolicitudStatusHandler::init();
-        CotizacionHandler::init();
+        
+        // Forzar flush de reglas de reescritura
+        add_action('init', function() {
+            if (get_option('rfq_flush_rewrite_rules', false)) {
+                flush_rewrite_rules();
+                delete_option('rfq_flush_rewrite_rules');
+            }
+        }, 999);
     }
 
     /**
-     * Crea las páginas necesarias para el funcionamiento del plugin
+     * Crea las páginas necesarias para el plugin
      *
-     * @since    0.1.0
-     * @access   private
-     * @return   void
+     * @since  0.1.0
+     * @return void
      */
     public static function create_required_pages(): void {
-        // Verificar si la página de cotización ya existe
-        $cotizar_page = get_page_by_path('cotizar-solicitud');
-        
-        if (!$cotizar_page) {
-            // Crear la página de cotización
-            $page_id = wp_insert_post([
-                'post_title'    => __('Cotizar Solicitud', 'rfq-manager-woocommerce'),
-                'post_name'     => 'cotizar-solicitud',
-                'post_status'   => 'publish',
-                'post_type'     => 'page',
-                'post_content'  => '[rfq_cotizar]',
-                'post_author'   => 1,
-            ], true);
+        // Verificar si la página 'ver-solicitud' ya existe
+        $ver_solicitud = get_page_by_path('ver-solicitud');
 
-            if (!is_wp_error($page_id)) {
-                update_option('rfq_cotizar_page_id', $page_id);
-            }
-        }
-
-        // Verificar si la página de vista de solicitud ya existe
-        $view_page = get_page_by_path('ver-solicitud');
-        
-        if (!$view_page) {
-            // Crear la página de vista de solicitud
-            $page_id = wp_insert_post([
+        // Crear página de ver solicitud si no existe
+        if (!$ver_solicitud) {
+            wp_insert_post([
                 'post_title'    => __('Ver Solicitud', 'rfq-manager-woocommerce'),
                 'post_name'     => 'ver-solicitud',
                 'post_status'   => 'publish',
                 'post_type'     => 'page',
                 'post_content'  => '[rfq_view_solicitud]',
-                'post_author'   => 1,
-            ], true);
-
-            if (!is_wp_error($page_id)) {
-                update_option('rfq_view_solicitud_page_id', $page_id);
-            }
+            ]);
         }
+
+        // No crear la página 'cotizar-solicitud' automáticamente para evitar conflicto con el CPT
+
+        // Forzar flush de reglas de reescritura
+        flush_rewrite_rules();
     }
 
     /**

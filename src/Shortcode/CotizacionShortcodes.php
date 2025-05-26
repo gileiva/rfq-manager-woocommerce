@@ -38,24 +38,33 @@ class CotizacionShortcodes {
      * @return void
      */
     public static function enqueue_assets(): void {
-        // Solo encolar en la página de cotización
-        if (!is_page('cotizar-solicitud')) {
+        global $post;
+        $should_enqueue = false;
+        // Encolar si el shortcode está presente en el contenido
+        if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'rfq_cotizar')) {
+            $should_enqueue = true;
+        }
+        // O si estamos en una vista singular de solicitud y el usuario es proveedor
+        if (is_singular('solicitud') && is_user_logged_in()) {
+            $user = wp_get_current_user();
+            if (in_array('proveedor', (array)$user->roles, true)) {
+                $should_enqueue = true;
+            }
+        }
+        if (!$should_enqueue) {
             return;
         }
-
         // Asegurarnos de que los estilos de WooCommerce estén cargados
         if (function_exists('WC')) {
             wp_enqueue_style('woocommerce-general');
             wp_enqueue_style('woocommerce-layout');
         }
-
         wp_enqueue_style(
             'rfq-cotizar-styles',
             plugins_url('assets/css/rfq-cotizar.css', dirname(dirname(__FILE__))),
             ['woocommerce-general', 'woocommerce-layout'],
             '1.0.0'
         );
-
         wp_enqueue_script(
             'rfq-cotizar-scripts',
             plugins_url('assets/js/rfq-cotizar.js', dirname(dirname(__FILE__))),
@@ -63,7 +72,6 @@ class CotizacionShortcodes {
             '1.0.0',
             true
         );
-
         wp_localize_script('rfq-cotizar-scripts', 'rfqCotizarL10n', [
             'completePrices' => __('Por favor, complete todos los precios.', 'rfq-manager-woocommerce'),
             'invalidPrice' => __('El precio debe ser mayor a 0.', 'rfq-manager-woocommerce'),
@@ -79,24 +87,33 @@ class CotizacionShortcodes {
      * @param  array  $atts Atributos del shortcode
      * @return string       Output HTML del formulario
      */
-    public static function render_cotizar_form($atts): string {
+    public static function render_cotizar_form($atts = []): string {
         // Verificar permisos
         if (!self::check_permissions()) {
-            return self::get_error_message();
+            return '<div class="rfq-error">' . esc_html__('No tienes permisos para ver esta página.', 'rfq-manager-woocommerce') . '</div>';
         }
 
-        // Obtener y validar la solicitud
-        $solicitud = self::get_validated_solicitud();
-        if (is_wp_error($solicitud)) {
-            return '<p class="rfq-error">' . $solicitud->get_error_message() . '</p>';
+        global $wp;
+        $current_url = home_url($wp->request);
+        $slug = basename(parse_url($current_url, PHP_URL_PATH));
+        // Buscar la solicitud por slug
+        $solicitud = get_page_by_path($slug, OBJECT, 'solicitud');
+        if (!$solicitud) {
+            return '<div class="rfq-error">' . esc_html__('No se encontró la solicitud para cotizar.', 'rfq-manager-woocommerce') . '</div>';
         }
-
+        $solicitud_id = $solicitud->ID;
+        // Verificar que la solicitud esté en estado válido
+        if (!in_array($solicitud->post_status, ['rfq-pending', 'rfq-active'], true)) {
+            return '<div class="rfq-error">' . esc_html__('Esta solicitud ya no está disponible para cotizar.', 'rfq-manager-woocommerce') . '</div>';
+        }
+        // Buscar cotización del proveedor actual para esta solicitud
+        $cotizacion = self::get_provider_cotizacion($solicitud_id);
         // Obtener los items de la solicitud
-        $items = self::get_solicitud_items($solicitud->ID);
+        $items = self::get_solicitud_items($solicitud_id);
         if (empty($items)) {
-            return '<p class="rfq-error">' . __('No hay productos en esta solicitud.', 'rfq-manager-woocommerce') . '</p>';
+            return '<div class="rfq-error">' . esc_html__('No hay items en esta solicitud.', 'rfq-manager-woocommerce') . '</div>';
         }
-
+        // Renderizar el formulario para el proveedor
         return self::render_form($solicitud, $items);
     }
 
@@ -112,11 +129,7 @@ class CotizacionShortcodes {
         }
 
         $user = wp_get_current_user();
-        $roles = (array) $user->roles;
-
-        // Permite al rol "proveedor" o al rol "administrator"
-        return in_array( 'proveedor', $roles, true )
-        || in_array( 'administrator', $roles, true );
+        return in_array('proveedor', (array) $user->roles);
     }
 
     /**
@@ -127,10 +140,13 @@ class CotizacionShortcodes {
      */
     private static function get_error_message(): string {
         if (!is_user_logged_in()) {
-            return '<p class="rfq-error">' . __('Debes iniciar sesión para realizar cotizaciones.', 'rfq-manager-woocommerce') . '</p>';
+            return '<p class="rfq-error">' . esc_html__('Debes iniciar sesión para realizar cotizaciones.', 'rfq-manager-woocommerce') . '</p>';
         }
 
-        return '<p class="rfq-error">' . __('Solo los proveedores pueden realizar cotizaciones.', 'rfq-manager-woocommerce') . '</p>';
+        $user = wp_get_current_user();
+        $roles = (array) $user->roles;
+        // No mostrar detalles de roles por seguridad
+        return '<p class="rfq-error">' . esc_html__('No tienes permisos para realizar cotizaciones. Contacta al administrador si crees que esto es un error.', 'rfq-manager-woocommerce') . '</p>';
     }
 
     /**
@@ -224,31 +240,23 @@ class CotizacionShortcodes {
      */
     private static function render_header(\WP_Post $solicitud): string {
         $output = '<div class="rfq-cotizar-header">';
-        
-        // Título y número de solicitud
-        $output .= '<h2>' . sprintf(
-            __('Cotizar Solicitud #%s', 'rfq-manager-woocommerce'),
-            get_post_meta($solicitud->ID, '_solicitud_order_id', true)
-        ) . '</h2>';
-
+        // Título para proveedor
+        $output .= '<h2>' . esc_html__('Cotizar solicitud de ', 'rfq-manager-woocommerce') . esc_html(get_the_author_meta('display_name', $solicitud->post_author)) . '</h2>';
         // Información básica
         $output .= '<div class="rfq-cotizar-meta">';
-        
         // Solicitante y fecha
         $output .= '<p class="rfq-meta-item">' . sprintf(
             __('Solicitado por %s el %s', 'rfq-manager-woocommerce'),
             get_the_author_meta('display_name', $solicitud->post_author),
             get_the_date('', $solicitud->ID)
         ) . '</p>';
-
         // Estado de la solicitud
         $status_label = self::get_status_label($solicitud->post_status);
-        $status_class = self::get_status_class($solicitud->post_status);
-        $output .= '<p class="rfq-meta-item rfq-status ' . esc_attr($status_class) . '">';
+        $status_class = 'rfq-status rfq-status-' . esc_attr($solicitud->post_status) . ' status-' . esc_attr(str_replace('rfq-', '', $solicitud->post_status));
+        $output .= '<p class="rfq-meta-item ' . $status_class . '">';
         $output .= '<span class="rfq-status-label">' . __('Estado:', 'rfq-manager-woocommerce') . '</span> ';
         $output .= '<span class="rfq-status-value">' . esc_html($status_label) . '</span>';
         $output .= '</p>';
-
         // Fecha de expiración
         $expiry_date = get_post_meta($solicitud->ID, '_solicitud_expiry', true);
         if ($expiry_date) {
@@ -258,10 +266,8 @@ class CotizacionShortcodes {
             $output .= '<span class="rfq-expiry-value">' . esc_html($expiry_formatted) . '</span>';
             $output .= '</p>';
         }
-
         $output .= '</div>'; // .rfq-cotizar-meta
         $output .= '</div>'; // .rfq-cotizar-header
-
         return $output;
     }
 
@@ -294,6 +300,7 @@ class CotizacionShortcodes {
 
             $existing_price = isset($precio_items[$item['product_id']]) ? $precio_items[$item['product_id']]['precio'] : '';
             $existing_iva = isset($precio_items[$item['product_id']]) ? $precio_items[$item['product_id']]['iva'] : '21';
+            $original_price = is_numeric($existing_price) ? $existing_price : 0;
 
             $output .= '<tr>';
             $output .= '<td>' . esc_html($product->get_name()) . '</td>';
@@ -302,7 +309,7 @@ class CotizacionShortcodes {
             $output .= '<input type="number" name="precios[' . esc_attr($item['product_id']) . ']" 
                         class="rfq-precio-input" step="0.01" min="0" required
                         value="' . esc_attr($existing_price) . '"
-                        data-original-price="' . esc_attr($existing_price) . '">';
+                        data-original-price="' . esc_attr($original_price) . '">';
             $output .= '</td>';
             $output .= '<td>';
             $output .= '<select name="iva[' . esc_attr($item['product_id']) . ']" class="rfq-iva-select">';
@@ -343,16 +350,22 @@ class CotizacionShortcodes {
      * @return \WP_Post|null
      */
     private static function get_provider_cotizacion(int $solicitud_id): ?\WP_Post {
+        $current_user_id = get_current_user_id();
+        if (!$current_user_id || !$solicitud_id) {
+            return null;
+        }
         $cotizaciones = get_posts([
             'post_type'      => 'cotizacion',
             'posts_per_page' => 1,
             'meta_query'     => [
                 [
                     'key'   => '_solicitud_parent',
-                    'value' => $solicitud_id,
+                    'value' => intval($solicitud_id),
+                    'compare' => '=',
+                    'type' => 'NUMERIC',
                 ],
             ],
-            'author'         => get_current_user_id(),
+            'author'         => $current_user_id,
         ]);
 
         return !empty($cotizaciones) ? $cotizaciones[0] : null;

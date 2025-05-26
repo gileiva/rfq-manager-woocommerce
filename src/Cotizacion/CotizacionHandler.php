@@ -261,26 +261,22 @@ class CotizacionHandler {
      * @return void
      */
     private static function send_notifications(int $cotizacion_id, int $solicitud_id): void {
+        error_log("[RFQ-FLOW] Iniciando send_notifications - Cotización: {$cotizacion_id}, Solicitud: {$solicitud_id}");
+        
         $solicitud = get_post($solicitud_id);
         $cotizacion = get_post($cotizacion_id);
         
         if (!$solicitud || !$cotizacion) {
+            error_log("[RFQ-ERROR] No se pudieron encontrar solicitud o cotización para enviar notificaciones");
             return;
         }
 
-        // Notificar al autor de la solicitud
-        $author_email = get_the_author_meta('user_email', $solicitud->post_author);
-        $subject = sprintf(
-            __('Nueva cotización para tu solicitud #%s', 'rfq-manager-woocommerce'),
-            get_post_meta($solicitud_id, '_solicitud_order_id', true)
-        );
-
-        $message = sprintf(
-            __('Has recibido una nueva cotización para tu solicitud #%s.', 'rfq-manager-woocommerce'),
-            get_post_meta($solicitud_id, '_solicitud_order_id', true)
-        );
-
-        wp_mail($author_email, $subject, $message);
+        error_log("[RFQ-FLOW] Disparando acción 'rfq_cotizacion_submitted' para notificaciones");
+        
+        // Disparar acción para que las clases de notificación puedan actuar
+        do_action('rfq_cotizacion_submitted', $cotizacion_id, $solicitud_id);
+        
+        error_log("[RFQ-FLOW] Acción 'rfq_cotizacion_submitted' disparada con éxito");
     }
 
     /**

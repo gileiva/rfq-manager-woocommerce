@@ -1,10 +1,75 @@
 jQuery(document).ready(function($) {
+    // Agregar estilos del modal
+    $('head').append(`
+        <style>
+            .rfq-modal {
+                display: none;               
+                position: fixed;
+                top: 0; left: 0;
+                width: 100%; height: 100%;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 9999;
+                display: flex;               
+                justify-content: center;
+                align-items: center;
+                }
+
+            .rfq-modal-content {
+                background-color: #fff;
+                padding: 20px;
+                border-radius: 5px;
+                max-width: 500px;
+                width: 90%;
+                position: relative;
+            }
+            .rfq-modal-buttons {
+                margin-top: 20px;
+                text-align: right;
+            }
+            .rfq-modal-buttons button {
+                margin-left: 10px;
+                padding: 8px 16px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            .rfq-modal-cancel {
+                background-color: #f1f1f1;
+                color: #333;
+            }
+            .rfq-modal-confirm {
+                background-color: #dc3545;
+                color: white;
+            }
+        </style>
+    `);
+
+    // Agregar el modal al body si no existe
+    if ($('#rfq-confirm-modal').length === 0) {
+        $('body').append(`
+            <div id="rfq-confirm-modal" class="rfq-modal">
+                <div class="rfq-modal-content">
+                    <h3>${rfqManagerL10n.cancelConfirmTitle}</h3>
+                    <p>${rfqManagerL10n.cancelConfirm}</p>
+                    <div class="rfq-modal-buttons">
+                        <button class="rfq-modal-cancel">${rfqManagerL10n.cancelNo}</button>
+                        <button class="rfq-modal-confirm">${rfqManagerL10n.cancelYes}</button>
+                    </div>
+                </div>
+            </div>
+        `);
+    }
+
+    // Manejar el cierre del modal
+    $(document).on('click', '.rfq-modal-cancel', function() {
+        $('#rfq-confirm-modal').fadeOut();
+    });
+
     // console.log('RFQ Manager JS inicializado');
 
     // Variable para mantener el ID del acordeón actualmente abierto
     let openAccordionId = null;
     let currentSolicitudId = null;
-    const $modal = $('#rfq-confirm-modal');
 
     // Funcionalidad del acordeón
     $('.rfq-toggle-details').on('click', function(e) {
@@ -123,96 +188,74 @@ jQuery(document).ready(function($) {
         });
     });
 
-    // Manejar la cancelación de solicitudes
-    $(document).on('click', '.rfq-cancel-btn', function(e) {
-        // console.log('Botón de cancelar clickeado');
-        e.preventDefault();
+    // Función para mostrar notificación toast
+    function showToast(message, isError = false) {
+        const toast = $("<div class=\"rfq-toast-notification" + (isError ? " error" : "") + "\">" + message + "</div>");
+        $("body").append(toast);
         
-        const $button = $(this);
-        currentSolicitudId = $button.data('solicitud');
-        // console.log('ID de solicitud:', currentSolicitudId);
-        
-        // Mostrar el modal
-        $modal.fadeIn(300);
-    });
+        setTimeout(function() {
+            toast.fadeOut(300, function() {
+                $(this).remove();
+            });
+        }, 4000);
+    }
 
-    // Manejar el botón de cancelar en el modal
-    $('.rfq-modal-cancel').on('click', function() {
-        $modal.fadeOut(300);
-        currentSolicitudId = null;
+    // Manejar el modal y la acción AJAX para aceptar cotización
+    $(document).on('click', '.rfq-aceptar-cotizacion-btn:not([disabled])', function() {
+        var cotizacionId = $(this).data('cotizacion-id');
+        console.log('[RFQ] Click en botón Aceptar cotización. ID:', cotizacionId);
+        window._rfqCotizacionToAccept = cotizacionId;
+        $('#rfq-aceptar-modal').fadeIn();
     });
-
-    // Manejar el botón de confirmar en el modal
-    $('.rfq-modal-confirm').on('click', function() {
-        if (!currentSolicitudId) return;
-        
-        // console.log('Iniciando proceso de cancelación');
-        const $button = $('.rfq-cancel-btn[data-solicitud="' + currentSolicitudId + '"]');
-        
-        // Deshabilitar el botón y mostrar estado de carga
-        $button.prop('disabled', true).addClass('loading');
-        
-        // Realizar la petición AJAX
-        $.ajax({
-            url: rfqManagerL10n.ajaxurl,
-            type: 'POST',
-            data: {
-                action: 'rfq_cancel_solicitud',
-                solicitud_id: currentSolicitudId,
-                nonce: rfqManagerL10n.nonce
-            },
-            success: function(response) {
-                console.log('Respuesta del servidor:', response);
-                if (response.success) {
-                    // console.log('Cancelación exitosa');
-                    // Cerrar el modal
-                    $modal.fadeOut(300);
-                    
-                    // Mostrar mensaje de éxito
-                    const $successMessage = $('<div class="rfq-success-message">' + rfqManagerL10n.cancelSuccess + '</div>');
-                    $('body').append($successMessage);
-                    setTimeout(() => {
-                        $successMessage.fadeOut(300, function() {
-                            $(this).remove();
-                        });
-                    }, 3000);
-                    
-                    // Si estamos en la vista individual, redirigir a la lista
-                    if ($('.rfq-solicitud-view').length) {
-                        console.log('Redirigiendo a la lista desde vista individual');
-                        window.location.href = window.location.pathname.replace('ver-solicitud', '');
-                    } else {
-                        // Si estamos en la lista, recargar la página
-                        // console.log('Recargando página desde lista');
-                        window.location.reload();
-                    }
-                } else {
-                    console.log('Error en la cancelación:', response.data);
-                    // Mostrar mensaje de error
-                    const $errorMessage = $('<div class="rfq-error-message">' + (response.data || rfqManagerL10n.cancelError) + '</div>');
-                    $('body').append($errorMessage);
-                    setTimeout(() => {
-                        $errorMessage.fadeOut(300, function() {
-                            $(this).remove();
-                        });
-                    }, 3000);
-                    
-                    $button.prop('disabled', false).removeClass('loading');
+    $(document).on('click', '#rfq-aceptar-modal .rfq-modal-cancel', function() {
+        window._rfqCotizacionToAccept = null;
+        $('#rfq-aceptar-modal').fadeOut();
+    });
+    $(document).on('click', '#rfq-aceptar-modal .rfq-modal-confirm-aceptar', function() {
+        var cotizacionId = window._rfqCotizacionToAccept;
+        if (!cotizacionId) return;
+        console.log('[RFQ] Confirmando aceptación de cotización. ID:', cotizacionId);
+        var $btn = $('.rfq-aceptar-cotizacion-btn[data-cotizacion-id="' + cotizacionId + '"]');
+        $btn.prop('disabled', true).text('Aceptando...');
+        $(this).prop('disabled', true);
+        $.post(rfqManagerL10n.ajaxurl, {
+            action: 'accept_quote',
+            cotizacion_id: cotizacionId,
+            nonce: rfqManagerL10n.nonce
+        }, function(resp) {
+            if (resp.success) {
+                console.log('[RFQ] Cotización aceptada correctamente. ID:', cotizacionId);
+                // Resaltar la fila aceptada
+                var $row = $('tr[data-cotizacion-id="' + cotizacionId + '"]');
+                $row.removeClass('rfq-cotizacion-no-aceptada').addClass('rfq-cotizacion-aceptada');
+                $row.find('.rfq-aceptar-cotizacion-btn').prop('disabled', true).css({'background':'#4caf50','color':'#fff','cursor':'default'}).text('Aceptada');
+                // Mostrar botón pagar
+                if ($row.find('.rfq-pagar-cotizacion-btn').length === 0) {
+                    $row.find('td:last').append(' <button type="button" class="button rfq-pagar-cotizacion-btn" data-cotizacion-id="' + cotizacionId + '" onclick="window.location.href=\'#\';">Pagar</button>');
                 }
-            },
-            error: function(xhr, status, error) {
-                // console.error('Error AJAX:', {xhr, status, error});
-                // Mostrar mensaje de error
-                const $errorMessage = $('<div class="rfq-error-message">' + rfqManagerL10n.cancelError + '</div>');
-                $('body').append($errorMessage);
-                setTimeout(() => {
-                    $errorMessage.fadeOut(300, function() {
-                        $(this).remove();
-                    });
-                }, 3000);
-                
-                $button.prop('disabled', false).removeClass('loading');
+                // Bajar opacidad y ocultar botones aceptar de las demás
+                $('.rfq-cotizaciones-table tr').each(function() {
+                    var $tr = $(this);
+                    if ($tr.data('cotizacion-id') != cotizacionId) {
+                        $tr.removeClass('rfq-cotizacion-aceptada').addClass('rfq-cotizacion-no-aceptada');
+                        $tr.find('.rfq-aceptar-cotizacion-btn').hide();
+                    }
+                });
+                // Cerrar modal y resetear botones
+                $('#rfq-aceptar-modal').fadeOut();
+                $('#rfq-aceptar-modal .rfq-modal-confirm-aceptar').prop('disabled', false);
+            } else {
+                alert((resp.data && resp.data.msg) ? resp.data.msg : 'Error inesperado');
+                $btn.prop('disabled', false).text('Aceptar');
+                $('#rfq-aceptar-modal .rfq-modal-confirm-aceptar').prop('disabled', false);
             }
         });
+    });
+
+    // Handler para botones de pago
+    $(document).on('click', '.rfq-pagar-cotizacion-btn', function() {
+        var cotizacionId = $(this).data('cotizacion-id');
+        var paymentUrl = window.location.origin + '/pagar-cotizacion/' + cotizacionId + '/';
+        window.location.href = paymentUrl;
     });
 }); 

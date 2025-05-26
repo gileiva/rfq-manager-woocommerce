@@ -42,17 +42,22 @@ class CotizacionCreator {
         $precio_items = self::sanitize_precio_items($precio_items);
         
                 
+        // Generar UUID seguro
+        $uuid = wp_generate_uuid4();
+        // Validar que el UUID no exista como slug
+        $existing = get_page_by_path($uuid, OBJECT, 'cotizacion');
+        if ($existing) {
+            return false;
+        }
+        
         // Crear el título de la cotización
-        $cotizacionTitle = sprintf(
-            /* translators: %d: solicitud ID */
-            __('Cotización para Solicitud #%d', 'rfq-manager-woocommerce'),
-            $solicitud_id
-        );
+        $cotizacionTitle = $uuid;
         
         // Crear la cotización
         $cotizacionId = wp_insert_post([
             'post_type'    => 'cotizacion',
             'post_title'   => $cotizacionTitle,
+            'post_name'    => $uuid,
             'post_status'  => 'publish',
             'post_author'  => get_current_user_id(),
         ]);
@@ -67,12 +72,15 @@ class CotizacionCreator {
         update_post_meta($cotizacionId, '_precio_items', $precio_items);
         update_post_meta($cotizacionId, '_total', $total);
         update_post_meta($cotizacionId, '_observaciones', sanitize_textarea_field($_POST['observaciones'] ?? ''));
+        update_post_meta($cotizacionId, '_cotizacion_uuid', $uuid);
 
         // Debug: Verificar que los datos se guardaron correctamente
         $saved_precios = get_post_meta($cotizacionId, '_precio_items', true);
 
-        // Registrar acción
-        do_action('rfq_cotizacion_submitted', $cotizacionId, $solicitud_id, $precio_items);
+        // Forzar actualización de estado de la solicitud
+        if (class_exists('GiVendor\\GiPlugin\\Solicitud\\SolicitudStatusHandler')) {
+            \GiVendor\GiPlugin\Solicitud\SolicitudStatusHandler::check_and_update_status($solicitud_id, get_post($solicitud_id), true);
+        }
 
         return $cotizacionId;
     }

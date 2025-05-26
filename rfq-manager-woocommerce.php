@@ -11,7 +11,7 @@
  * Plugin Name:       RFQ Manager for WooCommerce
  * Plugin URI:        https://weloveweb.eu
  * Description:       Request for Quote management system for WooCommerce
- * Version:           0.2.0
+ * Version:           0.4.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            WeLoveWeb
@@ -27,7 +27,7 @@ if (!defined('WPINC')) {
 }
 
 // Define plugin constants
-define('RFQ_MANAGER_WOO_VERSION', '0.1.0');
+define('RFQ_MANAGER_WOO_VERSION', '0.2.0');
 define('RFQ_MANAGER_WOO_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RFQ_MANAGER_WOO_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('RFQ_MANAGER_WOO_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -40,14 +40,15 @@ if (file_exists(dirname(__FILE__) . '/vendor/autoload.php')) {
 // Initialize the plugin
 add_action('plugins_loaded', function() {
     // Check if WooCommerce is active
-    if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
-        // Inicializar GiHandler si existe la clase
-        if (class_exists('GiVendor\\GiPlugin\\GiHandler')) {
-            GiVendor\GiPlugin\GiHandler::run();
-        }
-    } else {
+    if (!in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
         add_action('admin_notices', function() {
             echo '<div class="error"><p>' . esc_html__('RFQ Manager for WooCommerce requires WooCommerce to be installed and active.', 'rfq-manager-woocommerce') . '</p></div>';
         });
+        return;
+    }
+
+    // Initialize GiHandler
+    if (class_exists('GiVendor\\GiPlugin\\GiHandler')) {
+        GiVendor\GiPlugin\GiHandler::run();
     }
 });
