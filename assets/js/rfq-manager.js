@@ -1,72 +1,4 @@
 jQuery(document).ready(function($) {
-    // Agregar estilos del modal
-    $('head').append(`
-        <style>
-            .rfq-modal {
-                display: none;               
-                position: fixed;
-                top: 0; left: 0;
-                width: 100%; height: 100%;
-                background-color: rgba(0, 0, 0, 0.5);
-                z-index: 9999;
-                display: flex;               
-                justify-content: center;
-                align-items: center;
-                }
-
-            .rfq-modal-content {
-                background-color: #fff;
-                padding: 20px;
-                border-radius: 5px;
-                max-width: 500px;
-                width: 90%;
-                position: relative;
-            }
-            .rfq-modal-buttons {
-                margin-top: 20px;
-                text-align: right;
-            }
-            .rfq-modal-buttons button {
-                margin-left: 10px;
-                padding: 8px 16px;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-            }
-            .rfq-modal-cancel {
-                background-color: #f1f1f1;
-                color: #333;
-            }
-            .rfq-modal-confirm {
-                background-color: #dc3545;
-                color: white;
-            }
-        </style>
-    `);
-
-    // Agregar el modal al body si no existe
-    if ($('#rfq-confirm-modal').length === 0) {
-        $('body').append(`
-            <div id="rfq-confirm-modal" class="rfq-modal">
-                <div class="rfq-modal-content">
-                    <h3>${rfqManagerL10n.cancelConfirmTitle}</h3>
-                    <p>${rfqManagerL10n.cancelConfirm}</p>
-                    <div class="rfq-modal-buttons">
-                        <button class="rfq-modal-cancel">${rfqManagerL10n.cancelNo}</button>
-                        <button class="rfq-modal-confirm">${rfqManagerL10n.cancelYes}</button>
-                    </div>
-                </div>
-            </div>
-        `);
-    }
-
-    // Manejar el cierre del modal
-    $(document).on('click', '.rfq-modal-cancel', function() {
-        $('#rfq-confirm-modal').fadeOut();
-    });
-
-    // console.log('RFQ Manager JS inicializado');
-
     // Variable para mantener el ID del acordeón actualmente abierto
     let openAccordionId = null;
     let currentSolicitudId = null;
@@ -258,4 +190,44 @@ jQuery(document).ready(function($) {
         var paymentUrl = window.location.origin + '/pagar-cotizacion/' + cotizacionId + '/';
         window.location.href = paymentUrl;
     });
-}); 
+
+    // Handler para botón Repetir Solicitud
+    $(document).on('click', '.rfq-repeat-btn', function(e) {
+        e.preventDefault();
+        var $btn = $(this);
+        var solicitudId = $btn.data('solicitud');
+        if (!solicitudId) {
+            showToast('ID de solicitud inválido.', true);
+            return;
+        }
+        $btn.prop('disabled', true);
+        showToast(rfqManagerL10n.loading);
+        $.ajax({
+            url: rfqManagerL10n.ajaxurl,
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                action: 'repeat_solicitud',
+                solicitud_id: solicitudId,
+                nonce: rfqManagerL10n.nonce
+            },
+            success: function(response) {
+                if (response.success && response.data && response.data.success) {
+                    window.location.href = rfqManagerL10n.cartUrl;
+                } else {
+                    var msg = (response.data && response.data.message) ? response.data.message : (response.message || 'Error inesperado');
+                    showToast(msg, true);
+                    $btn.prop('disabled', false);
+                }
+            },
+            error: function(xhr) {
+                var msg = 'Error inesperado';
+                if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
+                    msg = xhr.responseJSON.data.message;
+                }
+                showToast(msg, true);
+                $btn.prop('disabled', false);
+            }
+        });
+    });
+});

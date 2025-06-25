@@ -1,6 +1,6 @@
 jQuery(document).ready(function($) {
-    // Agregar el modal al body si no existe
-    if ($('#rfq-confirm-modal').length === 0) {
+    // Agregar el modal al body solo si hay botones de cancelar VISIBLES en la página
+    if ($('.rfq-cancel-btn:visible').length > 0 && $('#rfq-confirm-modal').length === 0) {
         $('body').append(`
             <div id="rfq-confirm-modal" class="rfq-modal" style="display: none;">
                 <div class="rfq-modal-content">
