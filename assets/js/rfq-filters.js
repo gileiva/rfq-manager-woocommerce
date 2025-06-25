@@ -36,5 +36,35 @@ jQuery(document).ready(function($) {
         });
     });
 
-    // TODO: Revisar conflicto con el modal de cancelación que aparece en páginas no deseadas.
+    // Filtrado dinámico por orden
+    $(document).on('change', '.rfq-order-dropdown', function(e) {
+        var order = $(this).val();
+        var $activeTab = $('.rfq-status-tab.active');
+        var status = $activeTab.length ? $activeTab.data('status') : '';
+        var $container = $('#rfq-solicitudes-table-container');
+        $container.html('<div class="rfq-loading"><div class="rfq-spinner"></div>' + (rfqManagerL10n.loading || 'Cargando...') + '</div>');
+
+        $.ajax({
+            url: rfqManagerL10n.ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'rfq_filter_solicitudes',
+                status: status,
+                order: order,
+                nonce: rfqManagerL10n.nonce
+            },
+            success: function(response) {
+                if (typeof response === 'object' && response.success === false && response.data && response.data.message) {
+                    $container.html('<p class="rfq-error">' + response.data.message + '</p>');
+                } else {
+                    $container.html(response);
+                }
+            },
+            error: function() {
+                $container.html('<p class="rfq-error">' + (rfqManagerL10n.error || 'Error al cargar las solicitudes') + '</p>');
+            }
+        });
+    });
+
+    
 });

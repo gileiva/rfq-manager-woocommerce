@@ -69,11 +69,17 @@ class SolicitudShortcodes {
             // Solo encolar modals si es rfq_list o rfq_view_solicitud Y el usuario es customer o subscriber
             if (($has_rfq_list || $has_rfq_view) && is_user_logged_in()) {
                 $user = wp_get_current_user();
-                if (in_array('customer', $user->roles) || in_array('subscriber', $user->roles)) {
+                if (
+                    in_array('customer', $user->roles) ||
+                    in_array('subscriber', $user->roles) ||
+                    in_array('proveedor', $user->roles) ||
+                    in_array('administrator', $user->roles)
+                ) {
                     $should_enqueue_modals = true;
                     $is_rfq_page = true;
                 }
             }
+
             // Mantener compatibilidad para otros scripts (admin/proveedor)
             if (isset($post) && $post->post_type === 'solicitud') {
                 $is_rfq_page = true;
@@ -166,15 +172,18 @@ class SolicitudShortcodes {
                 'continueToCart' => __('Ir al carrito', 'rfq-manager-woocommerce')
             ]);
         }
-        // Encolar rfq-filters.js solo si la página tiene el shortcode [rfq_list]
+        // Encolar rfq-filters.js si la página tiene el shortcode [rfq_list] y el usuario es customer, proveedor o admin
         if ($post && has_shortcode($post->post_content, 'rfq_list')) {
-            wp_enqueue_script(
-                'rfq-filters-scripts',
-                plugins_url('assets/js/rfq-filters.js', dirname(dirname(__FILE__))),
-                ['jquery', 'rfq-manager-scripts'],
-                RFQ_MANAGER_WOO_VERSION,
-                true
-            );
+            $user = wp_get_current_user();
+            if (is_user_logged_in() && (in_array('customer', $user->roles) || in_array('subscriber', $user->roles) || in_array('proveedor', $user->roles) || in_array('administrator', $user->roles))) {
+                wp_enqueue_script(
+                    'rfq-filters-scripts',
+                    plugins_url('assets/js/rfq-filters.js', dirname(dirname(__FILE__))),
+                    ['jquery', 'rfq-manager-scripts'],
+                    RFQ_MANAGER_WOO_VERSION,
+                    true
+                );
+            }
         }
     }
 
@@ -260,30 +269,12 @@ class SolicitudShortcodes {
             return '<p class="rfq-error">' . __('No tienes permisos para ver las solicitudes.', 'rfq-manager-woocommerce') . '</p>';
         }
 
-        // Obtener estados disponibles with conteo
-        $statuses = self::get_available_statuses();
+        // Leer el estado y orden seleccionados (GET)
+        $selected_status = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
+        $selected_order = isset($_GET['order']) ? sanitize_text_field($_GET['order']) : 'desc';
 
-        // Inicio del contenedor
-        $output .= '<div class="rfq-list-container">';
-        
-        // Filtro de estados
-        $output .= '<div class="rfq-status-filter">';
-        $output .= '<select id="rfq-status-filter" class="rfq-status-select">';
-        $output .= '<option value="">' . __('Todos los estados', 'rfq-manager-woocommerce') . '</option>';
-        
-        foreach ($statuses as $status => $count) {
-            if ($count > 0) {
-                $output .= sprintf(
-                    '<option value="%s">%s (%d)</option>',
-                    esc_attr($status),
-                    esc_html(self::get_status_label($status)),
-                    $count
-                );
-            }
-        }
-        
-        $output .= '</select>';
-        $output .= '</div>';
+        // Cabecera visual para proveedor/admin
+        $output .= \GiVendor\GiPlugin\Shortcode\Components\SolicitudFilters::render_provider_header($selected_status, $selected_order);
 
         // Contenedor para la tabla de solicitudes
         $output .= '<div id="rfq-solicitudes-table-container">';
@@ -313,8 +304,9 @@ class SolicitudShortcodes {
         // Inicio del contenedor
         $output = '<div class="rfq-list-container">';
 
-        // Tabs de estado
-        $output .= \GiVendor\GiPlugin\Shortcode\Components\SolicitudFilters::render_status_tabs($statuses, $selected_status);
+        // Tabs de estado + dropdown de orden + título (cabecera visual)
+        $selected_order = isset($_GET['order']) ? sanitize_text_field($_GET['order']) : 'desc';
+        $output .= \GiVendor\GiPlugin\Shortcode\Components\SolicitudFilters::render_filter_header($statuses, $selected_status, $selected_order);
 
         // Contenedor para la tabla de solicitudes
         $output .= '<div id="rfq-solicitudes-table-container">';
@@ -652,6 +644,11 @@ class SolicitudShortcodes {
             $query_args['post_status'] = ['publish', 'rfq-pending', 'rfq-active', 'rfq-closed', 'rfq-historic'];
         }
 
+        // Si se pasa post__in, agregarlo a la query
+        if (isset($args['post__in'])) {
+            $query_args['post__in'] = $args['post__in'];
+        }
+
         // Realizar la consulta
         $query = new \WP_Query($query_args);
 
@@ -919,14 +916,29 @@ class SolicitudShortcodes {
         $status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
         $valid_statuses = ['rfq-pending', 'rfq-active', 'rfq-accepted', 'rfq-closed', 'rfq-historic'];
         
-        if (!empty($status) && !in_array($status, $valid_statuses, true)) {
-            wp_send_json_error(['message' => __('Estado de solicitud inválido.', 'rfq-manager-woocommerce')]);
+        $user = wp_get_current_user();
+        $is_provider = in_array('proveedor', $user->roles);
+        $is_admin = in_array('administrator', $user->roles);
+        // Permitir filtros personalizados para proveedor/admin
+        $provider_filters = ['todas', 'cotizadas', 'no-cotizadas', 'historicas', 'aceptadas', ''];
+        if (($is_provider || $is_admin) && (empty($status) || in_array($status, $provider_filters, true))) {
+            // Permitir filtros personalizados, no bloquear
+        } else {
+            // Validación clásica para customer/subscriber
+            if (!empty($status) && !in_array($status, $valid_statuses, true)) {
+                wp_send_json_error(['message' => __('Estado de solicitud inválido.', 'rfq-manager-woocommerce')]);
+            }
         }
         
+        $order = isset($_POST['order']) ? strtolower(sanitize_text_field($_POST['order'])) : 'desc';
+        if (!in_array($order, ['asc', 'desc'], true)) {
+            $order = 'desc'; // fallback seguro
+        }
+
         $args = [
             'per_page' => 10,
-            'orderby' => 'date',
-            'order' => 'DESC'
+            'orderby'  => 'date',
+            'order'    => $order
         ];
 
         // Si se seleccionó un estado específico, aplicarlo a la consulta
@@ -934,6 +946,25 @@ class SolicitudShortcodes {
             $args['post_status'] = $status;
         } else {
             $args['post_status'] = $valid_statuses;
+        }
+
+        $user = wp_get_current_user();
+        // Si es proveedor o admin, usar el filtro centralizado
+        if (in_array('proveedor', $user->roles) || in_array('administrator', $user->roles)) {
+            $filtro = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
+            $proveedor_id = $user->ID;
+            $ids = \GiVendor\GiPlugin\Shortcode\Components\SolicitudFilters::get_provider_filtered_solicitudes($filtro, $proveedor_id);
+            // Si hay resultados, filtrar por post__in, si no, devolver mensaje vacío
+            if (!empty($ids)) {
+                $args['post__in'] = $ids;
+            } else {
+                // Forzar resultado vacío
+                $args['post__in'] = [0];
+            }
+            // Eliminar post_status para evitar conflicto con post__in
+            unset($args['post_status']);
+            echo self::render_solicitudes_table($args);
+            wp_die();
         }
 
         echo self::render_solicitudes_table($args);
