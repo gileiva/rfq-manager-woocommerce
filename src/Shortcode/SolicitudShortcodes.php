@@ -84,13 +84,42 @@ class SolicitudShortcodes {
         );
 
         // Encolar scripts de modales
-        wp_enqueue_script(
-            'rfq-modals-scripts',
-            plugins_url('assets/js/rfq-modals.js', dirname(dirname(__FILE__))),
-            ['jquery', 'rfq-manager-scripts'],
-            RFQ_MANAGER_WOO_VERSION,
-            true
-        );
+        // Solo encolar el script si hay botones de cancelar en el DOM (o si estamos en la página con solicitudes)
+        $should_enqueue_modals = false;
+
+        if ($post && is_a($post, 'WP_Post')) {
+            if (has_shortcode($post->post_content, 'rfq_list') || has_shortcode($post->post_content, 'rfq_view_solicitud')) {
+                $should_enqueue_modals = true;
+            }
+
+            if ($post->post_type === 'solicitud' || is_singular('solicitud')) {
+                $should_enqueue_modals = true;
+            }
+        }
+
+        if ($should_enqueue_modals) {
+            wp_enqueue_script(
+                'rfq-modals-scripts',
+                plugins_url('assets/js/rfq-modals.js', dirname(dirname(__FILE__))),
+                ['jquery', 'rfq-manager-scripts'],
+                RFQ_MANAGER_WOO_VERSION,
+                true
+            );
+        }
+
+        // Encolar script de filtros dinámicos solo en páginas de solicitudes de usuario
+        if (
+            $post && is_a($post, 'WP_Post') &&
+            (has_shortcode($post->post_content, 'rfq_list') || has_shortcode($post->post_content, 'rfq_view_solicitud'))
+        ) {
+            wp_enqueue_script(
+                'rfq-filters-scripts',
+                plugins_url('assets/js/rfq-filters.js', dirname(dirname(__FILE__))),
+                ['jquery', 'rfq-manager-scripts'],
+                RFQ_MANAGER_WOO_VERSION,
+                true
+            );
+        }
 
         // Agregar traducciones y datos para JavaScript
         wp_localize_script('rfq-modals-scripts', 'rfqManagerL10n', [
@@ -235,35 +264,23 @@ class SolicitudShortcodes {
      * @param  int   $user_id ID del usuario
      * @return string
      */
-    private static function render_customer_solicitudes($atts, $user_id): string {
-        // Obtener estados disponibles con conteo
-        $statuses = self::get_available_statuses();
+    private static function render_customer_solicitudes($atts, $user_id, $selected_status = ''): string {
+        // Obtener estados disponibles con conteo SOLO del usuario
+        $statuses = self::get_status_counts($user_id);
+
+        // Usar el estado seleccionado recibido (AJAX) o el de $_GET
+        if (empty($selected_status)) {
+            $selected_status = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
+        }
 
         // Inicio del contenedor
         $output = '<div class="rfq-list-container">';
-        
-        // Filtro de estados
-        $output .= '<div class="rfq-status-filter">';
-        $output .= '<select id="rfq-status-filter" class="rfq-status-select">';
-        $output .= '<option value="">' . __('Todos los estados', 'rfq-manager-woocommerce') . '</option>';
-        
-        foreach ($statuses as $status => $count) {
-            if ($count > 0) {
-                $output .= sprintf(
-                    '<option value="%s">%s (%d)</option>',
-                    esc_attr($status),
-                    esc_html(self::get_status_label($status)),
-                    $count
-                );
-            }
-        }
-        
-        $output .= '</select>';
-        $output .= '</div>';
+
+        // Tabs de estado
+        $output .= self::render_status_tabs($statuses, $selected_status);
 
         // Contenedor para la tabla de solicitudes
         $output .= '<div id="rfq-solicitudes-table-container">';
-        
         // Preparar argumentos de la consulta
         $query_args = [
             'post_type' => 'solicitud',
@@ -274,6 +291,9 @@ class SolicitudShortcodes {
             'orderby' => $atts['orderby'],
             'order' => $atts['order'],
         ];
+        if (!empty($selected_status)) {
+            $query_args['post_status'] = $selected_status;
+        }
 
         // Realizar la consulta
         $query = new \WP_Query($query_args);
@@ -318,23 +338,19 @@ class SolicitudShortcodes {
                 $output .= '<td class="rfq-status-cell ' . esc_attr(self::get_status_class($estado)) . '">' . esc_html(self::get_status_label($estado)) . '</td>';
                 $output .= '<td>' . esc_html(count($cotizaciones)) . '</td>';
                 $output .= '<td style="display: flex; gap: 10px;">';
-                
                 // Botón de ver detalles usando el slug
                 $output .= '<a href="' . esc_url(home_url('/ver-solicitud/' . $post->post_name . '/')) . '" class="rfq-view-btn">' . __('Ver Detalles', 'rfq-manager-woocommerce') . '</a>';
-                
                 // Botón de cancelar (solo si está pendiente o activa)
                 if (in_array($estado, ['rfq-pending', 'rfq-active'])) {
                     $output .= '<button type="button" class="rfq-cancel-btn rfq-cancel-icon" id="rfq-cancel-btn-' . esc_attr($solicitud_id) . '" data-solicitud="' . esc_attr($solicitud_id) . '" title="Cancelar solicitud" style="background: none; border: none; padding: 0; cursor: pointer;">'
                         . '<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="10" fill="#fff"/><path d="M6 6L14 14M14 6L6 14" stroke="#dc3545" stroke-width="3" stroke-linecap="round"/></svg>'
                         . '</button>';
                 }
-                
                 $output .= '</td>';
                 $output .= '</tr>';
             }
 
             $output .= '</tbody></table>';
-
             // Paginación
             if ($query->max_num_pages > 1) {
                 $output .= '<div class="rfq-pagination">';
@@ -887,12 +903,21 @@ class SolicitudShortcodes {
         }
 
         $status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
-        
         $args = [
             'per_page' => 10,
             'orderby' => 'date',
             'order' => 'DESC'
         ];
+
+        // Si el usuario es customer o subscriber, devolver su tabla personalizada
+        if (is_user_logged_in()) {
+            $user = wp_get_current_user();
+            if (in_array('customer', $user->roles) || in_array('subscriber', $user->roles)) {
+                // Pasar el estado seleccionado al método personalizado
+                echo self::render_customer_solicitudes($args, $user->ID, $status);
+                wp_die();
+            }
+        }
 
         // Si se seleccionó un estado específico, aplicarlo a la consulta
         if (!empty($status)) {
@@ -1027,4 +1052,74 @@ class SolicitudShortcodes {
 
         return $classes[$status] ?? '';
     }
-} 
+
+    /**
+     * Obtiene el conteo de solicitudes por estado
+     *
+     * @since  0.1.0
+     * @param  int|null $user_id ID del usuario (opcional)
+     * @return array              Array con el conteo de solicitudes por estado
+     */
+    private static function get_status_counts($user_id = null): array {
+        $statuses = [
+            'rfq-pending' => 0,
+            'rfq-active' => 0,
+            'rfq-accepted' => 0,
+            'rfq-closed' => 0,
+            'rfq-historic' => 0
+        ];
+
+        $query_args = [
+            'post_type' => 'solicitud',
+            'posts_per_page' => -1,
+            'post_status' => array_keys($statuses),
+            'fields' => 'ids'
+        ];
+
+        if ($user_id) {
+            $query_args['author'] = $user_id;
+        }
+
+        $query = new \WP_Query($query_args);
+
+        foreach ($query->posts as $post_id) {
+            $status = get_post_status($post_id);
+            if (isset($statuses[$status])) {
+                $statuses[$status]++;
+            }
+        }
+
+        return $statuses;
+    }
+
+    /**
+     * Renderiza las pestañas de estado
+     *
+     * @since  0.1.0
+     * @param  array  $statuses Estados disponibles
+     * @param  string $selected Estado seleccionado
+     * @return string          HTML de las pestañas de estado
+     */
+    private static function render_status_tabs($statuses, $selected = ''): string {
+        $output = '<div class="rfq-status-tabs">';
+        $output .= sprintf(
+            '<button class="rfq-status-tab%s" data-status="">%s</button>',
+            ($selected === '' ? ' active' : ''),
+            esc_html__('Todos', 'rfq-manager-woocommerce')
+        );
+        foreach ($statuses as $status => $count) {
+            if ($count > 0) {
+                $active = ($status === $selected) ? ' active' : '';
+                $output .= sprintf(
+                    '<button class="rfq-status-tab%s" data-status="%s">%s (%d)</button>',
+                    $active,
+                    esc_attr($status),
+                    esc_html(self::get_status_label($status)),
+                    $count
+                );
+            }
+        }
+        $output .= '</div>';
+        return $output;
+    }
+}
