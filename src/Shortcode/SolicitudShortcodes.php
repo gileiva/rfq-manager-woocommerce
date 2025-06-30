@@ -119,6 +119,25 @@ class SolicitudShortcodes {
             RFQ_MANAGER_WOO_VERSION,
             true
         );
+        // Encolar script de layout dinámico de productos para cualquier usuario que vea rfq_list o rfq_view_solicitud
+        if (($has_rfq_list || $has_rfq_view) && is_user_logged_in()) {
+            wp_enqueue_script(
+                'rfq-list-layout',
+                plugins_url('assets/js/rfq-list-layout.js', dirname(dirname(__FILE__))),
+                [],
+                '1.0.0',
+                true
+            );
+        }
+        // Encolar CSS de layout de lista para todos los roles
+        if (($has_rfq_list || $has_rfq_view) && is_user_logged_in()) {
+            wp_enqueue_style(
+                'rfq-list-layout',
+                plugins_url('assets/css/rfq-list-layout.css', dirname(dirname(__FILE__))),
+                [],
+                '1.0.0'
+            );
+        }
         // Encolar rfq-modals.js SOLO si corresponde
         if ($should_enqueue_modals) {
             wp_enqueue_script(
@@ -172,10 +191,16 @@ class SolicitudShortcodes {
                 'continueToCart' => __('Ir al carrito', 'rfq-manager-woocommerce')
             ]);
         }
-        // Encolar rfq-filters.js si la página tiene el shortcode [rfq_list] y el usuario es customer, proveedor o admin
+        // Encolar rfq-list-layout.css y rfq-filters.js si la página tiene el shortcode [rfq_list] y el usuario es customer, proveedor o admin
         if ($post && has_shortcode($post->post_content, 'rfq_list')) {
             $user = wp_get_current_user();
             if (is_user_logged_in() && (in_array('customer', $user->roles) || in_array('subscriber', $user->roles) || in_array('proveedor', $user->roles) || in_array('administrator', $user->roles))) {
+                wp_enqueue_style(
+                    'rfq-list-layout',
+                    plugins_url('assets/css/rfq-list-layout.css', dirname(dirname(__FILE__))),
+                    [],
+                    '1.0.0'
+                );
                 wp_enqueue_script(
                     'rfq-filters-scripts',
                     plugins_url('assets/js/rfq-filters.js', dirname(dirname(__FILE__))),
@@ -217,73 +242,12 @@ class SolicitudShortcodes {
      * @param  array  $atts Atributos del shortcode
      * @return string       Output HTML del shortcode
      */
-    public static function render_rfq_list($atts): string {
-        // Extraer atributos y aplicar valores por defecto
-        $atts = shortcode_atts([
-            'per_page' => 10,
-            'status' => 'active',
-            'orderby' => 'date',
-            'order' => 'DESC',
-        ], $atts, 'rfq_list');
-
-        // Verificar si el usuario está logueado
-        if (!is_user_logged_in()) {
-            return '<p class="rfq-error">' . __('Debes iniciar sesión para ver las solicitudes.', 'rfq-manager-woocommerce') . '</p>';
-        }
-
-        // Estilos para notificaciones tipo toast
-        $output = '<style>
-        .rfq-toast-notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #4caf50;
-            color: white;
-            padding: 15px 20px;
-            border-radius: 5px;
-            z-index: 9999;
-            min-width: 300px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            font-weight: 500;
-            animation: rfqSlideIn 0.3s ease-out;
-        }
-        .rfq-toast-notification.error {
-            background: #f44336;
-        }
-        @keyframes rfqSlideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        </style>';
-
-        // Obtener el usuario actual
-        $user = wp_get_current_user();
-        
-        // Si es customer o subscriber, mostrar sus solicitudes
-        if (in_array('customer', $user->roles) || in_array('subscriber', $user->roles)) {
-            return $output . self::render_customer_solicitudes($atts, $user->ID);
-        }
-        
-        // Verificar si el usuario es administrador o proveedor
-        if (!in_array('administrator', $user->roles) && !in_array('proveedor', $user->roles)) {
-            return '<p class="rfq-error">' . __('No tienes permisos para ver las solicitudes.', 'rfq-manager-woocommerce') . '</p>';
-        }
-
-        // Leer el estado y orden seleccionados (GET)
-        $selected_status = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
-        $selected_order = isset($_GET['order']) ? sanitize_text_field($_GET['order']) : 'desc';
-
-        // Cabecera visual para proveedor/admin
-        $output .= \GiVendor\GiPlugin\Shortcode\Components\SolicitudFilters::render_provider_header($selected_status, $selected_order);
-
-        // Contenedor para la tabla de solicitudes
-        $output .= '<div id="rfq-solicitudes-table-container">';
-        $output .= self::render_solicitudes_table($atts);
-        $output .= '</div>';
-
-        $output .= '</div>';
-
-        return $output;
+    public static function render_rfq_list($atts = []): string {
+        // Refactor: delega en la nueva clase renderer
+        // No modificar lógica ni orden de métodos existentes
+        // \use RFQManager\Solicitud\View\SolicitudListRenderer;
+        $renderer = new \GiVendor\GiPlugin\Solicitud\View\SolicitudListRenderer();
+        return $renderer->render();
     }
 
     /**
@@ -974,7 +938,7 @@ class SolicitudShortcodes {
      * @param  string $status Estado de la solicitud
      * @return string         Label del estado
      */
-    private static function get_status_label(string $status): string {
+    public static function get_status_label(string $status): string {
         $labels = [
             'rfq-pending'  => __('Pendiente de cotización', 'rfq-manager-woocommerce'),
             'rfq-active'   => __('Activa', 'rfq-manager-woocommerce'),
@@ -993,7 +957,7 @@ class SolicitudShortcodes {
      * @param  string $status Estado de la solicitud
      * @return string         Clase CSS
      */
-    private static function get_status_class(string $status): string {
+    public static function get_status_class(string $status): string {
         $classes = [
             'rfq-pending'  => 'status-pending',
             'rfq-active'   => 'status-active',
