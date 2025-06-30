@@ -431,68 +431,58 @@ class SolicitudShortcodes {
      * @return string
      */
     public static function render_solicitud_view($atts): string {
-        // Verificar si el usuario está logueado
+
+        $slug = get_query_var('rfq_slug');
+
+        if (empty($slug)) {
+            return '<div class="rfq-preview-message" style="padding:1em;background:#f8f9fa;border:1px solid #eee;border-radius:4px;color:#666;">'
+                . 'Vista previa: esta página mostrará el detalle de una solicitud cuando se acceda desde un enlace como <code>/ver-solicitud/{slug}</code>.'
+                . '</div>';
+        }
+
+        $solicitud = get_page_by_path($slug, OBJECT, 'solicitud');
+        if (!$solicitud) {
+            return '<div class="rfq-error" style="padding:1em;background:#fff3cd;border:1px solid #ffeeba;border-radius:4px;color:#856404;">'
+                . '⚠️ No se encontró la solicitud. Verificá el enlace o seleccioná una solicitud desde tu panel.'
+                . '</div>';
+        }
+
         if (!is_user_logged_in()) {
             return '<p class="rfq-error">' . esc_html__('Debes iniciar sesión para ver esta solicitud.', 'rfq-manager-woocommerce') . '</p>';
         }
 
-        $output = '';
-
-        // Obtener el ID de la solicitud desde la URL
-        global $wp;
-        $current_url = home_url($wp->request);
-        $solicitud_slug = sanitize_title(basename(parse_url($current_url, PHP_URL_PATH)));
-
-        // Buscar la solicitud por slug
-        $solicitud = get_page_by_path($solicitud_slug, OBJECT, 'solicitud');
-
-        if (!$solicitud) {
-            return '<p class="rfq-error">' . esc_html__('La solicitud no existe.', 'rfq-manager-woocommerce') . '</p>';
-        }
-
         $solicitud_id = $solicitud->ID;
-
-        // Verificar que el usuario es el autor de la solicitud o administrador
         $user = wp_get_current_user();
         $is_author = ((int)$solicitud->post_author === (int)$user->ID);
         $is_admin = in_array('administrator', (array)$user->roles, true);
         $is_proveedor = in_array('proveedor', (array)$user->roles, true);
-        
-        // Si la solicitud está cerrada, aceptada o histórica, solo el autor o admin pueden verla
+
         if (in_array($solicitud->post_status, ['rfq-accepted', 'rfq-closed', 'rfq-historic'])) {
             if (!$is_author && !$is_admin) {
                 return '<p class="rfq-error">' . esc_html__('Esta solicitud ya no está disponible.', 'rfq-manager-woocommerce') . '</p>';
             }
         }
 
-        // Obtener los items de la solicitud
         $items = json_decode(get_post_meta($solicitud_id, '_solicitud_items', true), true);
         if (empty($items)) {
             return '<p class="rfq-error">' . esc_html__('No hay productos en esta solicitud.', 'rfq-manager-woocommerce') . '</p>';
         }
 
+        $output = '';
         $output .= '<div class="rfq-cotizar-container">';
-        
-        // Cabecera unificada
         $output .= '<div class="rfq-solicitud-header">';
         $output .= '<h2>' . sprintf(__('Solicitud de %s', 'rfq-manager-woocommerce'), get_the_author_meta('display_name', $solicitud->post_author)) . '</h2>';
         $output .= '<div class="rfq-solicitud-meta">';
-        
-        // Solicitante y fecha
         $output .= '<p class="rfq-meta-item">' . sprintf(
             __('Solicitado por %s el %s', 'rfq-manager-woocommerce'),
             get_the_author_meta('display_name', $solicitud->post_author),
             get_the_date('', $solicitud_id)
         ) . '</p>';
-        
-        // Estado - CORREGIDO: usar las clases adecuadas
         $status_class = 'rfq-status status-' . esc_attr(str_replace('rfq-', '', $solicitud->post_status));
         $output .= '<p class="rfq-meta-item">';
         $output .= '<span class="rfq-status-label">' . __('Estado:', 'rfq-manager-woocommerce') . '</span> ';
         $output .= '<span class="' . $status_class . '">' . esc_html(self::get_status_label($solicitud->post_status)) . '</span>';
         $output .= '</p>';
-        
-        // Fecha de expiración
         $expiry_date = get_post_meta($solicitud_id, '_solicitud_expiry', true);
         if ($expiry_date) {
             $expiry_formatted = date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($expiry_date));
@@ -503,8 +493,6 @@ class SolicitudShortcodes {
         }
         $output .= '</div>';
         $output .= '</div>';
-
-        // Tabla de productos
         $output .= '<div class="rfq-solicitud-items">';
         $output .= '<h3>' . __('Productos Solicitados', 'rfq-manager-woocommerce') . '</h3>';
         $output .= '<table class="rfq-solicitud-table">';
@@ -512,21 +500,16 @@ class SolicitudShortcodes {
         $output .= '<th>' . __('Producto', 'rfq-manager-woocommerce') . '</th>';
         $output .= '<th>' . __('Cantidad', 'rfq-manager-woocommerce') . '</th>';
         $output .= '</tr></thead><tbody>';
-
         foreach ($items as $item) {
             $product = wc_get_product($item['product_id']);
             if (!$product) continue;
-
             $output .= '<tr>';
             $output .= '<td>' . esc_html($product->get_name()) . '</td>';
             $output .= '<td>' . esc_html($item['qty']) . '</td>';
             $output .= '</tr>';
         }
-
         $output .= '</tbody></table>';
         $output .= '</div>';
-
-        // Tabla de cotizaciones
         $cotizaciones = get_posts([
             'post_type' => 'cotizacion',
             'posts_per_page' => -1,
@@ -540,9 +523,7 @@ class SolicitudShortcodes {
             'orderby' => 'date',
             'order' => 'DESC',
         ]);
-
         if (!empty($cotizaciones)) {
-            // Buscar si hay una cotización aceptada
             $cotizacion_aceptada_id = null;
             foreach ($cotizaciones as $cotizacion) {
                 if ($cotizacion->post_status === 'rfq-accepted') {
@@ -550,7 +531,6 @@ class SolicitudShortcodes {
                     break;
                 }
             }
-            
             $output .= '<div class="rfq-cotizaciones-received">';
             $output .= '<h3>' . __('Cotizaciones Recibidas', 'rfq-manager-woocommerce') . '</h3>';
             $output .= '<table class="rfq-cotizaciones-table">';
@@ -561,7 +541,6 @@ class SolicitudShortcodes {
             $output .= '<th>' . __('Estado', 'rfq-manager-woocommerce') . '</th>';
             $output .= '<th>' . __('Acciones', 'rfq-manager-woocommerce') . '</th>';
             $output .= '</tr></thead><tbody>';
-
             foreach ($cotizaciones as $cotizacion) {
                 $proveedor = get_userdata($cotizacion->post_author);
                 $total = get_post_meta($cotizacion->ID, '_total', true);
@@ -570,7 +549,6 @@ class SolicitudShortcodes {
                 $is_accepted = ($cotizacion->post_status === 'rfq-accepted');
                 $is_historic = ($cotizacion->post_status === 'rfq-historic');
                 $row_class = $is_accepted ? 'rfq-cotizacion-aceptada' : ($is_historic ? 'rfq-cotizacion-historica' : '');
-                
                 $output .= '<tr class="' . esc_attr($row_class) . '" data-cotizacion-id="' . esc_attr($cotizacion->ID) . '">';
                 $output .= '<td>' . esc_html(get_the_date('', $cotizacion->ID)) . '</td>';
                 $output .= '<td class="rfq-proveedor-info">' . $logo_html . '<span class="rfq-proveedor-nombre">' . esc_html($proveedor->display_name) . '</span></td>';
@@ -589,34 +567,26 @@ class SolicitudShortcodes {
                     $output .= '<button type="button" class="button rfq-aceptar-cotizacion-btn" disabled style="background:#4caf50;color:#fff;cursor:default;">' . __('Aceptada', 'rfq-manager-woocommerce') . '</button>';
                     $output .= ' <button type="button" class="button rfq-pagar-cotizacion-btn" data-cotizacion-id="' . esc_attr($cotizacion->ID) . '">' . __('Pagar', 'rfq-manager-woocommerce') . '</button>';
                 } elseif ($solicitud->post_status !== 'rfq-historic' && $solicitud->post_status !== 'rfq-closed' && $solicitud->post_status !== 'rfq-accepted' && !$is_historic && !$cotizacion_aceptada_id) {
-                    // Solo mostrar botón aceptar si la solicitud no está cerrada/histórica/aceptada y no hay otra cotización aceptada
                     $output .= '<button type="button" class="rfq-aceptar-cotizacion-btn button" data-cotizacion-id="' . esc_attr($cotizacion->ID) . '">' . __('Aceptar', 'rfq-manager-woocommerce') . '</button>';
                 }
                 $output .= '</td>';
                 $output .= '</tr>';
             }
-
             $output .= '</tbody></table>';
             $output .= '</div>';
         }
-
-        // Botón de cancelar si el handler lo permite
         if (\GiVendor\GiPlugin\Solicitud\SolicitudCancelationHandler::can_cancel(wp_get_current_user(), $solicitud)) {
             $output .= '<div class="rfq-solicitud-actions">';
             $output .= '<button type="button" class="rfq-cancel-btn" data-solicitud="' . esc_attr($solicitud_id) . '" title="Cancelar solicitud">' . __('Cancelar Solicitud', 'rfq-manager-woocommerce') . '</button>';
             $output .= '</div>';
         }
-
-        // Agregar botón de repetir solicitud solo si el handler lo permite
         if (\GiVendor\GiPlugin\Solicitud\SolicitudRepeatHandler::can_repeat(wp_get_current_user(), $solicitud)) {
             $output .= '<div class="rfq-solicitud-actions">';
             $output .= '<button type="button" class="rfq-repeat-btn" data-solicitud="' . esc_attr($solicitud_id) . '" title="Repetir solicitud">' . __('Repetir Solicitud', 'rfq-manager-woocommerce') . '</button>';
             $output .= '</div>';
         }
-
         $output .= '</div>';
         $output .= '</div>';
-
         return $output;
     }
 

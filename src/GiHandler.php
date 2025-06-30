@@ -131,27 +131,29 @@ class GiHandler {
                 
         // Add custom rewrite rules
         add_action('init', function() {
-            // Regla para cotizar-solicitud/[slug] (ahora apunta a solicitud)
+            // Regla para cotizar-solicitud/[slug] que apunta a la página base y pasa el slug como query var
             add_rewrite_rule(
-                '^cotizar-solicitud/([a-zA-Z0-9-]+)/?$',
-                'index.php?post_type=solicitud&name=$matches[1]',
+                '^cotizar-solicitud/([^/]+)/?$',
+                'index.php?pagename=cotizar-solicitud&rfq_cotizacion_slug=$matches[1]',
                 'top'
             );
-            
-            // Regla para ver-solicitud/[slug]
+
+            // Regla para ver-solicitud/[slug] que apunta a la página base y pasa el slug como query var
             add_rewrite_rule(
                 '^ver-solicitud/([^/]+)/?$',
-                'index.php?post_type=solicitud&name=$matches[1]',
+                'index.php?pagename=ver-solicitud&rfq_slug=$matches[1]',
                 'top'
             );
-            
+
             // Agregar query vars
             add_filter('query_vars', function($vars) {
                 $vars[] = 'post_type';
                 $vars[] = 'name';
+                $vars[] = 'rfq_slug';
+                $vars[] = 'rfq_cotizacion_slug';
                 return $vars;
             });
-            
+
             // Forzar flush de reglas
             if (get_option('rfq_flush_rewrite_rules', false)) {
                 flush_rewrite_rules();
@@ -167,6 +169,82 @@ class GiHandler {
                 delete_option('rfq_flush_rewrite_rules');
             }
         });
+
+        // Forzar plantilla de la página base en /ver-solicitud/{slug}/
+        add_filter('template_include', function($template) {
+            global $wp;
+            $request_path = $wp->request;
+            if (preg_match('#^ver-solicitud/([^/]+)/?$#', $request_path, $matches)) {
+                $page = get_page_by_path('ver-solicitud');
+                if ($page) {
+                    // Forzar el post global a la página base
+                    setup_postdata($page);
+                    $GLOBALS['post'] = $page;
+                    // Obtener plantilla personalizada si existe
+                    $page_template = get_page_template_slug($page->ID);
+                    if ($page_template) {
+                        $located = locate_template($page_template);
+                        if ($located) {
+                            return $located;
+                        }
+                    }
+                    // Si no hay plantilla personalizada, usar page.php o fallback
+                    $default = get_query_template('page');
+                    if ($default) {
+                        return $default;
+                    }
+                }
+            }
+            return $template;
+        }, 99);
+
+        // Forzar a Elementor a renderizar su layout visual en /ver-solicitud/{slug}/
+        add_filter('elementor/frontend/the_content', function($content) {
+            global $wp;
+            $request_path = isset($wp->request) ? $wp->request : '';
+            if (preg_match('#^ver-solicitud/([^/]+)/?$#', $request_path)) {
+                $page = get_page_by_path('ver-solicitud');
+                if ($page && isset($GLOBALS['post']) && $GLOBALS['post']->ID === $page->ID) {
+                    // Forzar a Elementor a pensar que está en la URL canónica
+                    add_filter('elementor/utils/is_preview', '__return_true', 99);
+                }
+            }
+            return $content;
+        }, 0);
+
+        // Forzar que la query principal trate /ver-solicitud/{slug}/ como una página real
+        add_action('pre_get_posts', function($query) {
+            if (!is_admin() && $query->is_main_query()) {
+                global $wp;
+                $request_path = $wp->request;
+
+                if (preg_match('#^ver-solicitud/([^/]+)/?$#', $request_path)) {
+                    $page = get_page_by_path('ver-solicitud');
+                    if ($page instanceof WP_Post) {
+                        $query->set('page_id', $page->ID);
+                        $query->is_page = true;
+                        $query->is_singular = true;
+                        $query->is_single = false;
+                        $query->set('post_type', 'page');
+                    }
+                }
+            }
+        });
+        // Forzar render visual de Elementor en /ver-solicitud/{slug}/
+        add_filter('elementor/frontend/should_render', function($should_render) {
+            global $wp;
+            $request_path = isset($wp->request) ? $wp->request : '';
+
+            if (preg_match('#^ver-solicitud/([^/]+)/?$#', $request_path)) {
+                $page = get_page_by_path('ver-solicitud');
+                if ($page && isset($GLOBALS['post']) && $GLOBALS['post']->ID === $page->ID) {
+                    return true; // Forzar a Elementor a renderizar
+                }
+            }
+
+            return $should_render;
+        }, 10);
+
     }
     
     /**

@@ -93,9 +93,7 @@ class CotizacionShortcodes {
             return '<div class="rfq-error">' . esc_html__('No tienes permisos para ver esta página.', 'rfq-manager-woocommerce') . '</div>';
         }
 
-        global $wp;
-        $current_url = home_url($wp->request);
-        $slug = basename(parse_url($current_url, PHP_URL_PATH));
+        $slug = get_query_var('rfq_cotizacion_slug');
         // Buscar la solicitud por slug
         $solicitud = get_page_by_path($slug, OBJECT, 'solicitud');
         if (!$solicitud) {
