@@ -1,3 +1,91 @@
+/* Badge visual para estado Cotizada (proveedor) */
+.rfq-status-cotizada {
+  background-color: rgba(238, 245, 255, 1);
+  color: rgba(26, 113, 252, 1) !important;
+}
+.rfq-status-cotizada .rfq-status-dot {
+  background-color: rgba(26, 113, 252, 1);
+}
+
+/* Badge visual para estado Histórica (proveedor) */
+.rfq-status-historic {
+  background-color: rgba(239, 239, 239, 1);
+  color: rgba(160, 162, 163, 1) !important;
+}
+.rfq-status-historic .rfq-status-dot {
+  background-color: rgba(160, 162, 163, 1);
+}
+/* Estado visual badge para No cotizada (proveedor) */
+
+.rfq-status-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  box-sizing: border-box;
+  white-space: nowrap;
+
+  flex: 0 0 auto;
+  width: auto !important;
+  max-width: max-content;
+}
+
+.rfq-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.rfq-status-no-cotizada {
+  background-color: rgba(255, 233, 219, 1);
+  color: rgba(255, 103, 0, 1)!important;
+}
+
+.rfq-status-no-cotizada .rfq-status-dot {
+  background-color: rgba(255, 103, 0, 1);
+}
+
+/* ESTADOS PARA CLIENTE */
+.rfq-status-badge.rfq-status-pendiente {
+  background-color: rgba(255, 246, 229, 1);
+  color: rgba(255, 181, 0, 1);
+}
+.rfq-status-pendiente .rfq-status-dot {
+  background-color: rgba(255, 181, 0, 1);
+}
+
+.rfq-status-badge.rfq-status-activa {
+  background-color: rgba(255, 233, 219, 1);
+  color: rgba(255, 102, 0, 1);
+}
+.rfq-status-activa .rfq-status-dot {
+  background-color: rgba(255, 102, 0, 1);
+}
+
+.rfq-status-badge.rfq-status-aceptada {
+  background-color: rgba(238, 245, 255, 1);
+  color: rgba(26, 113, 252, 1);
+}
+.rfq-status-aceptada .rfq-status-dot {
+  background-color: rgba(26, 113, 252, 1);
+}
+
+.rfq-status-badge.rfq-status-historica {
+  background-color: rgba(239, 239, 239, 1);
+  color: rgba(160, 162, 163, 1);
+}
+.rfq-status-historica .rfq-status-dot {
+  background-color: rgba(160, 162, 163, 1);
+}
 /* Responsive header flex reordering for Nueva oferta */
 .rfq-header-row {
   display: flex;

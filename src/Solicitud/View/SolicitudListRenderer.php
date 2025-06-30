@@ -204,6 +204,7 @@ class SolicitudListRenderer {
         wp_reset_postdata();
         return $output;
     }
+
     private function render_solicitud_card($data): string {
         $solicitud_id = $data['solicitud_id'];
         $post = $data['post'];
@@ -214,10 +215,21 @@ class SolicitudListRenderer {
         $ver_detalles_url = $data['ver_detalles_url'];
         $is_cliente = isset($data['is_cliente']) ? $data['is_cliente'] : false;
         $nuevas_ofertas = isset($data['nuevas_ofertas']) ? $data['nuevas_ofertas'] : false;
-        $city = isset($data['city']) ? $data['city'] : '';
-        $zipcode = isset($data['zipcode']) ? $data['zipcode'] : '';
+        $author_id = isset($post->post_author) ? $post->post_author : 0;
+        // Obtener ciudad y código postal del autor (usuario)
+        $city = '';
+        $zipcode = '';
+        if ($author_id) {
+            $city = get_user_meta($author_id, 'gireg_customer_billing_city', true);
+            $zipcode = get_user_meta($author_id, 'gireg_customer_billing_postcode', true);
+        }
+        $city = $city ? $city : '';
+        $zipcode = $zipcode ? $zipcode : '';
 
+        $user = wp_get_current_user();
+        $is_proveedor = in_array('proveedor', (array)$user->roles, true);
         $status_label = \GiVendor\GiPlugin\Shortcode\SolicitudShortcodes::get_status_label($estado);
+        $status_class = \GiVendor\GiPlugin\Shortcode\SolicitudShortcodes::get_status_class($estado);
 
         $html = '<div class="rfq-solicitud-card" data-solicitud-id="' . esc_attr($solicitud_id) . '">';
         // Header row
@@ -243,7 +255,7 @@ class SolicitudListRenderer {
             // Estado
             $html .= '<div class="rfq-header-field">';
             $html .= '<div class="rfq-header-label">' . __('Estado', 'rfq-manager-woocommerce') . '</div>';
-            $html .= '<div class="rfq-header-value">' . esc_html($status_label) . '</div>';
+            $html .= '<div class="rfq-header-value">' . $this->get_provider_status_label($post, $user) . '</div>';
             $html .= '</div>';
             // Fecha de solicitud
             $html .= '<div class="rfq-header-field">';
@@ -310,10 +322,22 @@ class SolicitudListRenderer {
         $html .= '<div class="rfq-header-title">' . __('Número de solicitud', 'rfq-manager-woocommerce') . '</div>';
         $html .= '<div class="rfq-header-detail">' . esc_html($formatted_id) . '</div>';
         $html .= '</div>';
-        // Estado
+        // Estado (badge visual)
+        $estado = $post->post_status;
+        $status_label = \GiVendor\GiPlugin\Shortcode\SolicitudShortcodes::get_status_label($estado);
+        // Mapear estado a clase visual
+        $map = [
+            'rfq-pending'  => 'rfq-status-pendiente',
+            'rfq-active'   => 'rfq-status-activa',
+            'rfq-accepted' => 'rfq-status-aceptada',
+            'rfq-historic' => 'rfq-status-historica',
+        ];
+        $status_class = isset($map[$estado]) ? $map[$estado] : 'rfq-status-' . esc_attr(str_replace('rfq-', '', $estado));
         $html .= '<div class="rfq-header-block">';
         $html .= '<div class="rfq-header-title">' . __('Estado', 'rfq-manager-woocommerce') . '</div>';
-        $html .= '<div class="rfq-header-detail">' . esc_html($status_label) . '</div>';
+        $html .= '<div class="rfq-header-detail">';
+        $html .= '<div class="rfq-status-badge ' . esc_attr($status_class) . '"><span class="rfq-status-dot"></span><span class="rfq-status-text">' . esc_html($status_label) . '</span></div>';
+        $html .= '</div>';
         $html .= '</div>';
         // Fecha de solicitud
         $html .= '<div class="rfq-header-block">';
@@ -321,5 +345,63 @@ class SolicitudListRenderer {
         $html .= '<div class="rfq-header-detail">' . esc_html($date_formatted) . '</div>';
         $html .= '</div>';
         return $html;
+    }
+
+    /**
+     * Devuelve el HTML del badge de estado para el proveedor según la lógica de negocio.
+     * - Para rfq-pending y rfq-active: muestra Cotizada/No cotizada (con dot y clase visual)
+     * - Para otros estados: muestra el estado real (con clase visual de estado)
+     * @param WP_Post $post
+     * @param WP_User $user
+     * @return string HTML del badge
+     */
+    private function get_provider_status_label($post, $user): string {
+        $estado = $post->post_status;
+        // Solo para proveedor
+        if (!in_array('proveedor', (array)$user->roles, true)) {
+            return '';
+        }
+        // Para estados activos: mostrar Cotizada/No cotizada
+        if (in_array($estado, ['rfq-pending', 'rfq-active'], true)) {
+            // Buscar cotización del proveedor actual
+            $cotizacion = null;
+            if (function_exists('GiVendor\\GiPlugin\\Shortcode\\CotizacionShortcodes::get_provider_cotizacion')) {
+                $cotizacion = \GiVendor\GiPlugin\Shortcode\CotizacionShortcodes::get_provider_cotizacion($post->ID);
+            } else if (class_exists('GiVendor\\GiPlugin\\Shortcode\\CotizacionShortcodes')) {
+                $cotizacion = \GiVendor\GiPlugin\Shortcode\CotizacionShortcodes::get_provider_cotizacion($post->ID);
+            } else {
+                $current_user_id = get_current_user_id();
+                $cotizaciones = get_posts([
+                    'post_type'      => 'cotizacion',
+                    'posts_per_page' => 1,
+                    'meta_query'     => [
+                        [
+                            'key'   => '_solicitud_parent',
+                            'value' => intval($post->ID),
+                            'compare' => '=',
+                            'type' => 'NUMERIC',
+                        ],
+                    ],
+                    'author'         => $current_user_id,
+                ]);
+                $cotizacion = !empty($cotizaciones) ? $cotizaciones[0] : null;
+            }
+            if ($cotizacion) {
+                $label = __('Cotizada', 'rfq-manager-woocommerce');
+                $class = 'rfq-status-badge rfq-status-cotizada';
+                $dot = '<span class="rfq-status-dot"></span>';
+            } else {
+                $label = __('No cotizada', 'rfq-manager-woocommerce');
+                $class = 'rfq-status-badge rfq-status-no-cotizada';
+                $dot = '<span class="rfq-status-dot"></span>';
+            }
+            return '<div class="' . esc_attr($class) . '">' . $dot . '<span class="rfq-status-text">' . esc_html($label) . '</span></div>';
+        }
+        // Para otros estados: mostrar el estado real
+        $status_label = \GiVendor\GiPlugin\Shortcode\SolicitudShortcodes::get_status_label($estado);
+        $status_class = 'rfq-status-badge rfq-status-' . esc_attr(str_replace('rfq-', '', $estado));
+        // Dot color para historic/accepted/closed
+        $dot = '<span class="rfq-status-dot"></span>';
+        return '<div class="' . $status_class . '">' . $dot . '<span class="rfq-status-text">' . esc_html($status_label) . '</span></div>';
     }
 }

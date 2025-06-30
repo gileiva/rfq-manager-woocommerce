@@ -129,13 +129,13 @@ class SolicitudShortcodes {
                 true
             );
         }
-        // Encolar CSS de layout de lista para todos los roles
-        if (($has_rfq_list || $has_rfq_view) && is_user_logged_in()) {
+        // Encolar CSS de layout de lista SIEMPRE que sea una página RFQ relevante (para todos los roles)
+        if ($is_rfq_page) {
             wp_enqueue_style(
                 'rfq-list-layout',
                 plugins_url('assets/css/rfq-list-layout.css', dirname(dirname(__FILE__))),
                 [],
-                '1.0.0'
+                RFQ_MANAGER_WOO_VERSION
             );
         }
         // Encolar rfq-modals.js SOLO si corresponde
@@ -940,7 +940,7 @@ class SolicitudShortcodes {
      */
     public static function get_status_label(string $status): string {
         $labels = [
-            'rfq-pending'  => __('Pendiente de cotización', 'rfq-manager-woocommerce'),
+            'rfq-pending'  => __('Pendiente', 'rfq-manager-woocommerce'),
             'rfq-active'   => __('Activa', 'rfq-manager-woocommerce'),
             'rfq-accepted' => __('Aceptada', 'rfq-manager-woocommerce'),
             'rfq-closed'   => __('Cerrada', 'rfq-manager-woocommerce'),

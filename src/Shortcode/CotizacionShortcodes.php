@@ -347,7 +347,7 @@ class CotizacionShortcodes {
      * @param  int    $solicitud_id ID de la solicitud
      * @return \WP_Post|null
      */
-    private static function get_provider_cotizacion(int $solicitud_id): ?\WP_Post {
+    public static function get_provider_cotizacion(int $solicitud_id): ?\WP_Post {
         $current_user_id = get_current_user_id();
         if (!$current_user_id || !$solicitud_id) {
             return null;
