@@ -1,14 +1,3 @@
-/* =============================
-   RFQ Filters Responsive Order & Tabs Layout Fixes
-   ============================= */
-
-/* ...existing code... */
-
-/* =============================
-   RFQ Pagination (Diseño Figma)
-   ============================= */
-
-/* Elimina cualquier estilo previo de paginación */
 .rfq-pagination,
 .rfq-pagination .page-numbers {
   all: unset;
@@ -229,10 +218,10 @@
 }
 
 @media (max-width: 768px) {
-  .rfq-header-left {
+  /* .rfq-header-left {
     flex: 1 1 100%;
     order: 2;
-  }
+  } */
   .rfq-header-right {
     flex: 1 1 100%;
     order: 1;
@@ -374,8 +363,8 @@
   position: absolute;
   top: -6px;
   right: -6px;
-  width: 24px;
-  height: 24px;
+  width: 34px;
+  height: 32px;
   border-radius: 50%;
   border: 1.5px solid rgba(160, 162, 163, 1);
   background: white;
@@ -402,15 +391,15 @@
 .rfq-actions-row {
   text-align: right;
 }
-
+/*
 .rfq-btn-detalles {
   padding: 12px 24px;
   border-radius: 30px;
   display: inline-block;
   border: none;
   cursor: pointer;
-  background: #ddd; /* placeholder */
-}
+  background: #ddd; 
+}*/
 
 .rfq-header-title{
     font-weight:500;
@@ -432,6 +421,15 @@
     line-height: 140%;
     letter-spacing: 0%;
     color: rgba(255, 255, 255, 1);
+    padding: 12px 24px;
+    border-radius: 30px;
+    display: inline-block;
+    border: none;
+    cursor: pointer;
+    /* background: #ddd;  */
+}
+.rfq-btn-detalles :hover {
+    background-color: rgba(26, 113, 252, 1);
 }
 
 @media (max-width: 768px) {
@@ -442,10 +440,19 @@
   .rfq-header-right {
     width: 100%;
   }
+  .rfq-header-left {
+    flex: 1 1 100%;
+    flex-direction: column;
+    order: 2;
+  }
   .rfq-header-right {
     justify-content: flex-start;
     margin-top: 1em;
     text-align: left;
+  }
+  .rfq-btn-detalles{
+    width: 100%;
+    text-align: center;
   }
 }
 

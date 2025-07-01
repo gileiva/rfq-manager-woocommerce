@@ -299,7 +299,7 @@ class SolicitudListRenderer {
                 if ($product) {
                     $img_url = $product->get_image_id() ? wp_get_attachment_image_url($product->get_image_id(), 'thumbnail') : wc_placeholder_img_src();
                     $qty = isset($item['qty']) ? (int)$item['qty'] : 1;
-                    $unidades_por_paquete = get_post_meta($item['product_id'], '_unidades_por_paquete', true);
+                    $unidades_por_paquete = get_post_meta($item['product_id'], 'unidades_por_paquete', true);
                     if ($unidades_por_paquete && is_numeric($unidades_por_paquete)) {
                         $total_unidades = $qty * (int)$unidades_por_paquete;
                     } else {
@@ -319,7 +319,7 @@ class SolicitudListRenderer {
         // Acciones row
         $html .= '<div class="rfq-actions-row">';
         if ($ver_detalles_url) {
-            $html .= '<a href="' . esc_url($ver_detalles_url) . '" class="rfq-view-btn rfq-btn-detalles">' . __('Ver detalles', 'rfq-manager-woocommerce') . '</a>';
+            $html .= '<a href="' . esc_url($ver_detalles_url) . '" class="rfq-view-btn rfq-btn-detalles">' . __('Ver ofertas', 'rfq-manager-woocommerce') . '</a>';
         }
         $html .= '</div>';
         $html .= '</div>';

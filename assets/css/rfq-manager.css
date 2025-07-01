@@ -24,7 +24,7 @@
 
 /* Contenedor principal */
 .rfq-list-container {
-    margin: 2rem 0;
+    margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
     color: var(--rfq-gray-800);
 }
@@ -166,7 +166,7 @@
     align-items: center;
     justify-content: center;
     padding: 0.5rem 1rem;
-    background-color: var(--rfq-primary);
+    background-color: rgba(26, 113, 252, 1);
     color: #fff;
     text-decoration: none;
     border-radius: var(--rfq-border-radius);
@@ -178,7 +178,7 @@
 }
 
 .rfq-view-btn:hover {
-    background-color: var(--rfq-primary-dark);
+    background-color: rgba(26, 113, 252, 1);
     color: #fff;
     text-decoration: none;
     transform: translateY(-1px);
