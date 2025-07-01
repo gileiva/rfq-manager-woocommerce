@@ -116,16 +116,20 @@ class SolicitudListRenderer {
                 ]);
             }
             if ($query->max_num_pages > 1) {
-                $output .= '<div class="rfq-pagination">';
-                $output .= paginate_links([
+                $current_page = max(1, get_query_var('paged'));
+                $pagination = paginate_links([
                     'base' => str_replace(999999999, '%#%', esc_url(get_pagenum_link(999999999))),
                     'format' => '?paged=%#%',
-                    'current' => max(1, get_query_var('paged')),
+                    'current' => $current_page,
                     'total' => $query->max_num_pages,
                     'prev_text' => __('&laquo; Anterior', 'rfq-manager-woocommerce'),
                     'next_text' => __('Siguiente &raquo;', 'rfq-manager-woocommerce'),
                 ]);
-                $output .= '</div>';
+                // Si estamos en la página 1, agrega el botón anterior deshabilitado manualmente
+                if ($current_page == 1) {
+                    $pagination = '<span class="page-numbers prev" aria-disabled="true" tabindex="-1">&laquo; Anterior</span>' . $pagination;
+                }
+                $output .= '<div class="rfq-pagination">' . $pagination . '</div>';
             }
         }
         wp_reset_postdata();
@@ -199,16 +203,19 @@ class SolicitudListRenderer {
             ]);
         }
         if ($query->max_num_pages > 1) {
-            $output .= '<div class="rfq-pagination">';
-            $output .= paginate_links([
+            $current_page = max(1, get_query_var('paged'));
+            $pagination = paginate_links([
                 'base' => str_replace(999999999, '%#%', esc_url(get_pagenum_link(999999999))),
                 'format' => '?paged=%#%',
-                'current' => max(1, get_query_var('paged')),
+                'current' => $current_page,
                 'total' => $query->max_num_pages,
                 'prev_text' => __('&laquo; Anterior', 'rfq-manager-woocommerce'),
                 'next_text' => __('Siguiente &raquo;', 'rfq-manager-woocommerce'),
             ]);
-            $output .= '</div>';
+            if ($current_page == 1) {
+                $pagination = '<span class="page-numbers prev disabled" aria-disabled="true" tabindex="-1">&laquo; Anterior</span>' . $pagination;
+            }
+            $output .= '<div class="rfq-pagination">' . $pagination . '</div>';
         }
         wp_reset_postdata();
         return $output;

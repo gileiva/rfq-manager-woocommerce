@@ -3,6 +3,137 @@
    ============================= */
 
 /* ...existing code... */
+
+/* =============================
+   RFQ Pagination (Diseño Figma)
+   ============================= */
+
+/* Elimina cualquier estilo previo de paginación */
+.rfq-pagination,
+.rfq-pagination .page-numbers {
+  all: unset;
+  box-sizing: border-box;
+}
+
+.rfq-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin: 32px 0 0 0;
+  width: 100%;
+}
+
+.rfq-pagination .page-numbers {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(160,162,163,1);
+  color: rgba(160,162,163,1);
+  background: #fff;
+  margin: 0px;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.4rem;
+  text-decoration: none;
+  transition: all 0.2s;
+  cursor: pointer;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.rfq-pagination .page-numbers.current {
+  background: var(--e-global-color-accent, #1a71fc);
+  color: #fff;
+  border-color: var(--e-global-color-accent, #1a71fc);
+  cursor: default;
+}
+
+.rfq-pagination .page-numbers:hover:not(.current) {
+  border-color: var(--e-global-color-accent, #1a71fc);
+  color: var(--e-global-color-accent, #1a71fc);
+  background: #eaf2ff;
+}
+
+/* Botones anterior/siguiente: círculos con chevron SVG, sin texto */
+
+/* Botones anterior/siguiente: círculos con chevron SVG, sin texto, SIEMPRE visibles (incluido disabled) */
+.rfq-pagination .page-numbers.prev,
+.rfq-pagination .page-numbers.next {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--e-global-color-accent, #1a71fc);
+  color: var(--e-global-color-accent, #1a71fc);
+  background: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0;
+  position: relative;
+  margin: 0 30px;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+  cursor: pointer;
+  overflow: hidden;
+  opacity: 1;
+  pointer-events: auto;
+}
+.rfq-pagination .page-numbers.prev::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  mask: url('data:image/svg+xml;utf8,<svg fill="none" stroke="%231a71fc" stroke-width="2" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M8 2L4 6L8 10"/></svg>') no-repeat center/contain;
+  background: var(--e-global-color-accent, #1a71fc);
+}
+.rfq-pagination .page-numbers.next::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  mask: url('data:image/svg+xml;utf8,<svg fill="none" stroke="%231a71fc" stroke-width="2" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M4 2L8 6L4 10"/></svg>') no-repeat center/contain;
+  background: var(--e-global-color-accent, #1a71fc);
+}
+.rfq-pagination .page-numbers.prev:hover,
+.rfq-pagination .page-numbers.next:hover {
+  border-color: var(--e-global-color-accent, #1a71fc);
+  background: #eaf2ff;
+}
+/* Estado disabled: SIEMPRE visible pero con opacidad y sin pointer-events */
+.rfq-pagination .page-numbers.prev.disabled,
+.rfq-pagination .page-numbers.next.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+  background: none;
+  border-style: dashed;
+}
+.rfq-pagination .page-numbers.prev span,
+.rfq-pagination .page-numbers.next span {
+  position: absolute;
+  left: -9999px;
+}
+
+/* Responsive: reduce tamaño en móvil */
+@media (max-width: 480px) {
+  .rfq-pagination .page-numbers {
+    width: 40px;
+    height: 40px;
+    font-size: 12px;
+    
+  }
+  .rfq-pagination .page-numbers.prev,
+  .rfq-pagination .page-numbers.next {
+    width: 40px;
+    height: 40px;
+    margin: 0 20px;
+  }
+  .rfq-pagination {
+    gap: 8px;
+  }
+}
 /* Badge visual para estado Cotizada (proveedor) */
 .rfq-status-cotizada {
   background-color: rgba(238, 245, 255, 1);
