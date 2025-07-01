@@ -1,0 +1,218 @@
+/* =============================
+   RFQ Filters Component Styles
+   ============================= */
+
+.rfq-filters-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 2rem;
+  flex-wrap: wrap;
+  border-bottom: 2px solid rgba(255, 103, 0, 1);
+  padding: 24px 0;
+  margin-bottom: 40px;
+}
+
+.rfq-filters-left {
+  max-width: 30%;
+  min-width: 180px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.rfq-section-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.rfq-filters-right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  justify-content: flex-end;
+}
+
+.rfq-status-tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.rfq-status-tab {
+  background-color: #fff!important;
+  color: rgba(160, 162, 163, 1)!important;
+  border: 1px solid rgba(160, 162, 163, 1);
+  border-radius: 8px!important;
+  padding: 10px 24px!important;
+  font-size: 14px!important;
+  gap: 8px;
+  height: 40px;
+  min-width: 98px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border 0.2s;
+}
+.rfq-status-tab:hover {
+    background-color: var(--e-global-color-accent)!important;
+    color: #fff!important;
+    border-color: var(--e-global-color-accent);
+}
+.rfq-status-tab.active {
+    background-color: var(--e-global-color-accent)!important;
+    color: #fff!important;
+    border-color: var(--e-global-color-accent);
+}
+
+.rfq-order-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.rfq-order-dropdown {
+  width: 180px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid rgba(160, 162, 163, 1);
+  color: rgba(160, 162, 163, 1);
+  font-size: 16px;
+  appearance: none;
+  background-color: #fff;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.2s;
+  order: 2;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%23FF6700' stroke-width='2'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px 8px;
+  padding-right: 32px;
+}
+.rfq-order-dropdown:focus,
+.rfq-order-dropdown:hover {
+  border-color: var(--e-global-color-accent);
+}
+.rfq-order-dropdown option[value=""] {
+  color: #a0a2a3;
+}
+
+@media (max-width: 1199px) {
+  .rfq-status-tabs {
+    order: 1;
+    width: 100%;
+  }
+
+  .rfq-order-wrapper {
+    order: 2;
+  }
+}
+
+@media (max-width: 1028px) and (min-width: 769px) {
+  .rfq-filters-wrapper {
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    align-items: flex-start;
+    border: none;
+  }
+
+  .rfq-filters-left {
+    width: 100%;
+    max-width: 100%;
+    flex: 1 1 100%;
+    border-bottom: 2px solid rgba(255, 103, 0, 1);
+    padding: 12px 0;
+  }
+
+  .rfq-filters-right {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .rfq-status-tabs {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-start;
+  }
+
+  .rfq-status-tab {
+    flex: 0 1 calc(25% - 12px); /* 4 por fila en 2 líneas si es necesario */
+    min-width: 120px;
+  }
+
+  .rfq-order-wrapper {
+    flex: 0 0 auto;
+    align-self: flex-start;
+  }
+}
+
+
+/* @media (max-width: 1199px) {
+  .rfq-filters-right {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+    justify-content: flex-start;
+  }
+  .rfq-status-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    order: 1;
+    width: 100%;
+  }
+  .rfq-status-tab {
+    width: 50%;
+    min-width: 0;
+    box-sizing: border-box;
+    margin: 0;
+  }
+  .rfq-order-wrapper {
+    order: 2;
+    margin-top: 0.5rem;
+    width: 100%;
+  }
+} */
+
+@media (max-width: 768px) {
+  .rfq-filters-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.2rem;
+    border: none;
+  }
+  .rfq-filters-left,
+  .rfq-filters-right {
+    flex: unset;
+    max-width: 100%;
+    min-width: 0;
+  }
+  .rfq-filters-left {
+    border-bottom: 2px solid rgba(255, 103, 0, 1);
+    padding: 12px 0;
+}
+  .rfq-filters-right {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+    justify-content: flex-start;
+  }
+  .rfq-status-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    flex-direction: column;
+  }
+  .rfq-status-tab {
+    width: 100%;
+  }
+  .rfq-order-wrapper {
+    margin-top: 0.5rem;
+    justify-content: flex-start;
+    width: 100%;
+  }
+  
+}

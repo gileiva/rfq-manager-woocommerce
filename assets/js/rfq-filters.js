@@ -6,6 +6,10 @@ jQuery(document).ready(function($) {
         var $btn = $(this);
         var status = $btn.data('status');
 
+        // Obtener el valor actual del dropdown de orden (si existe)
+        var $orderDropdown = $('.rfq-order-dropdown');
+        var order = $orderDropdown.length ? $orderDropdown.val() : '';
+
         // Marcar el tab activo
         $btn.closest('.rfq-status-tabs').find('.rfq-status-tab').removeClass('active');
         $btn.addClass('active');
@@ -15,14 +19,18 @@ jQuery(document).ready(function($) {
         $container.html('<div class="rfq-loading"><div class="rfq-spinner"></div>' + (rfqManagerL10n.loading || 'Cargando...') + '</div>');
 
         // AJAX para filtrar solicitudes
+        var ajaxData = {
+            action: 'rfq_filter_solicitudes',
+            status: status,
+            nonce: rfqManagerL10n.nonce
+        };
+        if (order) {
+            ajaxData.order = order;
+        }
         $.ajax({
             url: rfqManagerL10n.ajaxurl,
             type: 'POST',
-            data: {
-                action: 'rfq_filter_solicitudes',
-                status: status,
-                nonce: rfqManagerL10n.nonce
-            },
+            data: ajaxData,
             success: function(response) {
                 if (typeof response === 'object' && response.success === false && response.data && response.data.message) {
                     $container.html('<p class="rfq-error">' + response.data.message + '</p>');

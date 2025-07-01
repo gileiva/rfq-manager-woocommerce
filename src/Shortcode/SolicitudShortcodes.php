@@ -30,6 +30,8 @@ class SolicitudShortcodes {
         // Registrar shortcodes
         add_shortcode('rfq_list', [self::class, 'render_rfq_list']);
         add_shortcode('rfq_view_solicitud', [self::class, 'render_solicitud_view']);
+        // Registrar el nuevo shortcode de filtros independientes
+        add_shortcode('rfq_filters', [\GiVendor\GiPlugin\Shortcode\SolicitudFiltersShortcode::class, 'render_filters']);
         
         // Agregar scripts y estilos
         add_action('wp_enqueue_scripts', [self::class, 'enqueue_assets']);
@@ -56,6 +58,13 @@ class SolicitudShortcodes {
      * @return void
      */
     public static function enqueue_assets(): void {
+        // Encolar CSS exclusivo de filtros
+        wp_enqueue_style(
+            'rfq-filters',
+            plugins_url('assets/css/rfq-filters.css', dirname(dirname(__FILE__))),
+            [],
+            '1.0.0'
+        );
         // Verificar si estamos en una página que necesita los scripts
         $is_rfq_page = false;
         $should_enqueue_modals = false;
@@ -560,147 +569,6 @@ class SolicitudShortcodes {
      * @since  0.1.0
      * @param  array $args Argumentos para la consulta
      * @return string      HTML de la tabla
-     */
-    private static function render_solicitudes_table($args): string {
-        // Preparar argumentos de la consulta
-        $query_args = [
-            'post_type' => 'solicitud',
-            'posts_per_page' => intval($args['per_page']),
-            'paged' => get_query_var('paged') ? get_query_var('paged') : 1,
-            'orderby' => $args['orderby'],
-            'order' => $args['order'],
-        ];
-
-        // Aplicar el estado si está especificado
-        if (isset($args['post_status'])) {
-            $query_args['post_status'] = $args['post_status'];
-        } else {
-            $query_args['post_status'] = ['publish', 'rfq-pending', 'rfq-active', 'rfq-closed', 'rfq-historic'];
-        }
-
-        // Si se pasa post__in, agregarlo a la query
-        if (isset($args['post__in'])) {
-            $query_args['post__in'] = $args['post__in'];
-        }
-
-        // Realizar la consulta
-        $query = new \WP_Query($query_args);
-
-        // Verificar si hay errores en la consulta
-        if (is_wp_error($query)) {
-            return '<p class="rfq-error">' . __('Error al cargar las solicitudes.', 'rfq-manager-woocommerce') . '</p>';
-        }
-
-        // Si no hay posts, mostrar mensaje
-        if (!$query->have_posts()) {
-            return '<p class="rfq-notice">' . __('No hay solicitudes disponibles.', 'rfq-manager-woocommerce') . '</p>';
-        }
-
-        $output = '<table class="rfq-list-table">';
-        $output .= '<thead>';
-        $output .= '<tr>';
-        $output .= '<th>' . __('Referencia', 'rfq-manager-woocommerce') . '</th>';
-        $output .= '<th>' . __('Usuario', 'rfq-manager-woocommerce') . '</th>';
-        $output .= '<th>' . __('Fecha', 'rfq-manager-woocommerce') . '</th>';
-        $output .= '<th>' . __('Estado', 'rfq-manager-woocommerce') . '</th>';
-        $output .= '<th>' . __('Productos', 'rfq-manager-woocommerce') . '</th>';
-        $output .= '<th>' . __('Acciones', 'rfq-manager-woocommerce') . '</th>';
-        $output .= '</tr>';
-        $output .= '</thead>';
-        $output .= '<tbody>';
-
-        while ($query->have_posts()) {
-            $query->the_post();
-            $solicitud_id = get_the_ID();
-            $post = get_post($solicitud_id);
-
-            // Verificar y actualizar el estado antes de mostrarlo
-            \GiVendor\GiPlugin\Solicitud\SolicitudStatusHandler::check_and_update_status($solicitud_id, $post, true);
-
-            $author_id = get_post_field('post_author', $solicitud_id);
-            $items = json_decode(get_post_meta($solicitud_id, '_solicitud_items', true), true);
-            $estado = get_post_status();
-            
-            // Obtener el UUID y formatear el ID de la solicitud
-            $uuid = get_post_meta($solicitud_id, '_solicitud_uuid', true);
-            $formatted_id = $uuid ? 'RFQ-' . substr(str_replace('-', '', $uuid), -5) : '';
-
-            $output .= '<tr>';
-            $output .= '<td>' . esc_html($formatted_id) . '</td>';
-            $output .= '<td>' . esc_html(get_the_author_meta('display_name', $author_id)) . '</td>';
-            $output .= '<td>' . esc_html(get_the_date()) . '</td>';
-            $output .= '<td class="' . esc_attr(self::get_status_class($estado)) . '">' . esc_html(self::get_status_label($estado)) . '</td>';
-            $output .= '<td>' . esc_html(count($items)) . '</td>';
-            $output .= '<td style="display: flex; gap: 10px;">';
-            
-            // Botón de ver detalles - Redirigir según el rol del usuario y estado de la solicitud
-            $user = wp_get_current_user();
-            $view_url = '';
-            
-            // Si la solicitud está cerrada, aceptada o histórica, solo el autor o admin pueden verla
-            if (in_array($estado, ['rfq-accepted', 'rfq-closed', 'rfq-historic'])) {
-                $is_author = ((int)$author_id === (int)$user->ID);
-                $is_admin = in_array('administrator', $user->roles);
-                
-                if ($is_author || $is_admin) {
-                    $view_url = home_url('/ver-solicitud/' . $post->post_name . '/');
-                }
-            } else {
-                // Para solicitudes activas/pendientes, aplicar lógica normal
-                if (in_array('proveedor', $user->roles)) {
-                    // Si es proveedor, va al formulario de cotización
-                    $view_url = home_url('/cotizar-solicitud/' . $post->post_name . '/');
-                } else {
-                    // Si es usuario o customer, va a la vista de detalles
-                    $view_url = home_url('/ver-solicitud/' . $post->post_name . '/');
-                }
-            }
-            
-            if ($view_url) {
-                $output .= '<a href="' . esc_url($view_url) . '" class="rfq-view-btn">' . __('Ver Detalles', 'rfq-manager-woocommerce') . '</a>';
-            } else {
-                $output .= '<span class="rfq-no-access">' . __('No disponible', 'rfq-manager-woocommerce') . '</span>';
-            }
-
-            // Agregar botón de repetir para solicitudes históricas o aceptadas
-            if (in_array($estado, ['rfq-historic', 'rfq-accepted'])) {
-                // Verificar si el usuario actual es el propietario de la solicitud
-                $current_user_id = get_current_user_id();
-                $solicitud_author_id = get_post_field('post_author', $solicitud_id);
-                
-                if ($current_user_id === (int)$solicitud_author_id) {
-                    // error_log(sprintf('[RFQ] Mostrando botón repetir para solicitud #%d con estado %s - Usuario propietario', $solicitud_id, $estado));
-                    $output .= '<button type="button" class="rfq-repeat-btn" data-solicitud="' . esc_attr($solicitud_id) . '" title="Repetir solicitud">' . __('Repetir', 'rfq-manager-woocommerce') . '</button>';
-                } else {
-                    // error_log(sprintf('[RFQ] Ocultando botón repetir para solicitud #%d con estado %s - Usuario no propietario', $solicitud_id, $estado));
-                }
-            } else {
-                // error_log(sprintf('[RFQ] Ocultando botón repetir para solicitud #%d con estado %s', $solicitud_id, $estado));
-            }
-            
-            $output .= '</td>';
-            $output .= '</tr>';
-        }
-
-        $output .= '</tbody>';
-        $output .= '</table>';
-
-        // Paginación
-        if ($query->max_num_pages > 1) {
-            $output .= '<div class="rfq-pagination">';
-            $output .= paginate_links([
-                'base' => str_replace(999999999, '%#%', esc_url(get_pagenum_link(999999999))),
-                'format' => '?paged=%#%',
-                'current' => max(1, get_query_var('paged')),
-                'total' => $query->max_num_pages,
-                'prev_text' => __('&laquo; Anterior', 'rfq-manager-woocommerce'),
-                'next_text' => __('Siguiente &raquo;', 'rfq-manager-woocommerce'),
-            ]);
-            $output .= '</div>';
-        }
-
-        wp_reset_postdata();
-
         return $output;
     }
 
@@ -897,11 +765,16 @@ class SolicitudShortcodes {
             }
             // Eliminar post_status para evitar conflicto con post__in
             unset($args['post_status']);
-            echo self::render_solicitudes_table($args);
+            $renderer = new \GiVendor\GiPlugin\Solicitud\View\SolicitudListRenderer();
+            echo $renderer->render_filtered($args);
             wp_die();
         }
 
-        echo self::render_solicitudes_table($args);
+        // Corregir visibilidad: solo mostrar solicitudes propias para customer/subscriber
+        $args['author'] = get_current_user_id();
+
+        $renderer = new \GiVendor\GiPlugin\Solicitud\View\SolicitudListRenderer();
+        echo $renderer->render_filtered($args);
         wp_die();
     }
 

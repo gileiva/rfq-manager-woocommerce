@@ -6,6 +6,19 @@ use WP_User;
 use GiVendor\GiPlugin\Shortcode\Components\SolicitudFilters;
 
 class SolicitudListRenderer {
+    public function render_filtered(array $atts = []): string {
+        if (!is_user_logged_in()) {
+            return '<p class="rfq-error">' . __('Debes iniciar sesión para ver las solicitudes.', 'rfq-manager-woocommerce') . '</p>';
+        }
+
+        $user = wp_get_current_user();
+
+        if (in_array('customer', $user->roles) || in_array('subscriber', $user->roles)) {
+            return $this->render_customer_solicitudes($atts, $user->ID);
+        }
+
+        return $this->render_solicitudes_table($atts);
+    }
     public function render(): string {
         return $this->render_by_role();
     }
@@ -40,7 +53,7 @@ class SolicitudListRenderer {
         $selected_status = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
         $selected_order = isset($_GET['order']) ? sanitize_text_field($_GET['order']) : 'desc';
 
-        $output .= SolicitudFilters::render_provider_header($selected_status, $selected_order);
+        // (Eliminado: la cabecera de filtros ahora se muestra solo con el shortcode [rfq_filters])
         $output .= '<div id="rfq-solicitudes-table-container">';
         $output .= $this->render_solicitudes_table($atts);
         $output .= '</div>';
@@ -50,20 +63,16 @@ class SolicitudListRenderer {
 
 
     private function render_customer_solicitudes($atts, $user_id): string {
-        $statuses = SolicitudFilters::get_status_counts($user_id);
-        $selected_status = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
         $output = '<div class="rfq-list-container">';
-        $selected_order = isset($_GET['order']) ? sanitize_text_field($_GET['order']) : 'desc';
-        $output .= SolicitudFilters::render_filter_header($statuses, $selected_status, $selected_order);
         $output .= '<div id="rfq-solicitudes-table-container">';
         $query_args = [
             'post_type' => 'solicitud',
             'posts_per_page' => intval($atts['per_page']),
             'paged' => get_query_var('paged') ? get_query_var('paged') : 1,
             'author' => $user_id,
-            'post_status' => ['publish', 'rfq-pending', 'rfq-active', 'rfq-accepted', 'rfq-closed', 'rfq-historic'],
-            'orderby' => $atts['orderby'],
-            'order' => $atts['order'],
+            'post_status' => isset($atts['post_status']) ? $atts['post_status'] : ['publish', 'rfq-pending', 'rfq-active', 'rfq-accepted', 'rfq-closed', 'rfq-historic'],
+            'orderby' => 'date',
+            'order' => isset($atts['order']) ? $atts['order'] : 'DESC',
         ];
         $query = new WP_Query($query_args);
         if (!$query->have_posts()) {

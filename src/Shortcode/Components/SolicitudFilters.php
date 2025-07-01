@@ -135,12 +135,12 @@ class SolicitudFilters
     public static function render_order_dropdown(string $selected = ''): string
     {
         $options = [
-            'desc' => esc_html__('Nuevas primero', 'rfq-manager-woocommerce'),
-            'asc'  => esc_html__('Más antiguas primero', 'rfq-manager-woocommerce'),
+            'desc' => esc_html__('Más recientes', 'rfq-manager-woocommerce'),
+            'asc'  => esc_html__('Más antiguas', 'rfq-manager-woocommerce'),
         ];
         $output = '<select class="rfq-order-dropdown" name="rfq_order">';
-        // Placeholder
-        $output .= '<option value="" disabled' . ($selected === '' ? ' selected' : '') . '>' . esc_html__('Ordenar por', 'rfq-manager-woocommerce') . '</option>';
+        // Opción por defecto, siempre habilitada y seleccionada solo si $selected está vacío
+        $output .= '<option value=""' . ($selected === '' ? ' selected' : '') . '>' . esc_html__('Ordenar por', 'rfq-manager-woocommerce') . '</option>';
         foreach ($options as $value => $label) {
             $is_selected = ($selected === $value) ? ' selected' : '';
             $output .= sprintf(
@@ -164,13 +164,13 @@ class SolicitudFilters
      */
     public static function render_filter_header(array $counts, string $selected_status = '', string $selected_order = ''): string
     {
-        $output  = '<div class="rfq-filter-header">';
-        $output .= '<div class="rfq-filter-header-left">';
-        $output .= '<h2 class="rfq-section-title">' . esc_html__('Solicitudes', 'rfq-manager-woocommerce') . '</h2>';
+        $output  = '<div class="rfq-filters-wrapper">';
+        $output .= '<div class="rfq-filters-left">';
+        $output .= '<h4 class="rfq-section-title">' . esc_html__('Solicitudes', 'rfq-manager-woocommerce') . '</h4>';
         $output .= '</div>';
-        $output .= '<div class="rfq-filter-header-right">';
+        $output .= '<div class="rfq-filters-right">';
         $output .= self::render_status_tabs($counts, $selected_status);
-        $output .= self::render_order_dropdown($selected_order);
+        $output .= '<div class="rfq-order-wrapper">' . self::render_order_dropdown($selected_order) . '</div>';
         $output .= '</div>';
         $output .= '</div>';
         return $output;
@@ -215,10 +215,14 @@ class SolicitudFilters
      */
     public static function render_provider_header(string $selected_status = '', string $selected_order = 'desc'): string
     {
-        $output  = '<div class="rfq-filter-header">';
-        $output .= '<h2 class="rfq-section-title">' . esc_html__('Solicitudes', 'rfq-manager-woocommerce') . '</h2>';
+        $output  = '<div class="rfq-filters-wrapper">';
+        $output .= '<div class="rfq-filters-left">';
+        $output .= '<h4 class="rfq-section-title">' . esc_html__('Solicitudes', 'rfq-manager-woocommerce') . '</h4>';
+        $output .= '</div>';
+        $output .= '<div class="rfq-filters-right">';
         $output .= self::render_provider_tabs($selected_status);
-        $output .= self::render_order_dropdown($selected_order);
+        $output .= '<div class="rfq-order-wrapper">' . self::render_order_dropdown($selected_order) . '</div>';
+        $output .= '</div>';
         $output .= '</div>';
         return $output;
     }
