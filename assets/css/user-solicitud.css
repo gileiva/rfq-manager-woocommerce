@@ -1,17 +1,306 @@
+/* ==============================
+   RFQ - BADGE NUEVA OFERTA
+   ============================== */
+
+.rfq-badge-nueva-oferta {
+  background-color: #ffe3d6;
+  color: var(--e-global-color-accent);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 500;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  letter-spacing: 0.5px;
+  display: inline-block;
+}
+/* ==============================
+   RFQ - OFERTAS (FASE 3: ACEPTADA)
+   ============================== */
+
+.rfq-cotizacion-card.rfq-cotizacion-aceptada {
+  background-color: rgba(255, 247, 243, 1);
+  border-left: 6px solid var(--e-global-color-accent);
+  box-shadow: 0px 6px 24px rgba(0, 0, 0, 0.05);
+  padding-left: 32px;
+  padding-right: 24px;
+}
+
+.rfq-cotizacion-card.rfq-cotizacion-aceptada .rfq-cotizacion-actions .rfq-aceptar-cotizacion-btn[disabled],
+.rfq-cotizacion-card.rfq-cotizacion-aceptada .rfq-cotizacion-actions .rfq-aceptar-cotizacion-btn.button[disabled] {
+  background: var(--e-global-color-accent);
+  color: #fff;
+  cursor: default;
+  opacity: 1;
+  font-weight: bold;
+  pointer-events: none;
+  border: none;
+  box-shadow: none;
+}
+
+.rfq-cotizacion-card.rfq-cotizacion-aceptada .rfq-cotizacion-confirmacion {
+  font-size: 13px;
+  color: #555;
+  margin-top: 8px;
+  max-width: 200px;
+  line-height: 1.4;
+}
 /* ========================
    ESTRUCTURA Y SECCIONES
    ======================== */
 
 /* 1. Contenedor general y layout principal */
-.rfq-cotizar-container {
-  width: 100%;
-  /* max-width: 900px; */
-  margin: 0 auto;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-  padding-bottom: 32px;
+
+.rfq-cotizar-container,
+.rfq-cotizaciones-received {
+  max-width: 1220px;
+  box-sizing: border-box;
 }
+.rfq-cotizar-container {
+    width: 100%;
+    margin: 2em auto;
+    padding: 40px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-radius: 12px;
+}
+.rfq-cotizaciones-received {
+  margin-top: 32px;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+.rfq-cotizar-header {
+    margin-bottom: 2em;
+    padding: 1.5em;
+    background: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.rfq-cotizar-header h2 {
+    margin: 0 0 1em;
+    color: #23282d;
+    font-size: 1.5em;
+    font-weight: 600;
+}
+/* =====================
+   RFQ - OFERTAS (FASE 2)
+   ===================== */
+
+.rfq-cotizacion-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  /* padding eliminado para border individual en header/actions */
+  border-radius: 12px;
+  box-shadow: 0px 6px 24px 0px rgba(0, 0, 0, 0.10);
+  background: #fff;
+  gap: 24px;
+  margin-top: 32px;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+  margin-bottom: 24px;
+  transition: box-shadow 0.2s;
+}
+
+
+.rfq-cotizacion-card:last-child {
+  margin-bottom: 0;
+}
+
+.rfq-cotizacion-header {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rfq-proveedor-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.rfq-proveedor-logo {
+  width: 200px;
+  height: auto;
+  display: block;
+  border-radius: 8px;
+  background: #f7f7f7;
+  object-fit: contain;
+}
+
+.rfq-proveedor-logo-wrapper img {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.rfq-proveedor-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding-bottom: 12px;
+}
+
+.rfq-proveedor-nombre {
+  font-weight: 600;
+  display: block;
+  margin-bottom: 8px;
+  /* font-size: 18px; */
+  /* line-height: 1.2; */
+  /* color: #222; */
+}
+
+.rfq-proveedor-meta {
+  font-size: 15px;
+  color: #888;
+  margin-top: 4px;
+}
+
+.rfq-proveedor-about {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.rfq-cotizacion-actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  min-width: 140px;
+  text-align: right;
+  gap: 12px;
+}
+
+.rfq-cotizacion-total {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a7f37;
+  margin-bottom: 8px;
+}
+
+.rfq-aceptar-cotizacion-btn.button {
+  padding: 10px 24px;
+  font-size: 14px;
+  border-radius: 30px;
+  font-weight: 500;
+  background: #fff;
+  color: rgba(255, 103, 0, 1);
+  border: solid 1px rgba(255, 103, 0, 1);  
+}
+.rfq-aceptar-cotizacion-btn.button:disabled,
+.rfq-aceptar-cotizacion-btn[disabled] {
+  background: #bdbdbd;
+  color: #fff;
+  cursor: default;
+  box-shadow: none;
+}
+
+@media (max-width: 600px) {
+  .rfq-cotizacion-card {
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+  }
+  .rfq-cotizacion-actions {
+    align-items: flex-start;
+    min-width: 0;
+    text-align: left;
+  }
+  .rfq-cotizacion-total {
+    font-size: 18px;
+  }
+  .rfq-cotizar-container,
+  .rfq-cotizaciones-received {
+    max-width: 100vw;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+}
+/* =====================
+   RFQ - OFERTAS (FASE 2)
+   ===================== */
+
+
+
+.rfq-cotizacion-header {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rfq-proveedor-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  border-bottom: 2px solid rgba(239, 239, 239, 1);
+}
+
+
+.rfq-proveedor-nombre {
+  font-weight: 600;
+  display: block;
+  margin-bottom: 4px;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.rfq-proveedor-meta {
+  font-size: 15px;
+  color: #888;
+  line-height: 1.4;
+}
+
+.rfq-cotizacion-actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  min-width: 140px;
+  text-align: right;
+  gap: 12px;
+}
+
+.rfq-cotizacion-total {
+  font-size: 20px;
+  font-weight: 700;
+  color: #222;
+  margin-bottom: 8px;
+}
+
+/* Responsive: stack cards vertically on small screens */
+@media (max-width: 700px) {
+  .rfq-cotizacion-card {
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+  }
+  .rfq-cotizacion-actions {
+    align-items: flex-start;
+    min-width: 0;
+    text-align: left;
+  }
+}
+
+
+@media (max-width: 600px) {
+  .rfq-cotizaciones-received {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+}
+
 
 /* 2. Cabecera de solicitud */
 .rfq-solicitud-header {
@@ -159,9 +448,7 @@
 }
 
 /* 6. Cotizaciones recibidas */
-.rfq-cotizaciones-received {
-  margin-top: 32px;
-}
+
 .rfq-cotizaciones-table {
   width: 100%;
   border-collapse: collapse;
@@ -731,3 +1018,74 @@
     margin-top: 4px;
   }
 }
+
+/* =============================
+   Estilos específicos para rfq_view_ofertas
+   ============================= */
+
+/* 1. Logotipo del proveedor */
+.rfq-proveedor-logo img {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+/* 2. Fecha de oferta (maquetado) */
+.rfq-proveedor-fecha-label {
+  font-size: 14px;
+  color: rgba(160, 162, 163, 1);
+  font-weight: 500;
+  display: block;
+  margin-bottom: 4px;
+  line-height: 1.4rem;
+}
+.rfq-proveedor-fecha-value {
+  font-size: 14px;
+  color: #000;
+  font-weight: 400;
+}
+
+/* 3. Layout y acciones de la tarjeta de cotización */
+.rfq-cotizacion-card {
+  display: flex;
+  justify-content: space-between;
+  padding: 0;
+}
+.rfq-cotizacion-header {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 24px;
+}
+.rfq-cotizacion-actions {
+  flex: 0 0 25%;
+  padding-left: 32px;
+  border-left: 1px solid rgba(239, 239, 239, 1);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding-top: 24px;
+  padding-bottom: 24px;
+}
+
+@media (max-width: 700px) {
+  .rfq-cotizacion-card {
+    flex-direction: column;
+  }
+  .rfq-cotizacion-actions {
+    max-width: 100%;
+    flex: 1 1 100%;
+    border-left: none;
+    padding-left: 0;
+    padding-top: 16px;
+    padding-bottom: 0;
+    align-items: center;
+  }
+  .rfq-cotizacion-header {
+    padding: 16px 0 0 0;
+  }
+}
+
+/* Fin estilos específicos para rfq_view_ofertas */

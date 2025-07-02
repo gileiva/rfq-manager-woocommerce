@@ -615,58 +615,88 @@ class SolicitudShortcodes {
         }
         $output = '';
         $output .= '<div class="rfq-cotizaciones-received">';
-        $output .= '<h3>' . __('Cotizaciones Recibidas', 'rfq-manager-woocommerce') . '</h3>';
-        $output .= '<table class="rfq-cotizaciones-table">';
-        $output .= '<thead><tr>';
-        $output .= '<th>' . __('Fecha', 'rfq-manager-woocommerce') . '</th>';
-        $output .= '<th>' . __('Proveedor', 'rfq-manager-woocommerce') . '</th>';
-        $output .= '<th>' . __('Total', 'rfq-manager-woocommerce') . '</th>';
-        $output .= '<th>' . __('Estado', 'rfq-manager-woocommerce') . '</th>';
-        $output .= '<th>' . __('Acciones', 'rfq-manager-woocommerce') . '</th>';
-        $output .= '</tr></thead><tbody>';
+        $user_id = get_current_user_id();
         foreach ($cotizaciones as $cotizacion) {
             $proveedor = get_userdata($cotizacion->post_author);
             $total = get_post_meta($cotizacion->ID, '_total', true);
-            $logo_url = get_user_meta($cotizacion->post_author, 'proveedor_logo', true);
-            $logo_html = $logo_url ? '<img src="' . esc_url($logo_url) . '" alt="' . esc_attr($proveedor->display_name) . '" class="rfq-proveedor-logo">' : '';
+            $proveedor_id = $cotizacion->post_author;
+            // Obtener logotipo desde el nuevo campo gi_custom_avatar_id
+            $avatar_id = get_user_meta($proveedor_id, 'gireg_provider_gi_custom_avatar_id', true);
+            error_log('[RFQ_DEBUG] Avatar ID: ' . print_r($avatar_id, true));
+            if ($avatar_id && wp_attachment_is_image($avatar_id)) {
+                error_log('[RFQ_DEBUG] Se renderizará la imagen del proveedor');
+                $logo_url = wp_get_attachment_image_url($avatar_id, 'thumbnail');
+            } else {
+                error_log('[RFQ_DEBUG] No se renderiza el logo. ID no válido o no es imagen.');
+                $logo_url = false;
+            }
+            $about = trim(get_user_meta($proveedor_id, 'gireg_provider_about', true));
             $is_accepted = ($cotizacion->post_status === 'rfq-accepted');
             $is_historic = ($cotizacion->post_status === 'rfq-historic');
-            $row_class = $is_accepted ? 'rfq-cotizacion-aceptada' : ($is_historic ? 'rfq-cotizacion-historica' : '');
-            $output .= '<tr class="' . esc_attr($row_class) . '" data-cotizacion-id="' . esc_attr($cotizacion->ID) . '">';
-            $output .= '<td>' . esc_html(get_the_date('', $cotizacion->ID)) . '</td>';
-            $output .= '<td class="rfq-proveedor-info">' . $logo_html . '<span class="rfq-proveedor-nombre">' . esc_html($proveedor->display_name) . '</span></td>';
-            $output .= '<td class="rfq-total">' . esc_html(number_format((float)$total, 2, ',', '.') . ' €') . '</td>';
-            $output .= '<td>';
+            $card_class = 'rfq-cotizacion-card';
             if ($is_accepted) {
-                $output .= '<span class="rfq-estado rfq-estado-aceptada">' . __('Aceptada', 'rfq-manager-woocommerce') . '</span>';
+                $card_class .= ' rfq-cotizacion-aceptada';
             } elseif ($is_historic) {
-                $output .= '<span class="rfq-estado rfq-estado-historica">' . __('Histórica', 'rfq-manager-woocommerce') . '</span>';
-            } else {
-                $output .= '<span class="rfq-estado rfq-estado-pendiente">' . __('Pendiente', 'rfq-manager-woocommerce') . '</span>';
+                $card_class .= ' rfq-cotizacion-historica';
             }
-            $output .= '</td>';
-            $output .= '<td>';
+            $output .= '<div class="' . esc_attr($card_class) . '" data-cotizacion-id="' . esc_attr($cotizacion->ID) . '" style="position:relative;">';
+            // Badge Nueva oferta (solo si corresponde)
+            if ($user_id && (int)$solicitud->post_author === $user_id) {
+                $output .= self::render_nueva_oferta_badge($cotizacion->ID, $user_id);
+            }
+            $output .= '<div class="rfq-cotizacion-header">';
+            // Bloque proveedor info: logo y detalles (estructura corregida, sin estilos inline)
+            $output .= '<div class="rfq-proveedor-info">';
+            if ($logo_url) {
+                $output .= '<div class="rfq-proveedor-logo"><img src="' . esc_url($logo_url) . '" alt="' . esc_attr($proveedor->display_name) . '" width="80" height="80"></div>';
+            }
+            $output .= '<div class="rfq-proveedor-details">';
+            $output .= '<h4 class="rfq-proveedor-nombre">' . esc_html($proveedor->display_name) . '</h4>';
+            if ($about) {
+                $output .= '<p class="rfq-proveedor-about">' . esc_html($about) . '</p>';
+            }
+            $output .= '</div>';
+            $output .= '</div>';
+            $output .= '<div class="rfq-proveedor-meta">';
+            $output .= '<span class="rfq-proveedor-fecha-label">' . __('Fecha de oferta', 'rfq-manager-woocommerce') . '</span>';
+            $output .= '<span class="rfq-proveedor-fecha-value">' . esc_html(get_the_date('d F Y', $cotizacion->ID)) . '</span>';
+            $output .= '</div>';
+            $output .= '</div>'; // rfq-cotizacion-header
+
+            $output .= '<div class="rfq-cotizacion-actions">';
+            $output .= '<h3 class="rfq-cotizacion-total">' . esc_html(number_format((float)$total, 2, ',', '.') . ' €') . '</h3>';
             if ($is_accepted) {
-                $output .= '<button type="button" class="button rfq-aceptar-cotizacion-btn" disabled style="background:#4caf50;color:#fff;cursor:default;">' . __('Aceptada', 'rfq-manager-woocommerce') . '</button>';
+                $output .= '<button type="button" class="button rfq-aceptar-cotizacion-btn" disabled style="background:rgba(239, 239, 239, 1);color:#fff;cursor:default;">' . __('Aceptada', 'rfq-manager-woocommerce') . '</button>';
                 $output .= ' <button type="button" class="button rfq-pagar-cotizacion-btn" data-cotizacion-id="' . esc_attr($cotizacion->ID) . '">' . __('Pagar', 'rfq-manager-woocommerce') . '</button>';
             } elseif ($solicitud->post_status !== 'rfq-historic' && $solicitud->post_status !== 'rfq-closed' && $solicitud->post_status !== 'rfq-accepted' && !$is_historic && !$cotizacion_aceptada_id) {
-                $output .= '<button type="button" class="rfq-aceptar-cotizacion-btn button" data-cotizacion-id="' . esc_attr($cotizacion->ID) . '">' . __('Aceptar', 'rfq-manager-woocommerce') . '</button>';
+                $output .= '<button type="button" class="rfq-aceptar-cotizacion-btn button" data-cotizacion-id="' . esc_attr($cotizacion->ID) . '">' . __('Aceptar oferta', 'rfq-manager-woocommerce') . '</button>';
             }
-            $output .= '</td>';
-            $output .= '</tr>';
+            $output .= '</div>'; // rfq-cotizacion-actions
+
+            $output .= '</div>'; // rfq-cotizacion-card
         }
-        $output .= '</tbody></table>';
         $output .= '</div>';
         return $output;
     }
 
     /**
-     * Renderiza la tabla de solicitudes
+     * Renderiza el badge "Nueva oferta" si corresponde y marca la oferta como vista por el usuario.
      *
-     * @since  0.1.0
-     * @param  array $args Argumentos para la consulta
-     * @return string      HTML de la tabla
-        return $output;
+     * @param int $cotizacion_id
+     * @param int $user_id
+     * @return string
+     */
+    private static function render_nueva_oferta_badge(int $cotizacion_id, int $user_id): string
+    {
+        $meta_key = '_oferta_vista_' . $user_id;
+        $ya_vista = get_post_meta($cotizacion_id, $meta_key, true);
+        if (!$ya_vista) {
+            // Marcar como vista para este usuario
+            update_post_meta($cotizacion_id, $meta_key, 1);
+            // Renderizar badge
+            return '<span class="rfq-badge-nueva-oferta">' . esc_html__('Nueva oferta', 'rfq-manager-woocommerce') . '</span>';
+        }
+        return '';
     }
 
     /**

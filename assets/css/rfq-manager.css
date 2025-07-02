@@ -413,29 +413,7 @@
 }
 
 /* === RFQ UNIFICADO: Containers, headers, meta, status, etc. === */
-.rfq-cotizar-container {
-    max-width: 1200px;
-    margin: 2em auto;
-    padding: 20px;
-    background: #fff;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    border-radius: 4px;
-}
 
-.rfq-cotizar-header {
-    margin-bottom: 2em;
-    padding: 1.5em;
-    background: #f8f9fa;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.rfq-cotizar-header h2 {
-    margin: 0 0 1em;
-    color: #23282d;
-    font-size: 1.5em;
-    font-weight: 600;
-}
 
 .rfq-cotizar-meta {
     display: grid;
