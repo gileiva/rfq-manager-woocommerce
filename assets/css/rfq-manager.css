@@ -697,3 +697,17 @@
         text-align: center;
     }
 } 
+.rfq-solicitud-actions-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.rfq-cancel-btn-link {
+  background: none;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+}
