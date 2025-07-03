@@ -549,6 +549,12 @@ class SolicitudShortcodes {
      */
     public static function render_solicitud_ofertas_shortcode($atts): string
     {
+        // 1. Validar login
+        if (!is_user_logged_in()) {
+            return '<p class="rfq-error">Debes iniciar sesión para ver esta solicitud.</p>';
+        }
+
+        // 2. Obtener y validar la solicitud
         $atts = shortcode_atts([
             'solicitud_id' => ''
         ], $atts);
@@ -556,20 +562,33 @@ class SolicitudShortcodes {
         $solicitud_id = 0;
         if (!empty($atts['solicitud_id'])) {
             $solicitud_id = absint($atts['solicitud_id']);
-        } else {
-            $solicitud_id = self::get_current_solicitud_id();
+        } else if (method_exists(__CLASS__, 'get_current_solicitud_id')) {
+            $solicitud_id = (int) self::get_current_solicitud_id();
         }
 
-        if (!$solicitud_id) {
-            return '<p class="rfq-error">' . esc_html__('No se pudo identificar la solicitud.', 'rfq-manager-woocommerce') . '</p>';
-        }
-
-        $solicitud = get_post($solicitud_id);
+        $solicitud = ($solicitud_id) ? get_post($solicitud_id) : null;
         if (!$solicitud || $solicitud->post_type !== 'solicitud') {
-            return '<p class="rfq-error">' . esc_html__('No se pudo identificar la solicitud.', 'rfq-manager-woocommerce') . '</p>';
+            return '<p class="rfq-error">No se pudo identificar la solicitud.</p>';
         }
 
-        return self::render_solicitud_cotizaciones($solicitud_id, $solicitud);
+        // 3. Validar autoría
+        if (get_current_user_id() !== (int)$solicitud->post_author) {
+            return '<p class="rfq-error">No tienes permiso para ver esta información.</p>';
+        }
+
+        // 4. Renderizar cotizaciones y mostrar mensaje si no hay
+        $cotizaciones_html = self::render_solicitud_cotizaciones($solicitud_id, $solicitud);
+        if (trim($cotizaciones_html) === '') {
+            // Si la solicitud está en estado histórico, mostrar mensaje especial
+            if (\GiVendor\GiPlugin\Solicitud\SolicitudStatusHelper::is_historic($solicitud)) {
+                return '<p class="rfq-info">No se recibieron ofertas para esta solicitud, puedes enviarla nuevamente haciendo click en el botón Repetir Solicitud.</p>';
+            }
+            // Si no es histórica, mensaje genérico
+            return '<p class="rfq-info">Aún no hay ofertas para esta solicitud.</p>';
+        }
+
+        // 5. Mostrar cotizaciones normalmente
+        return $cotizaciones_html;
     }
 
     /**

@@ -109,9 +109,9 @@
 }
 
 
-.rfq-cotizacion-card:last-child {
+/* .rfq-cotizacion-card:last-child {
   margin-bottom: 0;
-}
+} */
 
 .rfq-cotizacion-header {
   flex: 1;
