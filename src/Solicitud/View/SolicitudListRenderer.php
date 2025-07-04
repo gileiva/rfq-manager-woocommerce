@@ -96,10 +96,10 @@ class SolicitudListRenderer {
                         ],
                     ],
                 ]);
-                $nuevas_ofertas = false;
+                $hay_nueva_oferta = false;
                 foreach ($cotizaciones as $cotizacion) {
-                    if ($cotizacion->post_status === 'publish') {
-                        $nuevas_ofertas = true;
+                    if (\GiVendor\GiPlugin\Cotizacion\OfertaBadgeHelper::should_show_new_badge($cotizacion, $user_id, $post)) {
+                        $hay_nueva_oferta = true;
                         break;
                     }
                 }
@@ -111,7 +111,7 @@ class SolicitudListRenderer {
                     'formatted_id' => $formatted_id,
                     'date' => get_the_date('d M Y'),
                     'ver_detalles_url' => home_url('/ver-solicitud/' . $post->post_name . '/'),
-                    'nuevas_ofertas' => $nuevas_ofertas,
+                    'hay_nueva_oferta' => $hay_nueva_oferta,
                     'is_cliente' => true,
                 ]);
             }
@@ -230,7 +230,7 @@ class SolicitudListRenderer {
         $date = $data['date'];
         $ver_detalles_url = $data['ver_detalles_url'];
         $is_cliente = isset($data['is_cliente']) ? $data['is_cliente'] : false;
-        $nuevas_ofertas = isset($data['nuevas_ofertas']) ? $data['nuevas_ofertas'] : false;
+        $hay_nueva_oferta = isset($data['hay_nueva_oferta']) ? $data['hay_nueva_oferta'] : false;
         $author_id = isset($post->post_author) ? $post->post_author : 0;
         // Obtener ciudad y código postal del autor (usuario)
         $city = '';
@@ -255,8 +255,8 @@ class SolicitudListRenderer {
             $html .= $this->render_customer_header($post, $formatted_id, $status_label, $date);
             $html .= '</div>';
             $html .= '<div class="rfq-header-right">';
-            if ($nuevas_ofertas) {
-                $html .= '<span class="rfq-nueva-oferta">' . __('Nueva oferta', 'rfq-manager-woocommerce') . '</span>';
+            if ($hay_nueva_oferta) {
+                $html .= \GiVendor\GiPlugin\Cotizacion\OfertaBadgeHelper::render_new_badge();
             }
             $html .= '</div>';
             $html .= '</div>';

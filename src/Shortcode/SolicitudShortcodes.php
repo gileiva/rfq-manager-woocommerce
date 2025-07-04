@@ -406,17 +406,28 @@ class SolicitudShortcodes {
                 $output .= '<td>' . esc_html(count($items)) . '</td>';
                 $output .= '<td class="rfq-status-cell ' . esc_attr(self::get_status_class($estado)) . '">' . esc_html(self::get_status_label($estado)) . '</td>';
                 $output .= '<td>' . esc_html(count($cotizaciones)) . '</td>';
-                $output .= '<td style="display: flex; gap: 10px;">';
-                
+                $output .= '<td style="display: flex; gap: 10px; align-items: center;">';
+
                 // Botón de ver detalles usando el slug
                 $output .= '<a href="' . esc_url(home_url('/ver-solicitud/' . $post->post_name . '/')) . '" class="rfq-view-btn">' . __('Ver Detalles', 'rfq-manager-woocommerce') . '</a>';
-                
+
+                // Badge Nueva oferta si corresponde
+                $hay_nueva_oferta = false;
+                foreach ($cotizaciones as $cotizacion) {
+                    if (\GiVendor\GiPlugin\Cotizacion\OfertaBadgeHelper::should_show_new_badge($cotizacion, $user_id, $post)) {
+                        $hay_nueva_oferta = true;
+                        break;
+                    }
+                }
+                if ($hay_nueva_oferta) {
+                    $output .= \GiVendor\GiPlugin\Cotizacion\OfertaBadgeHelper::render_new_badge();
+                }
+
                 // Botón de repetir solicitud - solo para estados históricos o aceptados
                 if (in_array($estado, ['rfq-historic', 'rfq-accepted'])) {
                     // Verificar si el usuario actual es el propietario de la solicitud
                     $current_user_id = get_current_user_id();
                     $solicitud_author_id = get_post_field('post_author', $solicitud_id);
-                    
                     if ($current_user_id === (int)$solicitud_author_id) {
                         error_log(sprintf('[RFQ] Mostrando botón repetir para solicitud #%d con estado %s - Usuario propietario', $solicitud_id, $estado));
                         $output .= '<button type="button" class="rfq-repeat-btn" data-solicitud="' . esc_attr($solicitud_id) . '" title="Repetir solicitud">' . __('Repetir', 'rfq-manager-woocommerce') . '</button>';
@@ -426,14 +437,14 @@ class SolicitudShortcodes {
                 } else {
                     error_log(sprintf('[RFQ] Ocultando botón repetir para solicitud #%d con estado %s', $solicitud_id, $estado));
                 }
-                
+
                 // Botón de cancelar (solo si el handler lo permite)
                 if (\GiVendor\GiPlugin\Solicitud\SolicitudCancelationHandler::can_cancel(wp_get_current_user(), $post)) {
                     $output .= '<button type="button" class="rfq-cancel-btn rfq-cancel-icon" id="rfq-cancel-btn-' . esc_attr($solicitud_id) . '" data-solicitud="' . esc_attr($solicitud_id) . '" title="Cancelar solicitud" style="background: none; border: none; padding: 0; cursor: pointer;">'
                         . '<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="10" fill="#fff"/><path d="M6 6L14 14M14 6L6 14" stroke="#dc3545" stroke-width="3" stroke-linecap="round"/></svg>'
                         . '</button>';
                 }
-                
+
                 $output .= '</td>';
                 $output .= '</tr>';
             }
@@ -659,9 +670,10 @@ class SolicitudShortcodes {
                 $card_class .= ' rfq-cotizacion-historica';
             }
             $output .= '<div class="' . esc_attr($card_class) . '" data-cotizacion-id="' . esc_attr($cotizacion->ID) . '" style="position:relative;">';
-            // Badge Nueva oferta (solo si corresponde)
-            if ($user_id && (int)$solicitud->post_author === $user_id) {
-                $output .= self::render_nueva_oferta_badge($cotizacion->ID, $user_id);
+            // Badge Nueva oferta (usando helper centralizado)
+            if (\GiVendor\GiPlugin\Cotizacion\OfertaBadgeHelper::should_show_new_badge($cotizacion, $user_id, $solicitud)) {
+                $output .= '<span class="rfq-nueva-oferta" data-nueva-oferta="1">' . esc_html__('Nueva oferta', 'rfq-manager-woocommerce') . '</span>';
+                \GiVendor\GiPlugin\Cotizacion\OfertaBadgeHelper::mark_as_seen($cotizacion->ID, $user_id);
             }
             $output .= '<div class="rfq-cotizacion-header">';
             // Bloque proveedor info: logo y detalles (estructura corregida, sin estilos inline)
@@ -713,7 +725,7 @@ class SolicitudShortcodes {
             // Marcar como vista para este usuario
             update_post_meta($cotizacion_id, $meta_key, 1);
             // Renderizar badge
-            return '<span class="rfq-badge-nueva-oferta">' . esc_html__('Nueva oferta', 'rfq-manager-woocommerce') . '</span>';
+            return '<span class="rfq-nueva-oferta">' . esc_html__('Nueva oferta', 'rfq-manager-woocommerce') . '</span>';
         }
         return '';
     }

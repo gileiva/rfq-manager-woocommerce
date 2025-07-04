@@ -230,13 +230,7 @@
     position: static;
     width: 100%;
   }
-  .rfq-nueva-oferta {
-    display: block;
-    width: 100%;
-    padding: 10px 0;
-    border-radius: 999px;
-    text-align: center;
-  }
+
 }
 
 .rfq-solicitud-card {
@@ -303,6 +297,7 @@
     width: 100%;
     padding: 10px 0;
     border-radius: 999px;
+    text-align: center;
   }
 }
 
