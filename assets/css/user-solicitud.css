@@ -1,3 +1,204 @@
+/* =============================================
+   BLOQUE CONSOLIDADO: Cabecera y Countdown RFQ
+   (NO ELIMINAR BLOQUES ANTERIORES HASTA TEST)
+   ============================================= */
+.rfq-solicitud-header {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  background: #fff;
+  padding: 24px 32px;
+  margin-bottom: 24px;
+  align-items: flex-start;
+  flex-wrap: nowrap;
+  border-bottom: 2px solid rgba(239, 239, 239, 1);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  justify-content: space-between;
+}
+.rfq-header-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 4px;
+}
+.rfq-header-item-countdown {
+  display: flex;
+  justify-content: flex-end;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+.rfq-expiry-countdown {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 12px;
+  background: rgba(255, 233, 219, 1);
+  padding: 8px 32px;
+  border-radius: 12px;
+  max-width: 220px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+.rfq-countdown-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: none;
+  border-radius: 0;
+  padding: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  box-shadow: none;
+  min-width: 0;
+  height: auto;
+  line-height: 1;
+}
+.rfq-countdown-value {
+  font-size: 25px;
+  font-weight: 600;
+  color: #ff5b00;
+  margin: 0;
+}
+.rfq-countdown-label {
+  font-size: 12px;
+  color: rgba(160, 162, 163, 1);
+  margin-top: 2px;
+  line-height: 140%;
+}
+.rfq-countdown-separator {
+  font-size: 25px;
+  font-weight: 600;
+  color: #ff5b00;
+  align-self: flex-start;
+  display: flex;
+  height: 100%;
+  line-height: 1;
+}
+.rfq-countdown-block.rfq-expired {
+  background: none;
+  color: #b71c1c;
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  justify-content: center;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+}
+
+@media (max-width: 900px) {
+  .rfq-solicitud-header {
+    gap: 16px;
+    padding: 18px 10px;
+  }
+  .rfq-header-item {
+    min-width: 100px;
+  }
+}
+@media (max-width: 768px) {
+  .rfq-solicitud-header {
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 6px;
+    align-items: stretch;
+  }
+  .rfq-header-item {
+    min-width: 0;
+    width: 100%;
+    flex: none;
+  }
+}
+@media (max-width: 600px) {
+  .rfq-solicitud-header {
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 2px;
+    align-items: stretch;
+  }
+  .rfq-header-item {
+    min-width: 0;
+    width: 100%;
+    flex: none;
+  }
+  .rfq-expiry-countdown {
+    padding: 8px 8px;
+    max-width: 100%;
+  }
+}
+/* =============================================
+   FIN BLOQUE CONSOLIDADO CABECERA RFQ
+   ============================================= */
+/* =============================
+   RFQ - Countdown Expiry Block
+   ============================= */
+.rfq-expiry-countdown {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 12px;
+  background: rgba(255, 233, 219, 1);
+  padding: 8px 32px;
+  border-radius: 12px;
+  max-width: 220px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+.rfq-countdown-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: none;
+  border-radius: 0;
+  padding: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  box-shadow: none;
+  min-width: 0;
+  height: auto;
+  line-height: 1;
+}
+.rfq-countdown-value {
+  font-size: 25px;
+  font-weight: 600;
+  color: #ff5b00;
+  margin: 0;
+}
+.rfq-countdown-label {
+  font-size: 12px;
+  color: rgba(160, 162, 163, 1);
+  margin-top: 2px;
+  line-height: 140%;
+}
+.rfq-countdown-separator {
+  font-size: 25px;
+  font-weight: 600;
+  color: #ff5b00;
+  align-self: flex-start;
+  display: flex;
+  height: 100%;
+  line-height: 1;
+}
+.rfq-countdown-block.rfq-expired {
+  background: none;
+  color: #b71c1c;
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  justify-content: center;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+}
+.rfq-header-item-countdown {
+  display: flex;
+  justify-content: flex-end;
+}
+
 /* ==============================
    RFQ - BADGE NUEVA OFERTA
    ============================== */
@@ -306,20 +507,44 @@
 .rfq-solicitud-header {
   display: flex;
   flex-direction: row;
-  gap: 32px;
+  gap: 12px;
   background: #fff;
   padding: 24px 32px;
   margin-bottom: 24px;
   align-items: flex-start;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   border-bottom: 2px solid rgba(239, 239, 239, 1);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  justify-content: space-between;
 }
 .rfq-header-item {
   display: flex;
   flex-direction: column;
-  min-width: 120px;
-  flex: 1 1 0;
+  min-width: 0;
+  flex: 1 1 auto;
   gap: 4px;
+}
+.rfq-header-item-countdown {
+  display: flex;
+  justify-content: flex-end;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+@media (max-width: 768px) {
+  .rfq-solicitud-header {
+    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 6px;
+    align-items: stretch;
+  }
+  .rfq-header-item {
+    min-width: 0;
+    width: 100%;
+    flex: none;
+  }
 }
 
 /* 3. Cabecera de productos */
@@ -555,31 +780,6 @@
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
-
-/* =============================
-   Cabecera de la vista individual de solicitud
-   ============================= */
-.rfq-solicitud-header {
-  display: flex;
-  flex-direction: row;
-  gap: 32px;
-  background: #fff;
-  padding: 24px 32px;
-  margin-bottom: 24px;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  border-bottom: 2px solid rgba(239, 239, 239, 1);
-}
-
-.rfq-header-item {
-  display: flex;
-  flex-direction: column;
-  min-width: 120px;
-  flex: 1 1 0;
-  gap: 4px;
-}
-
-
 @media (max-width: 900px) {
   .rfq-solicitud-header {
     gap: 16px;
@@ -928,11 +1128,7 @@
     justify-content: center;
   }
 }
-/* Alineación inferior SOLO para los valores de la cabecera de solicitud */
-.rfq-header-item {
-  display: flex;
-  flex-direction: column;
-}
+/* Eliminada definición duplicada de .rfq-header-item */
 @media (max-width: 1199px) and (min-width: 769px) {
   .rfq-filter-header {
     flex-direction: column;
@@ -1087,5 +1283,3 @@
     padding: 16px 0 0 0;
   }
 }
-
-/* Fin estilos específicos para rfq_view_ofertas */

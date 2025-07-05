@@ -59,9 +59,21 @@ class CotizacionShortcodes {
             wp_enqueue_style('woocommerce-general');
             wp_enqueue_style('woocommerce-layout');
         }
+        // wp_enqueue_style(
+        //     'rfq-cotizar-styles',
+        //     plugins_url('assets/css/rfq-cotizar.css', dirname(dirname(__FILE__))),
+        //     ['woocommerce-general', 'woocommerce-layout'],
+        //     '1.0.0'
+        // );
         wp_enqueue_style(
-            'rfq-cotizar-styles',
-            plugins_url('assets/css/rfq-cotizar.css', dirname(dirname(__FILE__))),
+            'user-cotizar-styles',
+            plugins_url('assets/css/user-solicitud.css', dirname(dirname(__FILE__))),
+            ['woocommerce-general', 'woocommerce-layout'],
+            '1.0.0'
+        );
+        wp_enqueue_style(
+            'RFQ Layout',
+            plugins_url('assets/css/rfq-list-layout.css', dirname(dirname(__FILE__))),
             ['woocommerce-general', 'woocommerce-layout'],
             '1.0.0'
         );
@@ -69,6 +81,13 @@ class CotizacionShortcodes {
             'rfq-cotizar-scripts',
             plugins_url('assets/js/rfq-cotizar.js', dirname(dirname(__FILE__))),
             ['jquery'],
+            '1.0.0',
+            true
+        );
+        wp_enqueue_script(
+            'rfq-expiry-timer',
+            plugins_url('assets/js/rfq-expiry-timer.js', dirname(dirname(__FILE__))),
+            [],
             '1.0.0',
             true
         );
@@ -94,25 +113,91 @@ class CotizacionShortcodes {
         }
 
         $slug = get_query_var('rfq_cotizacion_slug');
-        // Buscar la solicitud por slug
         $solicitud = get_page_by_path($slug, OBJECT, 'solicitud');
         if (!$solicitud) {
             return '<div class="rfq-error">' . esc_html__('No se encontró la solicitud para cotizar.', 'rfq-manager-woocommerce') . '</div>';
         }
         $solicitud_id = $solicitud->ID;
-        // Verificar que la solicitud esté en estado válido
         if (!in_array($solicitud->post_status, ['rfq-pending', 'rfq-active'], true)) {
             return '<div class="rfq-error">' . esc_html__('Esta solicitud ya no está disponible para cotizar.', 'rfq-manager-woocommerce') . '</div>';
         }
-        // Buscar cotización del proveedor actual para esta solicitud
         $cotizacion = self::get_provider_cotizacion($solicitud_id);
-        // Obtener los items de la solicitud
         $items = self::get_solicitud_items($solicitud_id);
         if (empty($items)) {
             return '<div class="rfq-error">' . esc_html__('No hay items en esta solicitud.', 'rfq-manager-woocommerce') . '</div>';
         }
-        // Renderizar el formulario para el proveedor
-        return self::render_form($solicitud, $items);
+
+        $output = '';
+        $output .= '<div class="rfq-cotizar-container">';
+        ob_start();
+        echo \GiVendor\GiPlugin\Solicitud\View\SolicitudHeaderRenderer::render($solicitud, 'proveedor', ['show_expiry' => true]);
+        $output .= ob_get_clean();
+
+        // --- BODY (FORMULARIO) ---
+        $output .= '<form id="rfq-cotizar-form" class="rfq-cotizar-form" method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
+        $output .= wp_nonce_field('rfq_cotizar_nonce', 'rfq_cotizar_nonce', true, false);
+        $output .= '<input type="hidden" name="action" value="submit_cotizacion">';
+        $output .= '<input type="hidden" name="solicitud_id" value="' . esc_attr($solicitud_id) . '">';
+
+        $output .= '<div class="rfq-solicitud-items">';
+        $output .= '<div class="rfq-productos-header-row">';
+        $output .= '<div class="rfq-productos-header-col rfq-productos-header-producto">' . __('Producto', 'rfq-manager-woocommerce') . '</div>';
+        $output .= '<div class="rfq-productos-header-col rfq-productos-header-cantidad">' . __('Cantidad', 'rfq-manager-woocommerce') . '</div>';
+        $output .= '<div class="rfq-productos-header-col rfq-productos-header-precio">' . __('Precio', 'rfq-manager-woocommerce') . '</div>';
+        $output .= '<div class="rfq-productos-header-col rfq-productos-header-iva">' . __('IVA', 'rfq-manager-woocommerce') . '</div>';
+        $output .= '<div class="rfq-productos-header-col rfq-productos-header-subtotal">' . __('Subtotal', 'rfq-manager-woocommerce') . '</div>';
+        $output .= '</div>';
+        $output .= '<div class="rfq-productos-wrapper">';
+        $precio_items = $cotizacion ? get_post_meta($cotizacion->ID, '_precio_items', true) : [];
+        foreach ($items as $item) {
+            $product = wc_get_product($item['product_id']);
+            if (!$product) continue;
+            $existing_price = isset($precio_items[$item['product_id']]) ? $precio_items[$item['product_id']]['precio'] : '';
+            $existing_iva = isset($precio_items[$item['product_id']]) ? $precio_items[$item['product_id']]['iva'] : '21';
+            $original_price = is_numeric($existing_price) ? $existing_price : 0;
+            $qty = $item['qty'];
+            $output .= '<div class="rfq-producto-row">';
+            $output .= '<div class="rfq-producto-col rfq-producto-col-producto">' . esc_html($product->get_name()) . '</div>';
+            $output .= '<div class="rfq-producto-col rfq-producto-col-cantidad">' . esc_html($qty) . '</div>';
+            $output .= '<div class="rfq-producto-col rfq-producto-col-precio">';
+            $output .= '<input type="number" name="precios[' . esc_attr($item['product_id']) . ']" class="rfq-precio-input" step="0.01" min="0" required value="' . esc_attr($existing_price) . '" data-original-price="' . esc_attr($original_price) . '">';
+            $output .= '</div>';
+            $output .= '<div class="rfq-producto-col rfq-producto-col-iva">';
+            $output .= '<select name="iva[' . esc_attr($item['product_id']) . ']" class="rfq-iva-select">';
+            $output .= '<option value="4"' . selected($existing_iva, '4', false) . '>4%</option>';
+            $output .= '<option value="10"' . selected($existing_iva, '10', false) . '>10%</option>';
+            $output .= '<option value="21"' . selected($existing_iva, '21', false) . '>21%</option>';
+            $output .= '</select>';
+            $output .= '</div>';
+            $output .= '<div class="rfq-producto-col rfq-producto-col-subtotal">';
+            $output .= '<span class="rfq-subtotal-value">' . ($existing_price ? wc_price($existing_price * $qty) : '0.00') . '</span>';
+            $output .= '</div>';
+            $output .= '</div>';
+        }
+        $output .= '</div>';
+        $output .= '</div>';
+
+        // --- FOOTER ---
+        $output .= '<div class="rfq-solicitud-formulario">';
+        $output .= '<div class="rfq-stock-confirmation">';
+        $output .= '<label class="rfq-stock-checkbox">';
+        $output .= '<input type="checkbox" name="stock_confirmation" required>';
+        $output .= '<span class="rfq-checkbox-label">' . __('Confirmo que tengo en stock todos los productos solicitados.', 'rfq-manager-woocommerce') . '</span>';
+        $output .= '</label>';
+        $output .= '</div>';
+        $total = $cotizacion ? get_post_meta($cotizacion->ID, '_total', true) : '';
+        $output .= '<div class="rfq-total-row">';
+        $output .= '<span class="rfq-total-label">' . __('TOTAL', 'rfq-manager-woocommerce') . '</span>';
+        $output .= '<span class="rfq-total-amount">' . ($total ? wc_price($total) : '0.00') . '</span>';
+        $output .= '</div>';
+        $output .= '<div class="rfq-cotizar-submit">';
+        $output .= '<button type="submit" class="rfq-submit-btn">' . __('Publicar oferta', 'rfq-manager-woocommerce') . '</button>';
+        $output .= '</div>';
+        $output .= '</div>';
+
+        $output .= '</form>';
+        $output .= '</div>';
+        return $output;
     }
 
     /**

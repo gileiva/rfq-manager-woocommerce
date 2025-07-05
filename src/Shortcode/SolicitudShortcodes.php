@@ -19,71 +19,7 @@ namespace GiVendor\GiPlugin\Shortcode;
  * @since      0.1.0
  */
 class SolicitudShortcodes {
-    /**
-     * Renderiza el encabezado visual de la solicitud individual con número, estado, fecha, ciudad y código postal.
-     *
-     * @since 0.1.0
-     * @param int $solicitud_id
-     * @param \WP_Post $solicitud
-     * @return string
-     */
-    private static function render_solicitud_header(int $solicitud_id, \WP_Post $solicitud): string
-    {
-        // Número de solicitud (RFQ-xxxxx)
-        $uuid = get_post_meta($solicitud_id, '_solicitud_uuid', true);
-        $numero = $uuid ? 'RFQ-' . substr(str_replace('-', '', $uuid), -5) : '';
-
-        // Estado
-        // Mapear a clases visuales de la lista (rfq-status-badge rfq-status-pendiente, etc.)
-        $status_map = [
-            'rfq-pending'  => 'rfq-status-badge rfq-status-pendiente',
-            'rfq-active'   => 'rfq-status-badge rfq-status-activa',
-            'rfq-accepted' => 'rfq-status-badge rfq-status-aceptada',
-            'rfq-closed'   => 'rfq-status-badge rfq-status-historica', // No hay closed, usar historica
-            'rfq-historic' => 'rfq-status-badge rfq-status-historica',
-        ];
-        $status_label = self::get_status_label($solicitud->post_status);
-        $status_class = isset($status_map[$solicitud->post_status]) ? $status_map[$solicitud->post_status] : 'rfq-status-badge';
-
-        // Fecha
-        $fecha = get_the_date('', $solicitud_id);
-
-        // Ciudad y CP
-        $ciudad = get_post_meta($solicitud_id, '_solicitud_ciudad', true);
-        $cp = get_post_meta($solicitud_id, '_solicitud_cp', true);
-
-        $html = '<div class="rfq-solicitud-header">';
-        // Número
-        $html .= '<div class="rfq-header-item">'
-            . '<span class="rfq-header-label">Número de solicitud</span>'
-            . '<span class="rfq-header-value">' . esc_html($numero) . '</span>'
-            . '</div>';
-        // Estado
-        $html .= '<div class="rfq-header-item">'
-            . '<span class="rfq-header-label">Status</span>'
-            . '<span class="rfq-header-value">'
-            . '<div class="' . esc_attr($status_class) . '"><span class="rfq-status-dot"></span><span class="rfq-status-text">' . esc_html($status_label) . '</span></div>'
-            . '</span>'
-            . '</div>';
-        // Fecha
-        $html .= '<div class="rfq-header-item">'
-            . '<span class="rfq-header-label">Fecha</span>'
-            . '<span class="rfq-header-value">' . esc_html($fecha) . '</span>'
-            . '</div>';
-        // Ciudad
-        $html .= '<div class="rfq-header-item">'
-            . '<span class="rfq-header-label">Ciudad</span>'
-            . '<span class="rfq-header-value">' . esc_html($ciudad) . '</span>'
-            . '</div>';
-        // Código Postal
-        $html .= '<div class="rfq-header-item">'
-            . '<span class="rfq-header-label">CP</span>'
-            . '<span class="rfq-header-value">' . esc_html($cp) . '</span>'
-            . '</div>';
-        $html .= '</div>';
-
-        return $html;
-    }
+ 
     
     /**
      * Inicializa los shortcodes
@@ -520,7 +456,9 @@ class SolicitudShortcodes {
 
         $output = '';
         $output .= '<div class="rfq-cotizar-container">';
-        $output .= self::render_solicitud_header($solicitud_id, $solicitud);
+        ob_start();
+        echo \GiVendor\GiPlugin\Solicitud\View\SolicitudHeaderRenderer::render($solicitud, 'cliente');
+        $output .= ob_get_clean();
         $output .= '<div class="rfq-solicitud-items">';
         // Fila de encabezado de la grilla de productos
         $output .= '<div class="rfq-productos-header-row">';
