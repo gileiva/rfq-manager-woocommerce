@@ -72,13 +72,16 @@ class SolicitudShortcodes {
         $should_enqueue_modals = false;
         
         global $post;
+        $has_rfq_list = false;
+        $has_rfq_view = false;
+        $has_rfq_ofertas = false;
         if ($post) {
-            // Verificar si el contenido tiene alguno de nuestros shortcodes
             $has_rfq_list = has_shortcode($post->post_content, 'rfq_list');
             $has_rfq_view = has_shortcode($post->post_content, 'rfq_view_solicitud');
-            
-            // Solo encolar modals si es rfq_list o rfq_view_solicitud Y el usuario es customer o subscriber
-            if (($has_rfq_list || $has_rfq_view) && is_user_logged_in()) {
+            $has_rfq_ofertas = has_shortcode($post->post_content, 'rfq_view_ofertas');
+
+            // Solo encolar modals si es rfq_list, rfq_view_solicitud o rfq_view_ofertas Y el usuario es customer, proveedor, admin o subscriber
+            if (($has_rfq_list || $has_rfq_view || $has_rfq_ofertas) && is_user_logged_in()) {
                 $user = wp_get_current_user();
                 if (
                     in_array('customer', $user->roles) ||
@@ -130,6 +133,17 @@ class SolicitudShortcodes {
             RFQ_MANAGER_WOO_VERSION,
             true
         );
+        // Localizar rfqManagerL10n para rfq-manager-scripts si la página tiene el shortcode de ofertas
+        if ($has_rfq_ofertas) {
+            wp_localize_script('rfq-manager-scripts', 'rfqManagerL10n', [
+                'ajaxurl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('rfq_solicitud_status_nonce'),
+                'priceTooHigh' => __('Tu precio inicial fue de %s, no puedes cambiarlo a un precio más alto.', 'rfq-manager-woocommerce'),
+                'stockConfirmation' => __('Debes confirmar que tienes todos los productos en stock para poder enviar la cotización.', 'rfq-manager-woocommerce'),
+                'completePrices' => __('Por favor, complete todos los precios.', 'rfq-manager-woocommerce'),
+                'invalidPrice' => __('El precio debe ser mayor a 0.', 'rfq-manager-woocommerce')
+            ]);
+        }
         // Encolar script de layout dinámico de productos para cualquier usuario que vea rfq_list o rfq_view_solicitud
         if (($has_rfq_list || $has_rfq_view) && is_user_logged_in()) {
             wp_enqueue_script(
