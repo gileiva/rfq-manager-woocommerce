@@ -449,7 +449,8 @@ class SolicitudShortcodes {
             }
         }
 
-        $items = json_decode(get_post_meta($solicitud_id, '_solicitud_items', true), true);
+        // Usar helper centralizado para renderizar los productos en modo solo lectura
+        $items = \GiVendor\GiPlugin\Shortcode\CotizacionShortcodes::get_solicitud_items($solicitud_id);
         if (empty($items)) {
             return '<p class="rfq-error">' . esc_html__('No hay productos en esta solicitud.', 'rfq-manager-woocommerce') . '</p>';
         }
@@ -460,28 +461,8 @@ class SolicitudShortcodes {
         echo \GiVendor\GiPlugin\Solicitud\View\SolicitudHeaderRenderer::render($solicitud, 'cliente');
         $output .= ob_get_clean();
         $output .= '<div class="rfq-solicitud-items">';
-        // Fila de encabezado de la grilla de productos
-        $output .= '<div class="rfq-productos-header-row">';
-        $output .= '<div class="rfq-productos-header-col rfq-productos-header-producto">' . __('Producto', 'rfq-manager-woocommerce') . '</div>';
-        $output .= '<div class="rfq-productos-header-col rfq-productos-header-cantidad">' . __('Cantidad', 'rfq-manager-woocommerce') . '</div>';
-        $output .= '</div>';
-        // Contenedor con scroll y máximo 6 productos visibles
-        $output .= '<div class="rfq-productos-wrapper">';
-        foreach ($items as $item) {
-            $product = wc_get_product($item['product_id']);
-            if (!$product) continue;
-            $thumbnail_url = $product->get_image_id() ? wp_get_attachment_image_url($product->get_image_id(), 'thumbnail') : wc_placeholder_img_src();
-            $product_name = $product->get_name();
-            $qty = $item['qty'];
-            $output .= '<div class="rfq-producto-row">';
-            $output .= '<div class="rfq-producto-col rfq-producto-col-producto">';
-            $output .= '<div class="rfq-producto-thumb"><img src="' . esc_url($thumbnail_url) . '" alt="' . esc_attr($product_name) . '" width="80" height="80"></div>';
-            $output .= '<div class="rfq-producto-nombre">' . esc_html($product_name) . '</div>';
-            $output .= '</div>';
-            $output .= '<div class="rfq-producto-col rfq-producto-col-cantidad">' . esc_html($qty) . '</div>';
-            $output .= '</div>';
-        }
-        $output .= '</div>';
+        // Renderizado centralizado de productos en modo lectura
+        $output .= \GiVendor\GiPlugin\Solicitud\View\SolicitudItemsRenderer::render($solicitud, $items, 'lectura');
         $output .= '</div>';
         $output .= self::render_solicitud_actions($solicitud_id, $solicitud);
         $output .= '</div>';

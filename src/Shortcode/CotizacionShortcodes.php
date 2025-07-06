@@ -127,6 +127,15 @@ class CotizacionShortcodes {
             return '<div class="rfq-error">' . esc_html__('No hay items en esta solicitud.', 'rfq-manager-woocommerce') . '</div>';
         }
 
+        // Merge de valores previos cotizados
+        $precio_items = $cotizacion ? get_post_meta($cotizacion->ID, '_precio_items', true) : [];
+        if (!empty($precio_items)) {
+            if (!class_exists('GiVendor\\GiPlugin\\Cotizacion\\CotizacionItemMerger')) {
+                require_once dirname(__DIR__, 1) . '/Cotizacion/CotizacionItemMerger.php';
+            }
+            $items = \GiVendor\GiPlugin\Cotizacion\CotizacionItemMerger::merge_with_previous_prices($items, $precio_items);
+        }
+
         $output = '';
         $output .= '<div class="rfq-cotizar-container">';
         ob_start();
@@ -140,57 +149,21 @@ class CotizacionShortcodes {
         $output .= '<input type="hidden" name="solicitud_id" value="' . esc_attr($solicitud_id) . '">';
 
         $output .= '<div class="rfq-solicitud-items">';
-        $output .= '<div class="rfq-productos-header-row">';
-        $output .= '<div class="rfq-productos-header-col rfq-productos-header-producto">' . __('Producto', 'rfq-manager-woocommerce') . '</div>';
-        $output .= '<div class="rfq-productos-header-col rfq-productos-header-cantidad">' . __('Cantidad', 'rfq-manager-woocommerce') . '</div>';
-        $output .= '<div class="rfq-productos-header-col rfq-productos-header-precio">' . __('Precio', 'rfq-manager-woocommerce') . '</div>';
-        $output .= '<div class="rfq-productos-header-col rfq-productos-header-iva">' . __('IVA', 'rfq-manager-woocommerce') . '</div>';
-        $output .= '<div class="rfq-productos-header-col rfq-productos-header-subtotal">' . __('Subtotal', 'rfq-manager-woocommerce') . '</div>';
-        $output .= '</div>';
-        $output .= '<div class="rfq-productos-wrapper">';
-        $precio_items = $cotizacion ? get_post_meta($cotizacion->ID, '_precio_items', true) : [];
-        foreach ($items as $item) {
-            $product = wc_get_product($item['product_id']);
-            if (!$product) continue;
-            $existing_price = isset($precio_items[$item['product_id']]) ? $precio_items[$item['product_id']]['precio'] : '';
-            $existing_iva = isset($precio_items[$item['product_id']]) ? $precio_items[$item['product_id']]['iva'] : '21';
-            $original_price = is_numeric($existing_price) ? $existing_price : 0;
-            $qty = $item['qty'];
-            $output .= '<div class="rfq-producto-row">';
-            $output .= '<div class="rfq-producto-col rfq-producto-col-producto">' . esc_html($product->get_name()) . '</div>';
-            $output .= '<div class="rfq-producto-col rfq-producto-col-cantidad">' . esc_html($qty) . '</div>';
-            $output .= '<div class="rfq-producto-col rfq-producto-col-precio">';
-            $output .= '<input type="number" name="precios[' . esc_attr($item['product_id']) . ']" class="rfq-precio-input" step="0.01" min="0" required value="' . esc_attr($existing_price) . '" data-original-price="' . esc_attr($original_price) . '">';
-            $output .= '</div>';
-            $output .= '<div class="rfq-producto-col rfq-producto-col-iva">';
-            $output .= '<select name="iva[' . esc_attr($item['product_id']) . ']" class="rfq-iva-select">';
-            $output .= '<option value="4"' . selected($existing_iva, '4', false) . '>4%</option>';
-            $output .= '<option value="10"' . selected($existing_iva, '10', false) . '>10%</option>';
-            $output .= '<option value="21"' . selected($existing_iva, '21', false) . '>21%</option>';
-            $output .= '</select>';
-            $output .= '</div>';
-            $output .= '<div class="rfq-producto-col rfq-producto-col-subtotal">';
-            $output .= '<span class="rfq-subtotal-value">' . ($existing_price ? wc_price($existing_price * $qty) : '0.00') . '</span>';
-            $output .= '</div>';
-            $output .= '</div>';
-        }
-        $output .= '</div>';
+        ob_start();
+        echo \GiVendor\GiPlugin\Solicitud\View\SolicitudItemsRenderer::render($solicitud, $items, 'formulario', ['original_price' => $precio_items]);
+        $output .= ob_get_clean();
         $output .= '</div>';
 
         // --- FOOTER ---
-        $output .= '<div class="rfq-solicitud-formulario">';
-        $output .= '<div class="rfq-stock-confirmation">';
-        $output .= '<label class="rfq-stock-checkbox">';
-        $output .= '<input type="checkbox" name="stock_confirmation" required>';
-        $output .= '<span class="rfq-checkbox-label">' . __('Confirmo que tengo en stock todos los productos solicitados.', 'rfq-manager-woocommerce') . '</span>';
-        $output .= '</label>';
-        $output .= '</div>';
         $total = $cotizacion ? get_post_meta($cotizacion->ID, '_total', true) : '';
+        $output .= '<div class="rfq-solicitud-formulario">';
         $output .= '<div class="rfq-total-row">';
         $output .= '<span class="rfq-total-label">' . __('TOTAL', 'rfq-manager-woocommerce') . '</span>';
         $output .= '<span class="rfq-total-amount">' . ($total ? wc_price($total) : '0.00') . '</span>';
         $output .= '</div>';
-        $output .= '<div class="rfq-cotizar-submit">';
+        $output .= '<div class="rfq-form-footer">';
+        $output .= '<input type="checkbox" id="rfq-stock-checkbox" name="stock_confirmation" class="rfq-stock-checkbox" required />';
+        $output .= '<label for="rfq-stock-checkbox" class="rfq-stock-checkbox-label">' . __('Confirmo que tengo en stock todos los productos solicitados.', 'rfq-manager-woocommerce') . '</label>';
         $output .= '<button type="submit" class="rfq-submit-btn">' . __('Publicar oferta', 'rfq-manager-woocommerce') . '</button>';
         $output .= '</div>';
         $output .= '</div>';
@@ -265,7 +238,7 @@ class CotizacionShortcodes {
      * @param  int    $solicitud_id ID de la solicitud
      * @return array
      */
-    private static function get_solicitud_items(int $solicitud_id): array {
+    public static function get_solicitud_items(int $solicitud_id): array {
         $items = json_decode(get_post_meta($solicitud_id, '_solicitud_items', true), true);
         return is_array($items) ? $items : [];
     }
@@ -291,7 +264,7 @@ class CotizacionShortcodes {
         $output .= '<input type="hidden" name="solicitud_id" value="' . esc_attr($solicitud->ID) . '">';
 
         // Tabla de productos
-        $output .= self::render_items_table($items, $solicitud->ID);
+        // $output .= self::render_items_table($items, $solicitud->ID);
 
         // Checkbox de confirmación de stock
         $output .= '<div class="rfq-stock-confirmation">';
@@ -351,77 +324,6 @@ class CotizacionShortcodes {
         }
         $output .= '</div>'; // .rfq-cotizar-meta
         $output .= '</div>'; // .rfq-cotizar-header
-        return $output;
-    }
-
-    /**
-     * Renderiza la tabla de items
-     *
-     * @since  0.1.0
-     * @param  array $items Items de la solicitud
-     * @param  int   $solicitud_id ID de la solicitud
-     * @return string
-     */
-    private static function render_items_table(array $items, int $solicitud_id): string {
-        // Obtener cotización existente del proveedor actual
-        $existing_cotizacion = self::get_provider_cotizacion($solicitud_id);
-        $precio_items = $existing_cotizacion ? get_post_meta($existing_cotizacion->ID, '_precio_items', true) : [];
-
-        $output = '<div class="rfq-cotizar-items">';
-        $output .= '<table class="rfq-cotizar-table">';
-        $output .= '<thead><tr>';
-        $output .= '<th>' . __('Producto', 'rfq-manager-woocommerce') . '</th>';
-        $output .= '<th>' . __('Cantidad', 'rfq-manager-woocommerce') . '</th>';
-        $output .= '<th>' . __('Precio Unitario', 'rfq-manager-woocommerce') . '</th>';
-        $output .= '<th>' . __('IVA', 'rfq-manager-woocommerce') . '</th>';
-        $output .= '<th>' . __('Subtotal', 'rfq-manager-woocommerce') . '</th>';
-        $output .= '</tr></thead><tbody>';
-
-        foreach ($items as $item) {
-            $product = wc_get_product($item['product_id']);
-            if (!$product) continue;
-
-            $existing_price = isset($precio_items[$item['product_id']]) ? $precio_items[$item['product_id']]['precio'] : '';
-            $existing_iva = isset($precio_items[$item['product_id']]) ? $precio_items[$item['product_id']]['iva'] : '21';
-            $original_price = is_numeric($existing_price) ? $existing_price : 0;
-
-            $output .= '<tr>';
-            $output .= '<td>' . esc_html($product->get_name()) . '</td>';
-            $output .= '<td>' . esc_html($item['qty']) . '</td>';
-            $output .= '<td>';
-            $output .= '<input type="number" name="precios[' . esc_attr($item['product_id']) . ']" 
-                        class="rfq-precio-input" step="0.01" min="0" required
-                        value="' . esc_attr($existing_price) . '"
-                        data-original-price="' . esc_attr($original_price) . '">';
-            $output .= '</td>';
-            $output .= '<td>';
-            $output .= '<select name="iva[' . esc_attr($item['product_id']) . ']" class="rfq-iva-select">';
-            $output .= '<option value="4"' . selected($existing_iva, '4', false) . '>4%</option>';
-            $output .= '<option value="10"' . selected($existing_iva, '10', false) . '>10%</option>';
-            $output .= '<option value="21"' . selected($existing_iva, '21', false) . '>21%</option>';
-            $output .= '</select>';
-            $output .= '</td>';
-            $output .= '<td class="rfq-subtotal">' . ($existing_price ? wc_price($existing_price * $item['qty']) : '0.00') . '</td>';
-            $output .= '</tr>';
-        }
-
-        $output .= '</tbody>';
-        $output .= '<tfoot>';
-        $output .= '<tr class="rfq-total-row">';
-        $output .= '<td colspan="4" class="rfq-total-label">' . __('Total', 'rfq-manager-woocommerce') . '</td>';
-        $output .= '<td class="rfq-total-amount">' . ($existing_cotizacion ? wc_price(get_post_meta($existing_cotizacion->ID, '_total', true)) : '0.00') . '</td>';
-        $output .= '</tr>';
-        $output .= '</tfoot>';
-        $output .= '</table>';
-
-        if ($existing_cotizacion) {
-            $output .= '<div class="rfq-notice">';
-            $output .= '<p>' . __('Puedes editar tu cotización actual. Recuerda que solo puedes bajar los precios, no subirlos.', 'rfq-manager-woocommerce') . '</p>';
-            $output .= '</div>';
-        }
-
-        $output .= '</div>';
-
         return $output;
     }
 
@@ -516,13 +418,6 @@ class CotizacionShortcodes {
             // Formatear el precio manualmente
             $total_formatted = number_format((float)$total, 2, ',', '.') . ' €';
 
-            // error_log(sprintf(
-            //     'RFQ - Cotización #%d - Proveedor: %s, Total meta: %s, Total formateado: %s',
-            //     $cotizacion->ID,
-            //     $nombre_proveedor,
-            //     $total,
-            //     $total_formatted
-            // ));
 
             $output .= '<tr>';
             $output .= '<td>' . $nombre_proveedor . '</td>';

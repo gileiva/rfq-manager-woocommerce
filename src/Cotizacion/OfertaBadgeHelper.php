@@ -23,6 +23,6 @@ class OfertaBadgeHelper
     }
 
     public static function render_new_badge(): string {
-        return '<span class="rfq-badge-nueva-oferta">' . esc_html__('Nueva oferta', 'rfq-manager-woocommerce') . '</span>';
+        return '<span class="rfq-nueva-oferta">' . esc_html__('Nueva oferta', 'rfq-manager-woocommerce') . '</span>';
     }
 }

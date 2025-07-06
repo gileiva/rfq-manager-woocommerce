@@ -1,13 +1,12 @@
 /* =============================================
-   BLOQUE CONSOLIDADO: Cabecera y Countdown RFQ
-   (NO ELIMINAR BLOQUES ANTERIORES HASTA TEST)
+    Cabecera y Countdown RFQ
    ============================================= */
 .rfq-solicitud-header {
   display: flex;
   flex-direction: row;
   gap: 16px;
   background: #fff;
-  padding: 24px 32px;
+  padding: 24px 0px;
   margin-bottom: 24px;
   align-items: flex-start;
   flex-wrap: nowrap;
@@ -433,7 +432,6 @@
    ===================== */
 
 
-
 .rfq-cotizacion-header {
   flex: 1;
   display: flex;
@@ -504,21 +502,7 @@
 
 
 /* 2. Cabecera de solicitud */
-.rfq-solicitud-header {
-  display: flex;
-  flex-direction: row;
-  gap: 12px;
-  background: #fff;
-  padding: 24px 32px;
-  margin-bottom: 24px;
-  align-items: flex-start;
-  flex-wrap: nowrap;
-  border-bottom: 2px solid rgba(239, 239, 239, 1);
-  min-width: 0;
-  max-width: 100%;
-  box-sizing: border-box;
-  justify-content: space-between;
-}
+
 .rfq-header-item {
   display: flex;
   flex-direction: column;
@@ -579,98 +563,7 @@
   text-align: right;
 }
 
-/* 4. Listado de productos */
-.rfq-productos-wrapper {
-  max-height: 528px; /* 6 filas de 88px (80px thumb + 8px gap) */
-  overflow-y: auto;
-  margin-bottom: 40px;
-  padding: 0 32px;
-  box-sizing: border-box;
-  scrollbar-width: thin;
-}
-.rfq-productos-wrapper::-webkit-scrollbar {
-  width: 8px;
-  background: transparent;
-}
-.rfq-productos-wrapper::-webkit-scrollbar-thumb {
-  background: #e0e0e0;
-  border-radius: 8px;
-}
-.rfq-producto-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  min-height: 88px;
-  padding: 8px 0;
-}
-.rfq-producto-col {
-  display: flex;
-  align-items: center;
-  min-height: 80px;
-}
-.rfq-producto-col-producto {
-  flex: 0 0 80%;
-  gap: 16px;
-}
-.rfq-producto-thumb {
-  width: 80px;
-  height: 80px;
-  flex-shrink: 0;
-  border-radius: 8px;
-  overflow: hidden;
-  background: #fafbfc;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.rfq-producto-thumb img {
-  width: 80px;
-  height: 80px;
-  object-fit: cover;
-  border-radius: 8px;
-  display: block;
-}
-.rfq-producto-nombre {
-  font-size: 16px;
-  font-weight: 500;
-  color: #222;
-  line-height: 1.3;
-  word-break: break-word;
-}
-.rfq-producto-col-cantidad {
-  flex: 0 0 20%;
-  justify-content: flex-end;
-  text-align: right;
-  font-size: 16px;
-  font-weight: 500;
-  color: #222;
-}
 
-/* 5. Botón Cancelar y Acciones */
-.rfq-solicitud-actions-wrapper {
-  margin-top: 24px;
-  display: flex;
-  justify-content: flex-end;
-}
-/* Botón cancelar como enlace simple */
-.rfq-cancel-btn,
-.rfq-cancel-link {
-  background: none !important;
-  border: none !important;
-  padding: 0 !important;
-  color: var(--e-global-color-accent) !important;
-  text-decoration: none;
-  font-weight: 500;
-  font-size: 14px;
-  line-height: 1.5;
-  cursor: pointer;
-  display: inline-block;
-  box-shadow: none !important;
-}
-.rfq-cancel-btn:hover,
-.rfq-cancel-link:hover {
-  text-decoration: underline;
-}
 
 /* 6. Cotizaciones recibidas */
 
@@ -1281,5 +1174,470 @@
   }
   .rfq-cotizacion-header {
     padding: 16px 0 0 0;
+  }
+}
+/* =============================
+   Bloque de productos RFQ (unificado para lectura y formulario)
+   ============================= */
+/* .rfq-productos-wrapper {
+  max-height: 528px;
+  overflow-y: auto;
+  margin-bottom: 40px;
+  padding: 0 32px;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+}
+.rfq-productos-wrapper::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+.rfq-productos-wrapper::-webkit-scrollbar-thumb {
+  background: #e0e0e0;
+  border-radius: 8px;
+} */
+/* Cabecera de productos alineada y sin desborde */
+.rfq-productos-header-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  width: 100%;
+  padding: 0 0 12px 0; /* Sin padding lateral, pegado al borde */
+  box-sizing: border-box;
+  border: none;
+  gap: 0;
+}
+.rfq-productos-header-col {
+  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(160, 162, 163, 1);
+  line-height: 140%;
+  letter-spacing: 0.5px;
+  padding: 0 0 0 0; /* Sin padding lateral, pegado al borde */
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  box-sizing: border-box;
+  min-width: 0;
+  white-space: nowrap;
+}
+.rfq-productos-header-producto { flex: 1 1 40%; min-width: 0; }
+.rfq-productos-header-cantidad { flex: 0 0 12%; min-width: 40px; justify-content: flex-start; text-align: right; }
+.rfq-productos-header-precio { flex: 0 0 16%; min-width: 70px; justify-content: flex-start; text-align: right; }
+.rfq-productos-header-iva { flex: 0 0 16%; min-width: 60px; justify-content: flex-start; text-align: right; }
+.rfq-productos-header-subtotal { flex: 0 0 16%; min-width: 70px; justify-content: flex-start; text-align: right; }
+
+.rfq-producto-col {
+  display: flex;
+  align-items: center;
+  min-height: 80px;
+  box-sizing: border-box;
+  padding: 0 0 0 0; /* Sin padding lateral, pegado al borde */
+}
+/* Alineación exacta de columnas de items con cabecera */
+.rfq-producto-col-producto { flex: 1 1 40%; min-width: 0; gap: 12px; justify-content: flex-start; text-align: left; }
+.rfq-producto-col-cantidad { flex: 0 0 12%; min-width: 40px; justify-content: flex-start; text-align: right; align-items: center; }
+.rfq-producto-col-precio { flex: 0 0 16%; min-width: 70px; justify-content: flex-start; text-align: right; align-items: center; }
+.rfq-producto-col-iva { flex: 0 0 16%; min-width: 60px; justify-content: flex-start; text-align: right; align-items: center; }
+.rfq-producto-col-subtotal { flex: 0 0 16%; min-width: 70px; justify-content: flex-start; text-align: right; align-items: center; }
+/* Input de precio más ancho */
+.rfq-input-precio {
+  width: 120px;
+  min-width: 120px;
+  max-width: 120px;
+  box-sizing: border-box;
+  text-align: right;
+}
+/* Dropdown de IVA más ancho y con chevron accent */
+/* Dropdown de IVA más ancho y con chevron accent grande */
+.rfq-input-iva {
+  width: 120px;
+  min-width: 120px;
+  max-width: 120px;
+  box-sizing: border-box;
+  text-align: right;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background: #fff url('data:image/svg+xml;utf8,<svg fill="%23ff5b00" height="48" viewBox="0 0 20 20" width="48" xmlns="http://www.w3.org/2000/svg"><path d="M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z"/></svg>') no-repeat right 6px center/28px 28px;
+  padding-right: 38px;
+  border: 1px solid #ccc;
+}
+/* Asegura que el chevron se vea bien en todos los navegadores */
+.rfq-input-iva:focus {
+  border-color: var(--e-global-color-accent, #ff5b00);
+  outline: none;
+}
+.rfq-output-subtotal {
+  width: 100%;
+  min-width: 0;
+  max-width: 90px;
+  box-sizing: border-box;
+  text-align: left;
+  display: block;
+}
+
+/* 4. Listado de productos */
+.rfq-productos-wrapper {
+  max-height: 528px; /* 6 filas de 88px (80px thumb + 8px gap) */
+  overflow-y: auto;
+  margin-bottom: 40px;
+  padding: 0;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+}
+.rfq-productos-wrapper::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+.rfq-productos-wrapper::-webkit-scrollbar-thumb {
+  background: #e0e0e0;
+  border-radius: 8px;
+}
+.rfq-producto-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  min-height: 88px;
+  padding: 8px 0;
+  width: 100%;
+  min-height: 80px;
+  box-sizing: border-box;
+}
+
+.rfq-producto-thumb {
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fafbfc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rfq-producto-thumb img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
+.rfq-producto-nombre {
+  font-size: 16px;
+  font-weight: 500;
+  color: #222;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+
+
+/* 5. Botón Cancelar y Acciones */
+.rfq-solicitud-actions-wrapper {
+  margin-top: 24px;
+  display: flex;
+  justify-content: flex-end;
+}
+/* Botón cancelar como enlace simple */
+.rfq-cancel-btn,
+.rfq-cancel-link {
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  color: var(--e-global-color-accent) !important;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.5;
+  cursor: pointer;
+  display: inline-block;
+  box-shadow: none !important;
+}
+.rfq-cancel-btn:hover,
+.rfq-cancel-link:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 900px) {
+  .rfq-productos-header-row { padding: 0 0 10px 0; }
+  .rfq-productos-header-col { font-size: 13px; }
+  .rfq-productos-header-producto { flex: 1 1 40%; }
+  .rfq-productos-header-cantidad { flex: 0 0 12%; }
+  .rfq-productos-header-precio { flex: 0 0 16%; }
+  .rfq-productos-header-iva { flex: 0 0 16%; }
+  .rfq-productos-header-subtotal { flex: 0 0 16%; }
+  .rfq-productos-wrapper { padding: 0 0; max-height: 480px; }
+  .rfq-producto-row { min-height: 80px; }
+  .rfq-producto-thumb, .rfq-producto-thumb img { width: 64px; height: 64px; }
+  .rfq-producto-nombre { font-size: 14px; }
+  .rfq-producto-col-producto { flex: 1 1 40%; }
+  .rfq-producto-col-cantidad { flex: 0 0 12%; }
+  .rfq-producto-col-precio { flex: 0 0 16%; }
+  .rfq-producto-col-iva { flex: 0 0 16%; }
+  .rfq-producto-col-subtotal { flex: 0 0 16%; }
+}
+@media (max-width: 768px) {
+  .rfq-productos-header-row {
+    padding: 0 0 8px 0;
+  }
+  .rfq-producto-col,
+  .rfq-producto-col-producto,
+  .rfq-producto-col-cantidad,
+  .rfq-producto-col-precio,
+  .rfq-producto-col-iva,
+  .rfq-producto-col-subtotal {
+    flex: 0 0 100%;
+    min-width: 0;
+    margin-bottom: 6px;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  .rfq-producto-row { flex-wrap: wrap; }
+  .rfq-producto-thumb, .rfq-producto-thumb img { width: 48px; height: 48px; }
+}
+
+/* === Mensaje de error debajo de la fila de producto === */
+.rfq-producto-error-row {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background: #fff6f6;
+  border-left: 4px solid #d32f2f;
+  box-sizing: border-box;
+  margin: 0 0 8px 0;
+  padding: 0;
+  min-height: 0;
+}
+.error-message,
+.rfq-producto-error-row .error-message {
+  color: #d32f2f;
+  background: none;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 10px 18px 10px 12px;
+  margin: 0;
+  line-height: 1.4;
+  width: 100%;
+  border-radius: 0 4px 4px 0;
+  box-sizing: border-box;
+  display: block;
+}
+@media (max-width: 768px) {
+  .rfq-producto-error-row .error-message {
+    font-size: 13px;
+    padding: 8px 8px 8px 8px;
+  }
+  .rfq-producto-error-row {
+    padding: 0;
+    margin-bottom: 6px;
+  }
+}
+
+/* === RFQ FORM FOOTER: TOTAL ROW & ACTIONS === */
+.rfq-solicitud-items {
+  border-bottom: 2px solid rgba(239, 239, 239, 1);
+}
+.rfq-total-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 18px 0 12px 0;
+  margin-bottom: 18px;
+  font-size: 18px;
+  font-weight: 600;
+  background: none;
+  box-sizing: border-box;
+}
+.rfq-total-label {
+  color: #222;
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: 0.5px;
+  text-align: left;
+}
+.rfq-total-amount {  
+  font-weight: 600;
+  font-size: 20px;
+  text-align: right;
+  min-width: 90px;
+  letter-spacing: 0.5px;
+}
+
+.rfq-form-footer {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 24px;
+  margin-top: 18px;
+  margin-bottom: 0;
+  box-sizing: border-box;
+}
+.rfq-form-footer .rfq-stock-checkbox-label {
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+  font-weight: 400;
+  color: rgba(160, 162, 163, 1);
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+.rfq-form-footer .rfq-stock-checkbox {
+  /* Oculta el checkbox nativo pero accesible */
+  position: absolute;
+  opacity: 0;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  z-index: 1;
+}
+.rfq-form-footer .rfq-stock-checkbox-label {
+  position: relative;
+  padding-left: 30px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Custom RFQ stock checkbox*/
+.rfq-form-footer .rfq-stock-checkbox-label::before {
+  content: '';
+  display: inline-block;
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  border: 2px solid #ff5b00;
+  border-radius: 4px;
+  background: #fff;
+  box-sizing: border-box;
+  transition: background 0.2s, border-color 0.2s;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.rfq-form-footer .rfq-stock-checkbox:checked + .rfq-stock-checkbox-label::before {
+  background: #ff5b00;
+  border-color: #ff5b00;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.rfq-form-footer .rfq-stock-checkbox:focus + .rfq-stock-checkbox-label::before,
+.rfq-form-footer .rfq-stock-checkbox:active + .rfq-stock-checkbox-label::before {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: #ff5b00;
+}
+.rfq-form-footer .rfq-stock-checkbox-label:active::before {
+  outline: none !important;
+  box-shadow: none !important;
+}
+/* Centrado perfecto del checkmark dentro del box (solo una regla, sin duplicados ni vacíos) */
+.rfq-form-footer .rfq-stock-checkbox-label::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.rfq-form-footer .rfq-stock-checkbox:checked + .rfq-stock-checkbox-label::after {
+  opacity: 1;
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid #fff;
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
+  box-sizing: border-box;
+}
+.rfq-form-footer .rfq-stock-checkbox:checked + .rfq-stock-checkbox-label::after {
+  /* Dibuja el checkmark SVG centrado */
+  background: none;
+}
+.rfq-form-footer .rfq-stock-checkbox:checked + .rfq-stock-checkbox-label::after {
+  /* Dibuja el checkmark usando border para el checkmark blanco */
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 25%;
+  width: 5px;
+  height: 10px;
+  border: solid #fff;
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
+  box-sizing: border-box;
+  opacity: 1;
+}
+.rfq-form-footer .rfq-stock-checkbox:checked + .rfq-stock-checkbox-label::after {
+  opacity: 1;
+}
+.rfq-form-footer .rfq-stock-checkbox:focus-visible + .rfq-stock-checkbox-label::before {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.rfq-form-footer .rfq-stock-checkbox:active + .rfq-stock-checkbox-label::before {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.rfq-form-footer .rfq-submit-btn {
+  padding: 12px 24px;
+  gap: 8px;
+  border-radius: 30px;
+}
+.rfq-form-footer .rfq-submit-btn:disabled {
+  background: #ccc;
+  color: #fff;
+  cursor: not-allowed;
+  box-shadow: none;
+  border: none;
+}
+
+@media (max-width: 700px) {
+  .rfq-total-row {
+    font-size: 16px;
+    padding: 12px 0 8px 0;
+    margin-bottom: 12px;
+  }
+  .rfq-total-label {
+    font-size: 16px;
+  }
+  .rfq-total-amount {
+    font-size: 17px;
+    min-width: 70px;
+  }
+  .rfq-form-footer {
+    gap: 12px;
+  }
+}
+@media (max-width: 600px) {
+  .rfq-form-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-top: 14px;
+  }
+  .rfq-form-footer .rfq-stock-checkbox-label {
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+  .rfq-form-footer .rfq-submit-btn {
+    width: 100%;
+    min-width: 0;
+    padding: 12px 0;
+    font-size: 15px;
   }
 }
