@@ -284,6 +284,20 @@
   border-bottom-left-radius: 20px;
   font-size: 14px;
 }
+.rfq-cotizacion-card .rfq-nueva-oferta {
+  position: absolute;
+  top: 15px;
+  left: 0;
+  background-color: rgba(255, 233, 219, 1);
+  color: var(--e-global-color-accent, #ff5722);
+  font-weight: 500;
+  padding: 6px 14px;
+  border-top-left-radius: 20px;
+  border-bottom-left-radius: 20px;
+  font-size: 14px;
+  z-index: 2;
+}
+
 @media (max-width: 768px) {
   .rfq-header-right {
     position: static;

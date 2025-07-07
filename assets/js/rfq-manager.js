@@ -137,17 +137,21 @@ jQuery(document).ready(function($) {
         var cotizacionId = $(this).data('cotizacion-id');
         console.log('[RFQ] Click en botón Aceptar cotización. ID:', cotizacionId);
         window._rfqCotizacionToAccept = cotizacionId;
+        // Guardar referencia a la tarjeta para actualizar luego
+        window._rfqCardToAccept = $(this).closest('.rfq-cotizacion-card');
         $('#rfq-aceptar-modal').fadeIn();
     });
     $(document).on('click', '#rfq-aceptar-modal .rfq-modal-cancel', function() {
         window._rfqCotizacionToAccept = null;
+        window._rfqCardToAccept = null;
         $('#rfq-aceptar-modal').fadeOut();
     });
     $(document).on('click', '#rfq-aceptar-modal .rfq-modal-confirm-aceptar', function() {
         var cotizacionId = window._rfqCotizacionToAccept;
-        if (!cotizacionId) return;
+        var $card = window._rfqCardToAccept;
+        if (!cotizacionId || !$card || $card.length === 0) return;
         console.log('[RFQ] Confirmando aceptación de cotización. ID:', cotizacionId);
-        var $btn = $('.rfq-aceptar-cotizacion-btn[data-cotizacion-id="' + cotizacionId + '"]');
+        var $btn = $card.find('.rfq-aceptar-cotizacion-btn[data-cotizacion-id="' + cotizacionId + '"]');
         $btn.prop('disabled', true).text('Aceptando...');
         $(this).prop('disabled', true);
         $.post(rfqManagerL10n.ajaxurl, {
@@ -155,30 +159,37 @@ jQuery(document).ready(function($) {
             cotizacion_id: cotizacionId,
             nonce: rfqManagerL10n.nonce
         }, function(resp) {
+            console.log('[RFQ][DEBUG] Respuesta AJAX accept_quote:', resp);
             if (resp.success) {
                 console.log('[RFQ] Cotización aceptada correctamente. ID:', cotizacionId);
-                // Resaltar la fila aceptada
-                var $row = $('tr[data-cotizacion-id="' + cotizacionId + '"]');
-                $row.removeClass('rfq-cotizacion-no-aceptada').addClass('rfq-cotizacion-aceptada');
-                $row.find('.rfq-aceptar-cotizacion-btn').prop('disabled', true).css({'background':'#4caf50','color':'#fff','cursor':'default'}).text('Aceptada');
-                // Mostrar botón pagar
-                if ($row.find('.rfq-pagar-cotizacion-btn').length === 0) {
-                    $row.find('td:last').append(' <button type="button" class="button rfq-pagar-cotizacion-btn" data-cotizacion-id="' + cotizacionId + '" onclick="window.location.href=\'#\';">Pagar</button>');
+                // Marcar la tarjeta aceptada
+                $card.removeClass('rfq-cotizacion-no-aceptada').addClass('rfq-cotizacion-aceptada');
+                $btn.prop('disabled', true)
+                    .css({'background':'#4caf50','color':'#fff','cursor':'default'})
+                    .text('Aceptada');
+                // Mostrar botón pagar si no existe
+                if ($card.find('.rfq-pagar-cotizacion-btn').length === 0) {
+                    $card.find('.rfq-cotizacion-actions').append(' <button type="button" class="button rfq-pagar-cotizacion-btn" data-cotizacion-id="' + cotizacionId + '">' + (rfqManagerL10n.quotePayText || 'Pagar') + '</button>');
                 }
-                // Bajar opacidad y ocultar botones aceptar de las demás
-                $('.rfq-cotizaciones-table tr').each(function() {
-                    var $tr = $(this);
-                    if ($tr.data('cotizacion-id') != cotizacionId) {
-                        $tr.removeClass('rfq-cotizacion-aceptada').addClass('rfq-cotizacion-no-aceptada');
-                        $tr.find('.rfq-aceptar-cotizacion-btn').hide();
+                // Ocultar botones aceptar de las demás tarjetas
+                $('.rfq-cotizacion-card').each(function() {
+                    var $otherCard = $(this);
+                    if ($otherCard.data('cotizacion-id') != cotizacionId) {
+                        $otherCard.removeClass('rfq-cotizacion-aceptada').addClass('rfq-cotizacion-no-aceptada');
+                        $otherCard.find('.rfq-aceptar-cotizacion-btn').hide();
                     }
                 });
                 // Cerrar modal y resetear botones
                 $('#rfq-aceptar-modal').fadeOut();
                 $('#rfq-aceptar-modal .rfq-modal-confirm-aceptar').prop('disabled', false);
+                window._rfqCotizacionToAccept = null;
+                window._rfqCardToAccept = null;
             } else {
-                alert((resp.data && resp.data.msg) ? resp.data.msg : 'Error inesperado');
+                // Mostrar mensaje de error real si existe
+                var msg = (resp.data && (resp.data.message || resp.data.msg)) ? (resp.data.message || resp.data.msg) : 'Error inesperado';
+                console.error('[RFQ][DEBUG] Error al aceptar cotización:', msg, resp);
                 $btn.prop('disabled', false).text('Aceptar');
+                alert(msg);
                 $('#rfq-aceptar-modal .rfq-modal-confirm-aceptar').prop('disabled', false);
             }
         });

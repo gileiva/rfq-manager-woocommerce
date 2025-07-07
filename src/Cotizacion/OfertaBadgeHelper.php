@@ -14,12 +14,29 @@ class OfertaBadgeHelper
         if (!\GiVendor\GiPlugin\Solicitud\SolicitudStatusHelper::is_pending($solicitud)
             && !\GiVendor\GiPlugin\Solicitud\SolicitudStatusHelper::is_active($solicitud)) return false;
         $meta_key = '_oferta_vista_' . $user_id;
-        return !get_post_meta($cotizacion->ID, $meta_key, true);
+        $visto_timestamp = (int) get_post_meta($cotizacion->ID, $meta_key, true);
+        $historial = get_post_meta($cotizacion->ID, '_cotizacion_historial', true);
+        if (!is_array($historial) || empty($historial)) {
+            // Si no hay historial, no mostrar badge por seguridad
+            return false;
+        }
+        // Ordenar por fecha descendente y tomar la última
+        usort($historial, function($a, $b) {
+            return strtotime($b['fecha']) - strtotime($a['fecha']);
+        });
+        $ultimo_cambio = $historial[0];
+        $historial_timestamp = isset($ultimo_cambio['fecha']) ? strtotime($ultimo_cambio['fecha']) : 0;
+        // Mostrar badge si nunca fue vista o si la cotización fue modificada después de la última vista
+        if (!$visto_timestamp || $historial_timestamp > $visto_timestamp) {
+            return true;
+        }
+        return false;
     }
 
     public static function mark_as_seen($cotizacion_id, $user_id): void {
         $meta_key = '_oferta_vista_' . $user_id;
-        update_post_meta($cotizacion_id, $meta_key, 1);
+        // Guardar el timestamp actual como valor de visto
+        update_post_meta($cotizacion_id, $meta_key, current_time('timestamp'));
     }
 
     public static function render_new_badge(): string {

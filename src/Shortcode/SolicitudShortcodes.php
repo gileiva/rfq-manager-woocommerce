@@ -551,6 +551,20 @@ class SolicitudShortcodes {
      * @param  \WP_Post $solicitud
      * @return string
      */
+    private static function render_accept_modal(): string
+    {
+        // Modal de confirmación para aceptar cotización, oculto por defecto (sin display:flex)
+        return '<div id="rfq-aceptar-modal" class="rfq-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;">'
+            . '<div class="rfq-modal-content" style="background:#fff;padding:2rem;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);max-width:500px;width:90%;margin:auto;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);">'
+            . '<p style="margin:0 0 1.5rem;color:#495057;">' . esc_html__('¿Estás seguro de que deseas aceptar esta cotización? Esta acción no se puede deshacer.', 'rfq-manager-woocommerce') . '</p>'
+            . '<div class="rfq-modal-buttons" style="display:flex;justify-content:flex-end;gap:1rem;">'
+            . '<button type="button" class="rfq-modal-confirm-aceptar button button-primary" style="padding:0.75rem 1.5rem;border:none;border-radius:4px;font-size:0.875rem;font-weight:500;cursor:pointer;background-color:#4caf50;color:#fff;">' . esc_html__('Sí, aceptar', 'rfq-manager-woocommerce') . '</button>'
+            . '<button type="button" class="rfq-modal-cancel button" style="padding:0.75rem 1.5rem;border:none;border-radius:4px;font-size:0.875rem;font-weight:500;cursor:pointer;background-color:#e9ecef;color:#495057;">' . esc_html__('No, volver', 'rfq-manager-woocommerce') . '</button>'
+            . '</div>'
+            . '</div>'
+            . '</div>';
+    }
+
     private static function render_solicitud_cotizaciones(int $solicitud_id, \WP_Post $solicitud): string
     {
         $cotizaciones = get_posts([
@@ -630,16 +644,19 @@ class SolicitudShortcodes {
             $output .= '<div class="rfq-cotizacion-actions">';
             $output .= '<h3 class="rfq-cotizacion-total">' . esc_html(number_format((float)$total, 2, ',', '.') . ' €') . '</h3>';
             if ($is_accepted) {
-                $output .= '<button type="button" class="button rfq-aceptar-cotizacion-btn" disabled style="background:rgba(239, 239, 239, 1);color:#fff;cursor:default;">' . __('Aceptada', 'rfq-manager-woocommerce') . '</button>';
+                $output .= '<button type="button" class="button rfq-aceptar-cotizacion-btn" disabled style="background:rgba(239,239,239,1);color:#fff;cursor:default;">' . __('Aceptada', 'rfq-manager-woocommerce') . '</button>';
                 $output .= ' <button type="button" class="button rfq-pagar-cotizacion-btn" data-cotizacion-id="' . esc_attr($cotizacion->ID) . '">' . __('Pagar', 'rfq-manager-woocommerce') . '</button>';
-            } elseif ($solicitud->post_status !== 'rfq-historic' && $solicitud->post_status !== 'rfq-closed' && $solicitud->post_status !== 'rfq-accepted' && !$is_historic && !$cotizacion_aceptada_id) {
+            } elseif (\GiVendor\GiPlugin\Solicitud\SolicitudAcceptHandler::can_accept(wp_get_current_user(), $solicitud, $cotizacion)) {
                 $output .= '<button type="button" class="rfq-aceptar-cotizacion-btn button" data-cotizacion-id="' . esc_attr($cotizacion->ID) . '">' . __('Aceptar oferta', 'rfq-manager-woocommerce') . '</button>';
             }
+
             $output .= '</div>'; // rfq-cotizacion-actions
 
             $output .= '</div>'; // rfq-cotizacion-card
         }
         $output .= '</div>';
+        // Insertar el modal de confirmación solo si hay cotizaciones
+        $output .= self::render_accept_modal();
         return $output;
     }
 
@@ -702,90 +719,32 @@ class SolicitudShortcodes {
      * @return void
      */
     public static function ajax_accept_quote(): void {
-        // Verificar nonce primero
+        // Validar nonce
         if (!isset($_POST['nonce']) || !wp_verify_nonce(sanitize_text_field($_POST['nonce']), 'rfq_solicitud_status_nonce')) {
-            wp_send_json_error(['msg' => __('Error de seguridad. Por favor, recarga la página.', 'rfq-manager-woocommerce')]);
+            wp_send_json_error(['message' => __('Error de seguridad. Por favor, recarga la página.', 'rfq-manager-woocommerce')]);
         }
-        
-        // Verificar que el usuario esté logueado
         if (!is_user_logged_in()) {
-            wp_send_json_error(['msg' => __('Debes iniciar sesión para aceptar una cotización.', 'rfq-manager-woocommerce')]);
+            wp_send_json_error(['message' => __('Debes iniciar sesión para aceptar una cotización.', 'rfq-manager-woocommerce')]);
         }
-        
-        // Obtener y sanitizar datos
-        $user_id = get_current_user_id();
         $cotizacion_id = isset($_POST['cotizacion_id']) ? absint($_POST['cotizacion_id']) : 0;
-        
         if (!$cotizacion_id) {
-            wp_send_json_error(['msg' => __('ID de cotización inválido.', 'rfq-manager-woocommerce')]);
+            wp_send_json_error(['message' => __('ID de cotización inválido.', 'rfq-manager-woocommerce')]);
         }
-        
-        // Verificar que la cotización existe y es del tipo correcto
         $cotizacion = get_post($cotizacion_id);
         if (!$cotizacion || $cotizacion->post_type !== 'cotizacion') {
-            wp_send_json_error(['msg' => __('Cotización no encontrada.', 'rfq-manager-woocommerce')]);
+            wp_send_json_error(['message' => __('Cotización no encontrada.', 'rfq-manager-woocommerce')]);
         }
-        
-        // Verificar que el usuario sea el autor de la solicitud asociada
         $solicitud_id = get_post_meta($cotizacion_id, '_solicitud_parent', true);
         $solicitud = get_post($solicitud_id);
-        
-        if (!$solicitud || (int)$solicitud->post_author !== (int)$user_id) {
-            wp_send_json_error(['msg' => __('No tienes permisos para aceptar esta cotización.', 'rfq-manager-woocommerce')]);
+        $user = wp_get_current_user();
+        if (!\GiVendor\GiPlugin\Solicitud\SolicitudAcceptHandler::can_accept($user, $solicitud, $cotizacion)) {
+            wp_send_json_error(['message' => __('No se puede aceptar esta cotización.', 'rfq-manager-woocommerce')]);
         }
-        
-        // Verificar que la solicitud aún permite aceptar cotizaciones
-        if (in_array($solicitud->post_status, ['rfq-accepted', 'rfq-closed', 'rfq-historic'])) {
-            wp_send_json_error(['msg' => __('Esta solicitud ya no acepta nuevas cotizaciones.', 'rfq-manager-woocommerce')]);
-        }
-        
-        // Cambiar el estado de la cotización a "aceptada"
-        $result = wp_update_post([
-            'ID' => $cotizacion_id,
-            'post_status' => 'rfq-accepted',
-        ], true);
-        
+        $result = \GiVendor\GiPlugin\Solicitud\SolicitudAcceptHandler::accept($user, $solicitud, $cotizacion);
         if (is_wp_error($result)) {
-            wp_send_json_error(['msg' => __('No se pudo aceptar la cotización.', 'rfq-manager-woocommerce')]);
+            wp_send_json_error(['message' => $result->get_error_message()]);
         }
-        
-        // Cambiar el estado de la solicitud a "Aceptada"
-        $solicitud_update = \GiVendor\GiPlugin\Solicitud\SolicitudStatusHandler::update_status($solicitud_id, 'rfq-accepted');
-        
-        if (!$solicitud_update) {
-            // Si falla el cambio de estado de la solicitud, revertir la cotización
-            wp_update_post([
-                'ID' => $cotizacion_id,
-                'post_status' => 'publish',
-            ]);
-            wp_send_json_error(['msg' => __('Error al actualizar el estado de la solicitud.', 'rfq-manager-woocommerce')]);
-        }
-        
-        // Marcar todas las demás cotizaciones como históricas
-        $other_cotizaciones = get_posts([
-            'post_type' => 'cotizacion',
-            'posts_per_page' => -1,
-            'meta_query' => [
-                [
-                    'key' => '_solicitud_parent',
-                    'value' => $solicitud_id,
-                ],
-            ],
-            'post__not_in' => [$cotizacion_id],
-            'post_status' => 'publish',
-        ]);
-        
-        foreach ($other_cotizaciones as $other_cotizacion) {
-            wp_update_post([
-                'ID' => $other_cotizacion->ID,
-                'post_status' => 'rfq-historic',
-            ]);
-        }
-
-        // Disparar el hook de cotización aceptada
-        do_action('rfq_cotizacion_accepted', $cotizacion_id, $solicitud_id);
-        
-        wp_send_json_success(['msg' => __('Cotización aceptada correctamente.', 'rfq-manager-woocommerce')]);
+        wp_send_json_success(['message' => __('Cotización aceptada con éxito.', 'rfq-manager-woocommerce')]);
     }
 
     /**
