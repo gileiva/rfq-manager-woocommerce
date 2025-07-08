@@ -20,8 +20,10 @@ class SolicitudHeaderRenderer
         $numero = $uuid ? 'RFQ-' . substr(str_replace('-', '', $uuid), -5) : '';
 
         $fecha = get_the_date('', $solicitud_id);
-        $ciudad = get_post_meta($solicitud_id, '_solicitud_ciudad', true);
-        $cp = get_post_meta($solicitud_id, '_solicitud_cp', true);
+        $author_id = get_post_field('post_author', $solicitud_id);
+        $ciudad = get_user_meta($author_id, 'gireg_customer_billing_city', true);
+        $cp = get_user_meta($author_id, 'gireg_customer_billing_postcode', true);
+
 
         // Usar el helper centralizado para el badge de estado
         ob_start();

@@ -379,13 +379,8 @@ class SolicitudShortcodes {
                     $current_user_id = get_current_user_id();
                     $solicitud_author_id = get_post_field('post_author', $solicitud_id);
                     if ($current_user_id === (int)$solicitud_author_id) {
-                        error_log(sprintf('[RFQ] Mostrando botón repetir para solicitud #%d con estado %s - Usuario propietario', $solicitud_id, $estado));
                         $output .= '<button type="button" class="rfq-repeat-btn" data-solicitud="' . esc_attr($solicitud_id) . '" title="Repetir solicitud">' . __('Repetir', 'rfq-manager-woocommerce') . '</button>';
-                    } else {
-                        error_log(sprintf('[RFQ] Ocultando botón repetir para solicitud #%d con estado %s - Usuario no propietario', $solicitud_id, $estado));
                     }
-                } else {
-                    error_log(sprintf('[RFQ] Ocultando botón repetir para solicitud #%d con estado %s', $solicitud_id, $estado));
                 }
 
                 // Botón de cancelar (solo si el handler lo permite)
@@ -509,14 +504,48 @@ class SolicitudShortcodes {
         } else if (method_exists(__CLASS__, 'get_current_solicitud_id')) {
             $solicitud_id = (int) self::get_current_solicitud_id();
         }
+        
+        // Fallback: intentar obtener desde GET, POST o contexto global
+        if ($solicitud_id === 0) {
+            if (isset($_GET['solicitud_id'])) {
+                $solicitud_id = absint($_GET['solicitud_id']);
+            } elseif (isset($_POST['solicitud_id'])) {
+                $solicitud_id = absint($_POST['solicitud_id']);
+            } elseif (is_singular('solicitud')) {
+                $solicitud_id = get_the_ID();
+            }
+        }
 
         $solicitud = ($solicitud_id) ? get_post($solicitud_id) : null;
         if (!$solicitud || $solicitud->post_type !== 'solicitud') {
             return '<p class="rfq-error">No se pudo identificar la solicitud.</p>';
         }
 
-        // 3. Validar autoría
-        if (get_current_user_id() !== (int)$solicitud->post_author) {
+        // 3. Validar acceso: autor, admin o proveedor con cotización
+        $current_user_id = get_current_user_id();
+        $current_user = wp_get_current_user();
+        $is_author = ($current_user_id === (int)$solicitud->post_author);
+        $is_admin = in_array('administrator', (array)$current_user->roles, true);
+        
+        // Verificar si es proveedor con cotización para esta solicitud
+        $has_quote = false;
+        if (!$is_author && !$is_admin) {
+            $provider_quotes = get_posts([
+                'post_type' => 'cotizacion',
+                'posts_per_page' => 1,
+                'meta_query' => [
+                    [
+                        'key' => '_solicitud_parent',
+                        'value' => $solicitud_id,
+                    ],
+                ],
+                'author' => $current_user_id,
+                'fields' => 'ids'
+            ]);
+            $has_quote = !empty($provider_quotes);
+        }
+        
+        if (!$is_author && !$is_admin && !$has_quote) {
             return '<p class="rfq-error">No tienes permiso para ver esta información.</p>';
         }
 
@@ -599,12 +628,9 @@ class SolicitudShortcodes {
             $proveedor_id = $cotizacion->post_author;
             // Obtener logotipo desde el nuevo campo gi_custom_avatar_id
             $avatar_id = get_user_meta($proveedor_id, 'gireg_provider_gi_custom_avatar_id', true);
-            error_log('[RFQ_DEBUG] Avatar ID: ' . print_r($avatar_id, true));
             if ($avatar_id && wp_attachment_is_image($avatar_id)) {
-                error_log('[RFQ_DEBUG] Se renderizará la imagen del proveedor');
                 $logo_url = wp_get_attachment_image_url($avatar_id, 'thumbnail');
             } else {
-                error_log('[RFQ_DEBUG] No se renderiza el logo. ID no válido o no es imagen.');
                 $logo_url = false;
             }
             $about = trim(get_user_meta($proveedor_id, 'gireg_provider_about', true));
@@ -899,28 +925,22 @@ class SolicitudShortcodes {
      * @return void
      */
     public static function ajax_repeat_solicitud(): void {
-        error_log('[RFQ] Iniciando proceso de repetición de solicitud');
         // Verificar nonce
         if (!isset($_POST['nonce']) || !wp_verify_nonce(sanitize_text_field($_POST['nonce']), 'rfq_solicitud_status_nonce')) {
-            error_log('[RFQ] Error: Nonce inválido');
             wp_send_json_error(['message' => __('Error de seguridad. Por favor, recarga la página.', 'rfq-manager-woocommerce')]);
         }
         // Verificar que el usuario esté logueado
         if (!is_user_logged_in()) {
-            error_log('[RFQ] Error: Usuario no logueado');
             wp_send_json_error(['message' => __('Debes iniciar sesión para repetir una solicitud.', 'rfq-manager-woocommerce')]);
         }
         // Obtener y sanitizar datos
         $solicitud_id = isset($_POST['solicitud_id']) ? absint($_POST['solicitud_id']) : 0;
         if (!$solicitud_id) {
-            error_log('[RFQ] Error: ID de solicitud inválido');
             wp_send_json_error(['message' => __('ID de solicitud inválido.', 'rfq-manager-woocommerce')]);
         }
-        error_log(sprintf('[RFQ] Procesando solicitud #%d', $solicitud_id));
         // Usar la clase handler para procesar la solicitud
         $result = \GiVendor\GiPlugin\Solicitud\SolicitudRepeatHandler::repeat($solicitud_id, wp_get_current_user());
         if (is_wp_error($result)) {
-            error_log(sprintf('[RFQ] Error al procesar solicitud: %s', $result->get_error_message()));
             wp_send_json_error(['message' => $result->get_error_message()]);
         }
         // Preparar respuesta
@@ -931,7 +951,6 @@ class SolicitudShortcodes {
             'failed_items' => $result['failed'],
             'cart_url' => wc_get_cart_url()
         ];
-        error_log(sprintf('[RFQ] Respuesta preparada: %s', json_encode($response)));
         wp_send_json_success($response);
     }
 
@@ -943,10 +962,25 @@ class SolicitudShortcodes {
      */
     private static function get_current_solicitud_id(): ?int
     {
+        // Intentar obtener desde la URL de cliente (/ver-solicitud/{slug})
         $slug = get_query_var('rfq_slug');
+        
+        // Si no hay rfq_slug, intentar desde la URL de proveedor (/cotizar-solicitud/{slug})
+        if (empty($slug)) {
+            $slug = get_query_var('cotizar_slug'); // Asumo que este es el query var para proveedor
+            // Si tampoco existe cotizar_slug, intentar obtener directamente de la URL
+            if (empty($slug)) {
+                $current_url = $_SERVER['REQUEST_URI'] ?? '';
+                if (preg_match('#/cotizar-solicitud/([^/]+)/?#', $current_url, $matches)) {
+                    $slug = $matches[1];
+                }
+            }
+        }
+        
         if (empty($slug)) {
             return null;
         }
+        
         $post = get_page_by_path($slug, OBJECT, 'solicitud');
         if (!$post || !isset($post->post_type) || $post->post_type !== 'solicitud') {
             return null;
