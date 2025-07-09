@@ -475,7 +475,6 @@ class SolicitudShortcodes {
         $output .= '</div>';
         $output .= self::render_solicitud_actions($solicitud_id, $solicitud);
         $output .= '</div>';
-        $output .= '</div>';
         return $output;
     }
 
