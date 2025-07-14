@@ -65,9 +65,10 @@
         countdowns.forEach(function(el) {
             var expiryStr = el.getAttribute('data-expiry');
             if (!expiryStr) return;
-            // Parse as ISO string
+            
             var expiryDate = new Date(expiryStr);
             if (isNaN(expiryDate.getTime())) return;
+            
             updateCountdown(el, expiryDate);
         });
     });

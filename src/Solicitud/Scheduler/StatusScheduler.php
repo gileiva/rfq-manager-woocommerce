@@ -116,20 +116,34 @@ class StatusScheduler {
     /**
      * Programa el cambio a estado histórico
      *
+     * Este método programa una acción automática para cambiar el estado de una solicitud
+     * a 'rfq-historic' cuando llegue su fecha de vencimiento. Incluye verificación del
+     * resultado de Action Scheduler y logging detallado para diagnóstico.
+     *
      * @since  0.1.0
      * @param  int $post_id ID de la solicitud
      * @return void
      */
     public static function schedule_change_to_historic(int $post_id): void {
+        error_log(sprintf('[RFQ-DEBUG] *** ENTRANDO A schedule_change_to_historic() para solicitud #%d ***', $post_id));
+        
         $post = get_post($post_id);
         if (!$post || $post->post_type !== 'solicitud' || $post->post_status === 'rfq-historic') {
+            error_log(sprintf('[RFQ-DEBUG] Saliendo temprano - Post: %s | Tipo: %s | Estado: %s',
+                $post ? 'EXISTE' : 'NO EXISTE',
+                $post ? $post->post_type : 'N/A',
+                $post ? $post->post_status : 'N/A'
+            ));
             return;
         }
+        
+        error_log(sprintf('[RFQ-DEBUG] Post válido - Tipo: %s | Estado: %s', $post->post_type, $post->post_status));
         
         // Obtener la fecha de vencimiento
         $expiry_date = get_post_meta($post_id, '_solicitud_expiry', true);
         if (empty($expiry_date)) {
-            $expiry_date = date('Y-m-d H:i:s', strtotime('+' . self::get_default_expiry_hours() . ' hours'));
+            $expiry_timestamp = current_time('timestamp') + (self::get_default_expiry_hours() * HOUR_IN_SECONDS);
+            $expiry_date = date('Y-m-d H:i:s', $expiry_timestamp);
             update_post_meta($post_id, '_solicitud_expiry', $expiry_date);
         }
         
@@ -137,20 +151,59 @@ class StatusScheduler {
         self::unschedule_action($post_id);
         
         // Programar nueva acción
-        $timestamp = strtotime($expiry_date);
-        if ($timestamp > time()) {
-        as_schedule_single_action(
-            $timestamp,
-            self::ACTION_TO_HISTORIC,
-            [$post_id],
-            self::ACTION_GROUP
-        );
+        $expiry_timestamp = strtotime($expiry_date);
+        $current_timestamp = current_time('timestamp');
         
-        error_log(sprintf(
-                '[RFQ] Programado cambio a histórico para solicitud #%d en: %s',
-            $post_id,
-            date('Y-m-d H:i:s', $timestamp)
-        ));
+        if ($expiry_timestamp > $current_timestamp) {
+            // Intentar programar la acción y verificar el resultado
+            $action_id = as_schedule_single_action(
+                $expiry_timestamp,
+                self::ACTION_TO_HISTORIC,
+                [$post_id],
+                self::ACTION_GROUP
+            );
+            
+            // Verificar si la programación fue exitosa
+            if ($action_id === 0 || $action_id === false) {
+                error_log(sprintf(
+                    '[RFQ-ERROR] Falló la programación de Action Scheduler para solicitud #%d. Timestamp: %s, Action ID retornado: %s',
+                    $post_id,
+                    date('Y-m-d H:i:s', $expiry_timestamp),
+                    var_export($action_id, true)
+                ));
+                
+                // Log adicional para diagnóstico
+                error_log(sprintf(
+                    '[RFQ-ERROR] Detalles del fallo - Post ID: %d, Timestamp actual: %s, Timestamp programado: %s, Diferencia: %d segundos',
+                    $post_id,
+                    date('Y-m-d H:i:s', $current_timestamp),
+                    date('Y-m-d H:i:s', $expiry_timestamp),
+                    ($expiry_timestamp - $current_timestamp)
+                ));
+                
+                // Verificar si Action Scheduler está disponible
+                if (!function_exists('as_schedule_single_action')) {
+                    error_log('[RFQ-ERROR] Action Scheduler no está disponible');
+                } else {
+                    error_log('[RFQ-ERROR] Action Scheduler está disponible pero falló al programar la acción');
+                }
+                
+                return; // Salir temprano para evitar log de éxito
+            }
+            
+            error_log(sprintf(
+                '[RFQ] Programado cambio a histórico para solicitud #%d en: %s (Action ID: %s)',
+                $post_id,
+                date('Y-m-d H:i:s', $expiry_timestamp),
+                $action_id
+            ));
+        } else {
+            error_log(sprintf(
+                '[RFQ-WARNING] No se programó cambio a histórico para solicitud #%d - Timestamp en el pasado. Timestamp: %s, Tiempo actual: %s',
+                $post_id,
+                date('Y-m-d H:i:s', $expiry_timestamp),
+                date('Y-m-d H:i:s', $current_timestamp)
+            ));
         }
     }
     
@@ -207,11 +260,19 @@ class StatusScheduler {
         
         // Validar formato de fecha
         if (!strtotime($meta_value)) {
-            error_log(sprintf('[RFQ] Fecha de vencimiento inválida para solicitud #%d: %s', $post_id, $meta_value));
+            error_log(sprintf('[RFQ-ERROR] Fecha de vencimiento inválida para solicitud #%d: %s', $post_id, $meta_value));
             return;
         }
         
-        error_log(sprintf('[RFQ] Programando cambio de estado para solicitud #%d', $post_id));
+        error_log(sprintf('[RFQ] Handle expiry update: Solicitud #%d, Nueva fecha: %s, Timestamp: %d', $post_id, $meta_value, strtotime($meta_value)));
+        
+        // NUEVO: Verificar si hay transient de protección activo para evitar doble procesamiento
+        if (get_transient('rfq_ajax_status_update_' . $post_id)) {
+            error_log(sprintf('[RFQ] Actualización AJAX en progreso para solicitud #%d, omitiendo handle_expiry_update para evitar conflicto', $post_id));
+            return;
+        }
+        
+        error_log(sprintf('[RFQ] Procediendo a programar cambio de estado para solicitud #%d', $post_id));
         self::schedule_change_to_historic($post_id);
     }
     

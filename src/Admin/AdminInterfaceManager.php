@@ -183,6 +183,11 @@ class AdminInterfaceManager {
      */
     public static function register_settings(): void {
         register_setting('rfq_manager_settings', 'rfq_cotizar_page_id');
+        register_setting('rfq_manager_settings', 'rfq_default_expiry_hours', [
+            'type' => 'integer',
+            'sanitize_callback' => 'absint',
+            'default' => 24,
+        ]);
 
         // Nuevas opciones para Stripe
         register_setting('rfq_manager_settings', 'stripe_secret_key');
@@ -210,7 +215,47 @@ class AdminInterfaceManager {
             <div class="rfq-settings-section">
                 <h2><?php _e('Configuración General', 'rfq-manager-woocommerce'); ?></h2>
                 <div class="rfq-settings-content">
-                    <!-- Aquí tu campo existente para rfq_cotizar_page_id -->
+                    <table class="form-table">
+                        <?php /*
+                        <tr>
+                            <th scope="row">
+                                <label for="rfq_cotizar_page_id"><?php _e('Página de Cotizar', 'rfq-manager-woocommerce'); ?></label>
+                            </th>
+                            <td>
+                                <?php
+                                wp_dropdown_pages([
+                                    'name' => 'rfq_cotizar_page_id',
+                                    'id' => 'rfq_cotizar_page_id',
+                                    'selected' => get_option('rfq_cotizar_page_id'),
+                                    'show_option_none' => __('Seleccionar página', 'rfq-manager-woocommerce'),
+                                    'option_none_value' => ''
+                                ]);
+                                ?>
+                                <p class="description">
+                                    <?php _e('Página donde los proveedores pueden ver y cotizar las solicitudes.', 'rfq-manager-woocommerce'); ?>
+                                </p>
+                            </td>
+                        </tr>
+                        */ ?>
+                        <tr>
+                            <th scope="row">
+                                <label for="rfq_default_expiry_hours"><?php _e('Duración por defecto de las solicitudes', 'rfq-manager-woocommerce'); ?></label>
+                            </th>
+                            <td>
+                                <input
+                                    name="rfq_default_expiry_hours"
+                                    type="number"
+                                    id="rfq_default_expiry_hours"
+                                    value="<?php echo esc_attr(get_option('rfq_default_expiry_hours', 24)); ?>"
+                                    min="1"
+                                    class="small-text"
+                                />
+                                <p class="description">
+                                    <?php _e('Cantidad de horas antes de que una solicitud se marque como vencida automáticamente.', 'rfq-manager-woocommerce'); ?>
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
                 </div>
             </div>
 

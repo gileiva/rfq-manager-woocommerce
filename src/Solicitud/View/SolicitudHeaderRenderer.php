@@ -55,9 +55,11 @@ class SolicitudHeaderRenderer
                 $expiry_raw = get_post_meta($solicitud_id, '_solicitud_expiry', true);
                 $expiry_attr = '';
                 if ($expiry_raw) {
-                    $ts = strtotime($expiry_raw);
-                    if ($ts) {
-                        $expiry_attr = date('Y-m-d\TH:i:s', $ts);
+                    $wp_timestamp = strtotime($expiry_raw);
+                    if ($wp_timestamp) {
+                        $gmt_offset = get_option('gmt_offset') * HOUR_IN_SECONDS;
+                        $utc_timestamp = $wp_timestamp - $gmt_offset;
+                        $expiry_attr = gmdate('c', $utc_timestamp);
                     }
                 }
                 if ($expiry_attr): ?>

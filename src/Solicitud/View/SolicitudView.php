@@ -509,12 +509,14 @@ class SolicitudView {
         // Obtener fecha de expiración
         $expiry_date = get_post_meta($post->ID, '_solicitud_expiry', true);
         if (!$expiry_date) {
-            $expiry_date = date('Y-m-d H:i:s', strtotime('+24 hours'));
+            $expiry_timestamp = current_time('timestamp') + (24 * HOUR_IN_SECONDS);
+            $expiry_date = date('Y-m-d H:i:s', $expiry_timestamp);
             update_post_meta($post->ID, '_solicitud_expiry', $expiry_date);
         }
 
-        // Convertir a formato de visualización
-        $expiry_display = date('Y-m-d\TH:i', strtotime($expiry_date));
+        // Convertir a formato de visualización para datetime-local input
+        $expiry_timestamp = strtotime($expiry_date);
+        $expiry_display = date('Y-m-d\TH:i', $expiry_timestamp);
 
         // Nonce unificado para seguridad
         wp_nonce_field('rfq_solicitud_status_nonce', 'rfq_nonce');
@@ -566,30 +568,85 @@ class SolicitudView {
             
             // Función para obtener el valor actual del select de forma más robusta
             function getCurrentStatus() {
-                var value = $select.val();
-                
-                if (!value || value === '') {
-                    var selectedOption = $select.find('option:selected');
-                    value = selectedOption.val();
+                // PRIORIDAD 1: SIEMPRE usar el valor directo del DOM del select
+                var selectValue = $select.val();
+                if (selectValue && selectValue !== '' && selectValue !== null) {
+                    // Verificar que sea un estado válido (no una fecha)
+                    var validStates = ['rfq-pending', 'rfq-active', 'rfq-accepted', 'rfq-closed', 'rfq-historic'];
+                    if (validStates.includes(selectValue)) {
+                        // Sincronizar memoria solo si es válido
+                        currentSelectedStatus = selectValue;
+                        return selectValue;
+                    } else {
+                        console.warn('[RFQ] Estado inválido detectado en select:', selectValue);
+                    }
                 }
                 
-                if (!value || value === '') {
-                    value = currentSelectedStatus;
+                // PRIORIDAD 2: Obtener de la opción seleccionada específicamente
+                var selectedOption = $select.find('option:selected').val();
+                if (selectedOption && selectedOption !== '') {
+                    var validStates = ['rfq-pending', 'rfq-active', 'rfq-accepted', 'rfq-closed', 'rfq-historic'];
+                    if (validStates.includes(selectedOption)) {
+                        currentSelectedStatus = selectedOption; // Sincronizar memoria
+                        return selectedOption;
+                    }
                 }
                 
-                return value;
+                // PRIORIDAD 3: Usar el estado original como fallback SEGURO
+                if (originalStatus && originalStatus !== '') {
+                    currentSelectedStatus = originalStatus; // Restaurar memoria
+                    return originalStatus;
+                }
+                
+                // Último recurso: buscar la primera opción válida
+                var firstValidOption = $select.find('option[value!=""]').first().val();
+                if (firstValidOption) {
+                    currentSelectedStatus = firstValidOption;
+                    return firstValidOption;
+                }
+                
+                // Error crítico: no se pudo obtener ningún valor
+                console.error('[RFQ] ERROR CRÍTICO: No se pudo obtener ningún estado válido');
+                return null;
             }
             
             // Función para establecer el valor del select de forma robusta
             function setCurrentStatus(newStatus) {
+                if (!newStatus || newStatus === '' || newStatus === null) {
+                    console.warn('[RFQ] Intento de establecer estado inválido:', newStatus);
+                    return false;
+                }
+                
+                // Verificar que la opción existe en el select
+                var optionExists = $select.find('option[value="' + newStatus + '"]').length > 0;
+                if (!optionExists) {
+                    console.error('[RFQ] Estado no existe en las opciones del select:', newStatus);
+                    return false;
+                }
+                
+                // Actualizar la variable de estado en memoria
                 currentSelectedStatus = newStatus;
+                
+                // Actualizar el select
                 $select.val(newStatus);
                 $select.find('option').prop('selected', false);
                 $select.find('option[value="' + newStatus + '"]').prop('selected', true);
+                
+                console.log('[RFQ] Estado establecido correctamente:', newStatus);
+                return true;
             }
             
             // Forzar el valor correcto al inicio
             setCurrentStatus(originalStatus);
+            
+            // Verificación adicional para asegurar la consistencia
+            setTimeout(function() {
+                var verificacionEstado = getCurrentStatus();
+                if (!verificacionEstado || verificacionEstado === '' || verificacionEstado === null) {
+                    console.warn('[RFQ] Estado inconsistente detectado al inicializar, forzando estado original');
+                    setCurrentStatus(originalStatus);
+                }
+            }, 100);
             
             // Inicializar el datetime picker
             $('.rfq-datetime-picker').flatpickr({
@@ -608,11 +665,13 @@ class SolicitudView {
                 var newStatus = getCurrentStatus();
                 var expiryDate = $('#_solicitud_expiry').val();
                 
-                // Validar que tenemos un estado
-                if (!newStatus || newStatus === '') {
+                // Validar que tenemos un estado válido
+                if (!newStatus || newStatus === '' || newStatus === null) {
+                    console.error('[RFQ] ERROR CRÍTICO: Estado no válido obtenido:', newStatus);
+                    
                     $message
                         .addClass('notice-error')
-                        .html('<span class="dashicons dashicons-warning"></span> Error: No se pudo obtener el estado seleccionado')
+                        .html('<span class="dashicons dashicons-warning"></span> Error: No se pudo obtener el estado seleccionado.')
                         .show();
                     return;
                 }
@@ -697,15 +756,30 @@ class SolicitudView {
                 var selectValue = $(this).val();
                 var selectedOptionValue = $(this).find('option:selected').val();
                 
+                // Obtener el nuevo estado con prioridad al valor del evento
                 var newStatus = eventValue || selectValue || selectedOptionValue;
                 
-                if (newStatus && newStatus !== '') {
-                    currentSelectedStatus = newStatus;
-                    updateStatusDisplay(newStatus);
-                    
-                    setTimeout(function() {
-                        setCurrentStatus(newStatus);
-                    }, 10);
+                // Verificar que el nuevo estado es válido antes de aceptarlo
+                if (newStatus && newStatus !== '' && newStatus !== null) {
+                    // VALIDACIÓN CRÍTICA: Solo aceptar estados válidos
+                    var validStates = ['rfq-pending', 'rfq-active', 'rfq-accepted', 'rfq-closed', 'rfq-historic'];
+                    if (validStates.includes(newStatus)) {
+                        currentSelectedStatus = newStatus;
+                        updateStatusDisplay(newStatus);
+                        
+                        // Asegurar que el select mantenga el valor correcto
+                        setTimeout(function() {
+                            setCurrentStatus(newStatus);
+                        }, 10);
+                    } else {
+                        console.warn('[RFQ] Estado INVÁLIDO rechazado:', newStatus, '- Manteniendo estado actual');
+                        // Rechazar el cambio y mantener el estado válido
+                        setCurrentStatus(currentSelectedStatus || originalStatus);
+                    }
+                } else {
+                    console.warn('[RFQ] Estado vacío detectado, manteniendo estado actual');
+                    // Si el estado no es válido, mantener el estado actual
+                    setCurrentStatus(currentSelectedStatus || originalStatus);
                 }
             });
 
@@ -795,7 +869,8 @@ class SolicitudView {
                 $default_expiry_hours = \GiVendor\GiPlugin\Solicitud\Scheduler\StatusScheduler::get_default_expiry_hours();
                 
                 // Establecer nueva fecha de vencimiento
-                $new_expiry = date('Y-m-d H:i:s', strtotime('+' . $default_expiry_hours . ' hours'));
+                $new_expiry_timestamp = current_time('timestamp') + ($default_expiry_hours * HOUR_IN_SECONDS);
+                $new_expiry = date('Y-m-d H:i:s', $new_expiry_timestamp);
                 update_post_meta($post_id, '_solicitud_expiry', $new_expiry);
                 
                 // Reprogramar el cambio de estado
@@ -889,6 +964,7 @@ class SolicitudView {
     public static function ajax_update_status(): void {
         // Verificar nonce
         if (!isset($_POST['rfq_nonce']) || !wp_verify_nonce(sanitize_key($_POST['rfq_nonce']), 'rfq_solicitud_status_nonce')) {
+            error_log('[RFQ] ERROR CRÍTICO: Nonce inválido en ajax_update_status');
             wp_send_json_error(['message' => __('Nonce inválido', 'rfq-manager-woocommerce')]);
         }
 
@@ -898,12 +974,18 @@ class SolicitudView {
         $expiry_date = sanitize_text_field($_POST['_solicitud_expiry'] ?? '');
 
         if (!$solicitud_id) {
+            error_log('[RFQ] ERROR CRÍTICO: ID de solicitud inválido');
             wp_send_json_error(['message' => __('ID de solicitud inválido', 'rfq-manager-woocommerce')]);
         }
+
+        // NUEVA PROTECCIÓN: Establecer transient para evitar condición de carrera
+        set_transient('rfq_ajax_status_update_' . $solicitud_id, true, 30);
 
         // Verificar que la solicitud existe
         $solicitud = get_post($solicitud_id);
         if (!$solicitud || $solicitud->post_type !== 'solicitud') {
+            error_log(sprintf('[RFQ] ERROR CRÍTICO: Solicitud #%d no encontrada', $solicitud_id));
+            delete_transient('rfq_ajax_status_update_' . $solicitud_id);
             wp_send_json_error(['message' => __('Solicitud no encontrada', 'rfq-manager-woocommerce')]);
         }
 
@@ -932,6 +1014,8 @@ class SolicitudView {
         }
 
         if (!$has_permission) {
+            error_log('[RFQ] ERROR CRÍTICO: Usuario sin permisos para actualizar estado');
+            delete_transient('rfq_ajax_status_update_' . $solicitud_id);
             wp_send_json_error(['message' => __('No tienes permisos para realizar esta acción', 'rfq-manager-woocommerce')]);
         }
 
@@ -940,6 +1024,8 @@ class SolicitudView {
             $valid_statuses = ['rfq-pending', 'rfq-active', 'rfq-accepted', 'rfq-closed', 'rfq-historic'];
             
             if (!in_array($new_status, $valid_statuses, true)) {
+                error_log(sprintf('[RFQ] ERROR CRÍTICO: Estado inválido "%s" recibido', $new_status));
+                delete_transient('rfq_ajax_status_update_' . $solicitud_id);
                 wp_send_json_error(['message' => __('Estado inválido', 'rfq-manager-woocommerce')]);
             }
 
@@ -947,7 +1033,8 @@ class SolicitudView {
             $update_result = \GiVendor\GiPlugin\Solicitud\SolicitudStatusHandler::update_status($solicitud_id, $new_status);
             
             if (!$update_result) {
-                error_log(sprintf('[RFQ] Error crítico en AJAX: No se pudo actualizar estado de solicitud #%d', $solicitud_id));
+                error_log(sprintf('[RFQ] ERROR CRÍTICO: No se pudo actualizar estado de solicitud #%d', $solicitud_id));
+                delete_transient('rfq_ajax_status_update_' . $solicitud_id);
                 wp_send_json_error(['message' => __('Error al actualizar el estado', 'rfq-manager-woocommerce')]);
             }
         }
@@ -955,6 +1042,7 @@ class SolicitudView {
         // Actualizar fecha de expiración si se proporcionó (solo admins)
         if (!empty($expiry_date) && $is_admin) {
             $expiry_timestamp = strtotime($expiry_date);
+            
             if ($expiry_timestamp) {
                 $expiry_formatted = date('Y-m-d H:i:s', $expiry_timestamp);
                 update_post_meta($solicitud_id, '_solicitud_expiry', $expiry_formatted);
@@ -963,6 +1051,8 @@ class SolicitudView {
                 if (in_array($new_status, ['rfq-pending', 'rfq-active'])) {
                     \GiVendor\GiPlugin\Solicitud\Scheduler\StatusScheduler::schedule_change_to_historic($solicitud_id);
                 }
+            } else {
+                error_log(sprintf('[RFQ] ERROR: Fecha de expiración inválida: %s', $expiry_date));
             }
         }
 
@@ -972,12 +1062,16 @@ class SolicitudView {
             $default_expiry_hours = \GiVendor\GiPlugin\Solicitud\Scheduler\StatusScheduler::get_default_expiry_hours();
             
             // Establecer nueva fecha de vencimiento
-            $new_expiry = date('Y-m-d H:i:s', strtotime('+' . $default_expiry_hours . ' hours'));
+            $new_expiry_timestamp = current_time('timestamp') + ($default_expiry_hours * HOUR_IN_SECONDS);
+            $new_expiry = date('Y-m-d H:i:s', $new_expiry_timestamp);
             update_post_meta($solicitud_id, '_solicitud_expiry', $new_expiry);
             
             // Reprogramar el cambio de estado
             \GiVendor\GiPlugin\Solicitud\Scheduler\StatusScheduler::schedule_change_to_historic($solicitud_id);
         }
+
+        // LIMPIEZA: Eliminar transient de protección al completar exitosamente
+        delete_transient('rfq_ajax_status_update_' . $solicitud_id);
 
         wp_send_json_success(['message' => __('Estado actualizado correctamente', 'rfq-manager-woocommerce')]);
     }

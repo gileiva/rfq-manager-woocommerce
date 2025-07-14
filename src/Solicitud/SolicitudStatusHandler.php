@@ -150,6 +150,18 @@ class SolicitudStatusHandler {
             return;
         }
 
+        // NUEVA VERIFICACIÓN: Evitar condición de carrera con AJAX de estado
+        if (!$force_check && wp_doing_ajax() && isset($_POST['action']) && $_POST['action'] === 'update_solicitud_status') {
+            error_log("[RFQ-FLOW] AJAX de actualización de estado en progreso, omitiendo verificación automática para evitar condición de carrera");
+            return;
+        }
+
+        // NUEVA VERIFICACIÓN: Verificar si hay un transient que indique que se está procesando una actualización de estado
+        if (!$force_check && get_transient('rfq_ajax_status_update_' . $post_id)) {
+            error_log("[RFQ-FLOW] Actualización de estado AJAX en progreso (transient activo), omitiendo verificación automática");
+            return;
+        }
+
         error_log("[RFQ-FLOW] Verificando si la solicitud tiene cotizaciones");
         
         // Si la solicitud está en estado pendiente y tiene cotizaciones, cambiar a activa

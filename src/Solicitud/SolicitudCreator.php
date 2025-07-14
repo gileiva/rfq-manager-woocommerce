@@ -228,10 +228,9 @@ class SolicitudCreator {
         update_post_meta($solicitudId, '_solicitud_shipping', wp_json_encode($shippingData));
         update_post_meta($solicitudId, '_solicitud_total', floatval($order->get_total()));
         update_post_meta($solicitudId, '_solicitud_date', current_time(self::DATE_FORMAT_DB));
-        update_post_meta($solicitudId, '_solicitud_expiry', date(
-            self::DATE_FORMAT_DB,
-            strtotime('+' . self::DEFAULT_EXPIRY_HOURS . ' hours')
-        ));
+        
+        $expiry_timestamp = current_time('timestamp') + (self::DEFAULT_EXPIRY_HOURS * HOUR_IN_SECONDS);
+        update_post_meta($solicitudId, '_solicitud_expiry', date(self::DATE_FORMAT_DB, $expiry_timestamp));
     }
 
     /**
