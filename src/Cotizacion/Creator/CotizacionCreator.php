@@ -50,8 +50,9 @@ class CotizacionCreator {
             return false;
         }
         
-        // Crear el título de la cotización
-        $cotizacionTitle = $uuid;
+        // Crear el título de la cotización con formato personalizado
+        $proveedor_id = get_current_user_id();
+        $cotizacionTitle = self::generate_cotizacion_title($proveedor_id, $solicitud_id);
         
         // Crear la cotización
         $cotizacionId = wp_insert_post([
@@ -162,4 +163,88 @@ class CotizacionCreator {
 
         return $total;
     }
-} 
+
+    /**
+     * Genera el título de la cotización en formato proveedor-YYYY-MM-DD-cliente-n
+     *
+     * @param int $proveedor_id ID del proveedor
+     * @param int $solicitud_id ID de la solicitud
+     * @return string Título generado
+     */
+    private static function generate_cotizacion_title(int $proveedor_id, int $solicitud_id): string {
+        $proveedor = get_userdata($proveedor_id);
+        if (!$proveedor) {
+            return 'proveedor-desconocido-' . current_time('Y-m-d') . '-cliente-1';
+        }
+
+        $solicitud = get_post($solicitud_id);
+        if (!$solicitud || $solicitud->post_type !== 'solicitud') {
+            return sanitize_title($proveedor->user_login) . '-' . current_time('Y-m-d') . '-solicitud-invalida-1';
+        }
+
+        $cliente = get_userdata($solicitud->post_author);
+        if (!$cliente) {
+            return sanitize_title($proveedor->user_login) . '-' . current_time('Y-m-d') . '-cliente-desconocido-1';
+        }
+
+        $proveedor_name = sanitize_title($proveedor->user_login);
+        $cliente_name = sanitize_title($cliente->user_login);
+        $date = current_time('Y-m-d');
+        
+        // Contar cotizaciones del proveedor para este cliente en la fecha actual
+        $count = self::get_daily_cotizacion_count($proveedor_id, $solicitud->post_author, $date);
+        $n = $count + 1;
+
+        return sprintf('%s-%s-%s-%d', $proveedor_name, $date, $cliente_name, $n);
+    }
+
+    /**
+     * Cuenta las cotizaciones de un proveedor para un cliente específico en una fecha
+     *
+     * @param int $proveedor_id ID del proveedor
+     * @param int $cliente_id ID del cliente
+     * @param string $date Fecha en formato Y-m-d
+     * @return int Número de cotizaciones
+     */
+    private static function get_daily_cotizacion_count(int $proveedor_id, int $cliente_id, string $date): int {
+        $args = [
+            'post_type'      => 'cotizacion',
+            'post_status'    => 'any',
+            'author'         => $proveedor_id,
+            'date_query'     => [
+                [
+                    'year'  => date('Y', strtotime($date)),
+                    'month' => date('m', strtotime($date)),
+                    'day'   => date('d', strtotime($date)),
+                ]
+            ],
+            'meta_query'     => [
+                [
+                    'key'     => '_solicitud_parent',
+                    'value'   => '',
+                    'compare' => '!='
+                ]
+            ],
+            'fields'         => 'ids',
+            'posts_per_page' => -1
+        ];
+
+        $query = new \WP_Query($args);
+        
+        // Filtrar por cliente específico verificando el autor de cada solicitud padre
+        $count = 0;
+        if ($query->have_posts()) {
+            foreach ($query->posts as $cotizacion_id) {
+                $solicitud_parent_id = get_post_meta($cotizacion_id, '_solicitud_parent', true);
+                if ($solicitud_parent_id) {
+                    $solicitud_parent = get_post($solicitud_parent_id);
+                    if ($solicitud_parent && (int)$solicitud_parent->post_author === $cliente_id) {
+                        $count++;
+                    }
+                }
+            }
+        }
+
+        return $count;
+    }
+}

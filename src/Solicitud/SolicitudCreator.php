@@ -73,8 +73,15 @@ class SolicitudCreator {
             // Generar UUID
             $uuid = wp_generate_uuid4();
             
-            // Crear la solicitud
-            $solicitudTitle = self::generate_solicitud_title($uuid, $customerData);
+            // Obtener el ID del cliente de la orden
+            $customer_id = $order->get_customer_id();
+            if (!$customer_id) {
+                error_log('[RFQ] La orden no tiene un cliente asignado: ' . $order_id);
+                return false;
+            }
+            
+            // Crear la solicitud con título personalizado
+            $solicitudTitle = self::generate_solicitud_title($customer_id);
             
             error_log(sprintf(
                 '[RFQ] Creando solicitud con UUID: %s para orden #%d',
@@ -87,6 +94,7 @@ class SolicitudCreator {
                 'post_title'   => $solicitudTitle,
                 'post_name'    => $uuid,
                 'post_status'  => 'rfq-pending',
+                'post_author'  => $customer_id,
                 'post_content' => '',
                 'meta_input'   => [
                     '_solicitud_order_id' => absint($order_id),
@@ -198,18 +206,52 @@ class SolicitudCreator {
     }
 
     /**
-     * Genera el título de la solicitud
+     * Genera el título de la solicitud en formato user-YYYY-MM-DD-n
      *
-     * @param string $uuid UUID de la solicitud
-     * @param array $customerData Datos del cliente
-     * @return string
+     * @param int $user_id ID del usuario
+     * @return string Título generado
      */
-    private static function generate_solicitud_title(string $uuid, array $customerData): string {
-        return sprintf(
-            __('Solicitud #%s - %s', 'rfq-manager-woocommerce'),
-            $uuid,
-            sanitize_text_field($customerData['first_name'] . ' ' . $customerData['last_name'])
-        );
+    private static function generate_solicitud_title(int $user_id): string {
+        $user = get_userdata($user_id);
+        if (!$user) {
+            return 'usuario-desconocido-' . current_time('Y-m-d') . '-1';
+        }
+
+        $username = sanitize_title($user->user_login);
+        $date = current_time('Y-m-d');
+        
+        // Contar solicitudes del usuario en la fecha actual
+        $count = self::get_daily_solicitud_count($user_id, $date);
+        $n = $count + 1;
+
+        return sprintf('%s-%s-%d', $username, $date, $n);
+    }
+
+    /**
+     * Cuenta las solicitudes de un usuario en una fecha específica
+     *
+     * @param int $user_id ID del usuario
+     * @param string $date Fecha en formato Y-m-d
+     * @return int Número de solicitudes
+     */
+    private static function get_daily_solicitud_count(int $user_id, string $date): int {
+        $args = [
+            'post_type'      => 'solicitud',
+            'post_status'    => 'any',
+            'author'         => $user_id,
+            'date_query'     => [
+                [
+                    'year'  => date('Y', strtotime($date)),
+                    'month' => date('m', strtotime($date)),
+                    'day'   => date('d', strtotime($date)),
+                ]
+            ],
+            'fields'         => 'ids',
+            'posts_per_page' => -1
+        ];
+
+        $query = new \WP_Query($args);
+        return $query->found_posts;
     }
 
     /**
