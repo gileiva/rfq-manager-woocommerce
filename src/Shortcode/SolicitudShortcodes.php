@@ -133,16 +133,26 @@ class SolicitudShortcodes {
             RFQ_MANAGER_WOO_VERSION,
             true
         );
-        // Localizar rfqManagerL10n para rfq-manager-scripts si la página tiene el shortcode de ofertas
-        if ($has_rfq_ofertas) {
-            wp_localize_script('rfq-manager-scripts', 'rfqManagerL10n', [
+        // Localizar rfqManagerL10n para rfq-manager-scripts si la página tiene shortcodes que lo necesitan
+        if ($has_rfq_ofertas || $has_rfq_list || $has_rfq_view) {
+            $localize_data = [
                 'ajaxurl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('rfq_solicitud_status_nonce'),
-                'priceTooHigh' => __('Tu precio inicial fue de %s, no puedes cambiarlo a un precio más alto.', 'rfq-manager-woocommerce'),
-                'stockConfirmation' => __('Debes confirmar que tienes todos los productos en stock para poder enviar la cotización.', 'rfq-manager-woocommerce'),
-                'completePrices' => __('Por favor, complete todos los precios.', 'rfq-manager-woocommerce'),
-                'invalidPrice' => __('El precio debe ser mayor a 0.', 'rfq-manager-woocommerce')
-            ]);
+                'cartUrl' => wc_get_cart_url(),
+                'loading' => __('Cargando...', 'rfq-manager-woocommerce'),
+            ];
+            
+            // Agregar datos específicos para ofertas
+            if ($has_rfq_ofertas) {
+                $localize_data = array_merge($localize_data, [
+                    'priceTooHigh' => __('Tu precio inicial fue de %s, no puedes cambiarlo a un precio más alto.', 'rfq-manager-woocommerce'),
+                    'stockConfirmation' => __('Debes confirmar que tienes todos los productos en stock para poder enviar la cotización.', 'rfq-manager-woocommerce'),
+                    'completePrices' => __('Por favor, complete todos los precios.', 'rfq-manager-woocommerce'),
+                    'invalidPrice' => __('El precio debe ser mayor a 0.', 'rfq-manager-woocommerce')
+                ]);
+            }
+            
+            wp_localize_script('rfq-manager-scripts', 'rfqManagerL10n', $localize_data);
         }
         // Encolar script de layout dinámico de productos para cualquier usuario que vea rfq_list o rfq_view_solicitud
         if (($has_rfq_list || $has_rfq_view) && is_user_logged_in()) {
@@ -194,6 +204,7 @@ class SolicitudShortcodes {
                 'showDetails' => __('Ver Detalles', 'rfq-manager-woocommerce'),
                 'hideDetails' => __('Ocultar Detalles', 'rfq-manager-woocommerce'),
                 'completePrices' => __('Por favor, completa todos los precios antes de enviar.', 'rfq-manager-woocommerce'),
+                'cartUrl' => wc_get_cart_url(),
                 'isUserLoggedIn' => $is_user_logged_in,
                 'canCancelSolicitud' => $can_cancel_solicitud,
                 'loginRequired' => __('Debes iniciar sesión para realizar esta acción.', 'rfq-manager-woocommerce'),
@@ -924,24 +935,40 @@ class SolicitudShortcodes {
      * @return void
      */
     public static function ajax_repeat_solicitud(): void {
+        error_log('[RFQ] AJAX Repetir solicitud iniciado');
+        
         // Verificar nonce
         if (!isset($_POST['nonce']) || !wp_verify_nonce(sanitize_text_field($_POST['nonce']), 'rfq_solicitud_status_nonce')) {
+            error_log('[RFQ] Error de nonce en repetir solicitud');
             wp_send_json_error(['message' => __('Error de seguridad. Por favor, recarga la página.', 'rfq-manager-woocommerce')]);
         }
+        
         // Verificar que el usuario esté logueado
         if (!is_user_logged_in()) {
+            error_log('[RFQ] Usuario no logueado en repetir solicitud');
             wp_send_json_error(['message' => __('Debes iniciar sesión para repetir una solicitud.', 'rfq-manager-woocommerce')]);
         }
+        
         // Obtener y sanitizar datos
         $solicitud_id = isset($_POST['solicitud_id']) ? absint($_POST['solicitud_id']) : 0;
+        error_log('[RFQ] Solicitud ID recibido: ' . $solicitud_id);
+        
         if (!$solicitud_id) {
+            error_log('[RFQ] ID de solicitud inválido: ' . $solicitud_id);
             wp_send_json_error(['message' => __('ID de solicitud inválido.', 'rfq-manager-woocommerce')]);
         }
+        
         // Usar la clase handler para procesar la solicitud
+        error_log('[RFQ] Llamando a SolicitudRepeatHandler::repeat()');
         $result = \GiVendor\GiPlugin\Solicitud\SolicitudRepeatHandler::repeat($solicitud_id, wp_get_current_user());
+        
         if (is_wp_error($result)) {
+            error_log('[RFQ] Error en SolicitudRepeatHandler: ' . $result->get_error_message());
             wp_send_json_error(['message' => $result->get_error_message()]);
         }
+        
+        error_log('[RFQ] Resultado de repeat: ' . print_r($result, true));
+        
         // Preparar respuesta
         $response = [
             'success' => true,
@@ -950,6 +977,8 @@ class SolicitudShortcodes {
             'failed_items' => $result['failed'],
             'cart_url' => wc_get_cart_url()
         ];
+        
+        error_log('[RFQ] Respuesta enviada: ' . print_r($response, true));
         wp_send_json_success($response);
     }
 

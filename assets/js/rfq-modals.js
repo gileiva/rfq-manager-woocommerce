@@ -70,7 +70,7 @@ jQuery(document).ready(function($) {
                     if (response.success) {
                         showToast(rfqManagerL10n.cancelSuccess);
                         
-                        // Si estamos en la vista de lista
+                        // Si estamos en la vista de lista con tablas
                         if ($("tr[data-solicitud-id]").length) {
                             var $row = $("tr[data-solicitud-id=\"" + solicitudId + "\"]");
                             var $statusCell = $row.find(".rfq-status-cell");
@@ -81,7 +81,30 @@ jQuery(document).ready(function($) {
                             
                             // Ocultar el botón de cancelar
                             $("#rfq-cancel-btn-" + solicitudId).hide();
-                        } else {
+                        } 
+                        // Si estamos en la vista de lista con cards
+                        else if ($(".rfq-solicitud-card[data-solicitud-id]").length) {
+                            var $card = $(".rfq-solicitud-card[data-solicitud-id=\"" + solicitudId + "\"]");
+                            var $statusBadge = $card.find(".rfq-status-badge");
+                            
+                            // Actualizar el estado visual del badge
+                            if ($statusBadge.length) {
+                                $statusBadge.removeClass("rfq-status-pendiente rfq-status-activa")
+                                           .addClass("rfq-status-historica");
+                                $statusBadge.find(".rfq-status-text").text("Histórica");
+                            }
+                            
+                            // Ocultar el botón de cancelar y mostrar el de repetir
+                            $card.find(".rfq-cancel-btn").remove();
+                            
+                            // Agregar botón de repetir si no existe
+                            var $actionsRow = $card.find(".rfq-actions-row");
+                            if ($actionsRow.length && !$actionsRow.find(".rfq-repeat-btn").length) {
+                                var $repeatBtn = $('<button type="button" class="rfq-repeat-btn" data-solicitud="' + solicitudId + '" title="Repetir solicitud">Repetir Solicitud</button>');
+                                $actionsRow.prepend($repeatBtn);
+                            }
+                        } 
+                        else {
                             // Si estamos en la vista individual
                             setTimeout(function() {
                                 window.location.reload();

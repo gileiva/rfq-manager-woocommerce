@@ -187,9 +187,9 @@ class SolicitudFilters
         // Orden: Todas - Cotizadas - No cotizadas - Históricas - Aceptadas
         $tabs = [
             '' => __('Todas', 'rfq-manager-woocommerce'),
-            'cotizadas' => __('Cotizadas', 'rfq-manager-woocommerce'),
             'no-cotizadas' => __('No cotizadas', 'rfq-manager-woocommerce'),
-            'historicas' => __('Históricas', 'rfq-manager-woocommerce'),
+            'cotizadas' => __('Cotizadas', 'rfq-manager-woocommerce'),
+            // 'historicas' => __('Históricas', 'rfq-manager-woocommerce'),
             'aceptadas' => __('Aceptadas', 'rfq-manager-woocommerce'),
         ];
         $output = '<div class="rfq-status-tabs">';
@@ -236,10 +236,10 @@ class SolicitudFilters
      */
     public static function get_provider_filtered_solicitudes(string $filtro, int $proveedor_id): array
     {
-        // Estados de solicitudes visibles para proveedores (ahora incluye rfq-pending)
-        $visible_statuses = ['rfq-pending', 'rfq-active', 'rfq-accepted', 'rfq-historic', 'rfq-closed'];
+        // Estados de solicitudes visibles para proveedores - solo pendientes y activas
+        $visible_statuses = ['rfq-pending', 'rfq-active'];
 
-        // Todas las solicitudes visibles
+        // Todas las solicitudes visibles (pendientes y activas)
         $all_solicitudes = get_posts([
             'post_type'      => 'solicitud',
             'post_status'    => $visible_statuses,
@@ -280,33 +280,32 @@ class SolicitudFilters
                 // Solicitudes con al menos una cotización del proveedor
                 return array_values(array_intersect($all_solicitudes, $cotizadas));
             case 'no-cotizadas':
-                // Solicitudes abiertas (rfq-pending, rfq-active, rfq-accepted) sin cotización del proveedor
+                // Solo solicitudes pendientes y activas sin cotización del proveedor
                 $open_solicitudes = get_posts([
                     'post_type'      => 'solicitud',
-                    'post_status'    => ['rfq-pending', 'rfq-active', 'rfq-accepted'],
+                    'post_status'    => ['rfq-pending', 'rfq-active'],
                     'posts_per_page' => -1,
                     'fields'         => 'ids',
                 ]);
                 $no_cotizadas = array_diff($open_solicitudes, $cotizadas);
                 return array_values($no_cotizadas);
-            case 'historicas':
-                // Solicitudes donde el proveedor tiene cotización rfq-historic
-                // O solicitudes cuyo post_status sea rfq-historic o rfq-closed
-                $historic_status = get_posts([
+            case 'aceptadas':
+                // Solo solicitudes donde el proveedor ganó
+                return self::get_solicitudes_ganadas_por_proveedor($proveedor_id);
+            case '':
+            default:
+                // Solicitudes pendientes y activas + aceptadas donde el proveedor ganó
+                $base_solicitudes = get_posts([
                     'post_type'      => 'solicitud',
-                    'post_status'    => ['rfq-historic', 'rfq-closed'],
+                    'post_status'    => ['rfq-pending', 'rfq-active'],
                     'posts_per_page' => -1,
                     'fields'         => 'ids',
                 ]);
-                $ids = array_unique(array_merge($historic_status, $historicas_cot));
-                return array_values(array_intersect($all_solicitudes, $ids));
-            case 'aceptadas':
-                // Solicitudes donde el proveedor tiene cotización rfq-accepted
-                return array_values(array_intersect($all_solicitudes, $aceptadas));
-            case '':
-            default:
-                // Todas las solicitudes visibles para proveedores
-                return array_values($all_solicitudes);
+                
+                // Agregar solicitudes aceptadas donde el proveedor ganó
+                $solicitudes_ganadas = self::get_solicitudes_ganadas_por_proveedor($proveedor_id);
+                
+                return array_values(array_unique(array_merge($base_solicitudes, $solicitudes_ganadas)));
         }
     }
 
@@ -326,5 +325,46 @@ class SolicitudFilters
             }
         }
         return $filtered;
+    }
+
+    /**
+     * Obtiene solicitudes donde el proveedor específico ganó (tiene cotización aceptada).
+     *
+     * @param int $proveedor_id ID del usuario proveedor
+     * @return array Array de IDs de solicitudes
+     */
+    private static function get_solicitudes_ganadas_por_proveedor(int $proveedor_id): array
+    {
+        $solicitudes_aceptadas = get_posts([
+            'post_type'      => 'solicitud', 
+            'post_status'    => 'rfq-accepted',
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+        ]);
+        
+        $ganadas = [];
+        foreach ($solicitudes_aceptadas as $solicitud_id) {
+            $cotizacion_ganadora = get_posts([
+                'post_type'      => 'cotizacion',
+                'post_status'    => 'rfq-accepted',
+                'posts_per_page' => 1,
+                'author'         => $proveedor_id,
+                'meta_query'     => [
+                    [
+                        'key'   => '_solicitud_parent',
+                        'value' => $solicitud_id,
+                        'compare' => '=',
+                        'type' => 'NUMERIC',
+                    ],
+                ],
+                'fields' => 'ids',
+            ]);
+            
+            if (!empty($cotizacion_ganadora)) {
+                $ganadas[] = $solicitud_id;
+            }
+        }
+        
+        return $ganadas;
     }
 }

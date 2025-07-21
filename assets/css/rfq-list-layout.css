@@ -241,7 +241,7 @@
   margin-bottom: 2em;
   background: white;
   border-radius: 8px;
-  box-shadow: 0 0 8px rgba(0,0,0,0.05);
+  box-shadow: 0 0 8px rgba(0,0,0,0.35);
   position: relative;
 }
 
@@ -516,5 +516,80 @@
     min-width: 0;
     margin-bottom: 0;
   }
+}
+
+/* Estilos para botones de acción en [rfq-list] */
+.rfq-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+/* Botón Cancelar Solicitud - estilo enlace como en vista individual */
+.rfq-cancel-btn-link {
+  background: none !important;
+  border: none !important;
+  padding: 12px 24px !important;
+  color: var(--e-global-color-accent) !important;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.5;
+  cursor: pointer;
+  display: inline-block;
+  box-shadow: none !important;
+}
+
+.rfq-cancel-btn-link:hover {
+  text-decoration: underline;
+}
+
+/* Botón Repetir Solicitud - estilo personalizado según especificaciones */
+.rfq-repeat-btn {
+  border-radius: 30px;
+  padding: 12px 24px!important;
+  gap: 8px;
+  border: 1px solid rgba(255, 103, 0, 1)!important;
+  background: transparent!important;
+  color: rgba(255, 103, 0, 1)!important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.rfq-repeat-btn:hover {
+  background: rgba(255, 103, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.rfq-repeat-btn:active {
+  transform: translateY(0);
+}
+
+.rfq-repeat-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.rfq-repeat-btn:disabled:hover {
+  background: transparent;
+  transform: none;
+}
+
+/* Asegurar orden correcto de los botones */
+.rfq-actions-row .rfq-cancel-btn-link {
+  order: 1;
+}
+
+.rfq-actions-row .rfq-repeat-btn {
+  order: 2;
+}
+
+.rfq-actions-row .rfq-view-btn {
+  order: 3;
 }
 

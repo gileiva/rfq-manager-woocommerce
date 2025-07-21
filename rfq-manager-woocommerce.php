@@ -8,7 +8,7 @@
  * @license           GPL-2.0-or-later
  *
  * @wordpress-plugin
- * Plugin Name:       RFQ Manager for WooCommerce
+ * Plugin Name:       TCD Manager for WooCommerce
  * Plugin URI:        https://weloveweb.eu
  * Description:       Request for Quote management system for WooCommerce
  * Version:           0.4.0

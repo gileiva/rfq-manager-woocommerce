@@ -50,6 +50,13 @@ class SolicitudListRenderer {
             return '<p class="rfq-error">' . __('No tienes permisos para ver las solicitudes.', 'rfq-manager-woocommerce') . '</p>';
         }
 
+        // Para proveedores, siempre usar el sistema de filtros
+        if (in_array('proveedor', $user->roles)) {
+            $filtro = ''; // Filtro "Todas" por defecto
+            $ids = \GiVendor\GiPlugin\Shortcode\Components\SolicitudFilters::get_provider_filtered_solicitudes($filtro, $user->ID);
+            $atts['post__in'] = !empty($ids) ? $ids : [0]; // Forzar vacío si no hay resultados
+        }
+
         $selected_status = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
         $selected_order = isset($_GET['order']) ? sanitize_text_field($_GET['order']) : 'desc';
 
@@ -149,7 +156,13 @@ class SolicitudListRenderer {
         if (isset($args['post_status'])) {
             $query_args['post_status'] = $args['post_status'];
         } else {
-            $query_args['post_status'] = ['publish', 'rfq-pending', 'rfq-active', 'rfq-closed', 'rfq-historic'];
+            if (isset($args['post__in'])) {
+                // Cuando se usa post__in (proveedores), no establecer post_status
+                $query_args['post__in'] = $args['post__in'];
+            } else {
+                // Fallback para administradores: usar solo pendientes y activas
+                $query_args['post_status'] = ['rfq-pending', 'rfq-active'];
+            }
         }
         if (isset($args['post__in'])) {
             $query_args['post__in'] = $args['post__in'];
@@ -318,8 +331,27 @@ class SolicitudListRenderer {
         $html .= '</div>';
         // Acciones row
         $html .= '<div class="rfq-actions-row">';
+        
+        // Solo para clientes: agregar botones de cancelar y repetir
+        if ($is_cliente) {
+            // Botón Cancelar - solo para estados pendiente y activa
+            if (in_array($estado, ['rfq-pending', 'rfq-active'], true)) {
+                if (\GiVendor\GiPlugin\Solicitud\SolicitudCancelationHandler::can_cancel($user, $post)) {
+                    $html .= '<button type="button" class="rfq-cancel-btn rfq-cancel-btn-link" data-solicitud="' . esc_attr($solicitud_id) . '" title="Cancelar solicitud">' . __('Cancelar', 'rfq-manager-woocommerce') . '</button>';
+                }
+            }
+            
+            // Botón Repetir - solo para estados histórica
+            if ($estado === 'rfq-historic') {
+                if (\GiVendor\GiPlugin\Solicitud\SolicitudRepeatHandler::can_repeat($user, $post)) {
+                    $html .= '<button type="button" class="rfq-repeat-btn" data-solicitud="' . esc_attr($solicitud_id) . '" title="Repetir solicitud">' . __('Repetir Solicitud', 'rfq-manager-woocommerce') . '</button>';
+                }
+            }
+        }
+        
         if ($ver_detalles_url) {
-            $html .= '<a href="' . esc_url($ver_detalles_url) . '" class="rfq-view-btn rfq-btn-detalles">' . __('Ver ofertas', 'rfq-manager-woocommerce') . '</a>';
+            $texto_boton = $is_proveedor ? __('Ver detalles', 'rfq-manager-woocommerce') : __('Ver ofertas', 'rfq-manager-woocommerce');
+            $html .= '<a href="' . esc_url($ver_detalles_url) . '" class="rfq-view-btn rfq-btn-detalles">' . $texto_boton . '</a>';
         }
         $html .= '</div>';
         $html .= '</div>';
@@ -415,7 +447,17 @@ class SolicitudListRenderer {
         }
         // Para otros estados: mostrar el estado real
         $status_label = \GiVendor\GiPlugin\Shortcode\SolicitudShortcodes::get_status_label($estado);
-        $status_class = 'rfq-status-badge rfq-status-' . esc_attr(str_replace('rfq-', '', $estado));
+        
+        // Mapear estado a clase visual (igual que para clientes)
+        $map = [
+            'rfq-pending'  => 'rfq-status-pendiente',
+            'rfq-active'   => 'rfq-status-activa',
+            'rfq-accepted' => 'rfq-status-aceptada',
+            'rfq-historic' => 'rfq-status-historica',
+            'rfq-closed'   => 'rfq-status-historica',
+        ];
+        $status_class = 'rfq-status-badge ' . (isset($map[$estado]) ? $map[$estado] : 'rfq-status-' . esc_attr(str_replace('rfq-', '', $estado)));
+        
         // Dot color para historic/accepted/closed
         $dot = '<span class="rfq-status-dot"></span>';
         return '<div class="' . $status_class . '">' . $dot . '<span class="rfq-status-text">' . esc_html($status_label) . '</span></div>';

@@ -205,14 +205,18 @@ jQuery(document).ready(function($) {
     // Handler para botón Repetir Solicitud
     $(document).on('click', '.rfq-repeat-btn', function(e) {
         e.preventDefault();
+        console.log('[RFQ] Click en botón repetir solicitud');
         var $btn = $(this);
         var solicitudId = $btn.data('solicitud');
+        console.log('[RFQ] Solicitud ID:', solicitudId);
         if (!solicitudId) {
+            console.error('[RFQ] ID de solicitud inválido');
             showToast('ID de solicitud inválido.', true);
             return;
         }
         $btn.prop('disabled', true);
         showToast(rfqManagerL10n.loading);
+        console.log('[RFQ] Enviando AJAX para repetir solicitud');
         $.ajax({
             url: rfqManagerL10n.ajaxurl,
             type: 'POST',
@@ -223,15 +227,19 @@ jQuery(document).ready(function($) {
                 nonce: rfqManagerL10n.nonce
             },
             success: function(response) {
+                console.log('[RFQ] Respuesta AJAX repetir:', response);
                 if (response.success && response.data && response.data.success) {
+                    console.log('[RFQ] Redirigiendo al carrito:', rfqManagerL10n.cartUrl);
                     window.location.href = rfqManagerL10n.cartUrl;
                 } else {
                     var msg = (response.data && response.data.message) ? response.data.message : (response.message || 'Error inesperado');
+                    console.error('[RFQ] Error en respuesta:', msg);
                     showToast(msg, true);
                     $btn.prop('disabled', false);
                 }
             },
             error: function(xhr) {
+                console.error('[RFQ] Error AJAX repetir:', xhr);
                 var msg = 'Error inesperado';
                 if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
                     msg = xhr.responseJSON.data.message;

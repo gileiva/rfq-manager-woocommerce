@@ -902,7 +902,7 @@
 .rfq-status-tab {
   background-color: #fff!important;
   color: rgba(160, 162, 163, 1)!important;
-  border: 1px solid rgba(160, 162, 163, 1);
+  border: 1px solid rgba(160, 162, 163, 1)!important;
   border-radius: 8px!important;
   padding: 10px 24px!important;
   font-size: 14px!important;
@@ -921,7 +921,7 @@
 .rfq-status-tab.active {
     background-color: var(--e-global-color-accent)!important;
     color: #fff!important;
-    border-color: var(--e-global-color-accent);
+    border-color: var(--e-global-color-accent)!important;
 }
 
 .rfq-order-dropdown {
