@@ -1247,6 +1247,7 @@
   max-width: 120px;
   box-sizing: border-box;
   text-align: right;
+  padding-right: 25px!important;
 }
 /* Dropdown de IVA más ancho y con chevron accent */
 /* Dropdown de IVA más ancho y con chevron accent grande */

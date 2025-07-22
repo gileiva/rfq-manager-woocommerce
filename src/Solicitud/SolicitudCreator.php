@@ -158,20 +158,97 @@ class SolicitudCreator {
         
         foreach ($order->get_items() as $item) {
             $product_id = absint($item->get_data()['product_id']);
+            $variation_id = absint($item->get_variation_id());
             $qty = absint($item->get_quantity());
             $name = sanitize_text_field($item->get_name());
             $subtotal = floatval($order->get_item_subtotal($item, false));
+            $variation_data = self::extract_variation_attributes($item);
             
             $items[] = [
-                'product_id' => $product_id,
-                'qty'        => $qty,
-                'name'       => $name,
-                'subtotal'   => $subtotal,
+                'product_id'     => $product_id,
+                'variation_id'   => $variation_id,
+                'qty'            => $qty,
+                'name'           => $name,
+                'subtotal'       => $subtotal,
+                'variation_data' => $variation_data,
             ];
         }
 
         return $items;
     }
+
+    /**
+     * Extrae los atributos de variación de un item de orden
+     *
+     * @param WC_Order_Item_Product $item Item de orden de WooCommerce
+     * @return array
+     */
+    private static function extract_variation_attributes($item): array {
+        $variation_data = [];
+        
+        // Obtener metadatos del item que contienen los valores seleccionados por el usuario
+        $meta_data = $item->get_formatted_meta_data();
+        
+        foreach ($meta_data as $meta) {
+            $key = $meta->key;
+            $display_value = $meta->value;
+            
+            // Filtrar solo atributos de variación (pa_ son atributos globales)
+            if (strpos($key, 'pa_') === 0) {
+                // Convertir valor mostrado a slug de taxonomía
+                $taxonomy = $key; // pa_color, pa_size, etc.
+                $slug_value = self::convert_display_value_to_slug($display_value, $taxonomy);
+                
+                // Agregar prefijo "attribute_" requerido por WooCommerce
+                $wc_attribute_key = 'attribute_' . $key;
+                $variation_data[$wc_attribute_key] = $slug_value;
+            }
+            // Manejar atributos locales (no globales)
+            elseif (strpos($key, 'attribute_') === 0) {
+                // Ya tiene el prefijo correcto, solo convertir valor
+                $taxonomy = str_replace('attribute_', '', $key);
+                if (strpos($taxonomy, 'pa_') === 0) {
+                    $slug_value = self::convert_display_value_to_slug($display_value, $taxonomy);
+                    $variation_data[$key] = $slug_value;
+                } else {
+                    // Atributo local (no taxonomía), usar valor directo en minúsculas
+                    $variation_data[$key] = self::sanitize_local_attribute_value($display_value);
+                }
+            }
+        }
+        
+        return $variation_data;
+    }
+
+    /**
+     * Convierte un valor mostrado (ej: "Rojo") al slug de la taxonomía correspondiente (ej: "red")
+     *
+     * @param string $display_value Valor mostrado al usuario
+     * @param string $taxonomy Taxonomía del atributo (ej: pa_color)
+     * @return string Slug de la taxonomía o fallback
+     */
+    private static function convert_display_value_to_slug(string $display_value, string $taxonomy): string {
+        // Buscar el término por su nombre en la taxonomía
+        $term = get_term_by('name', $display_value, $taxonomy);
+        
+        if ($term && !is_wp_error($term)) {
+            return $term->slug;
+        }
+        
+        // Fallback: convertir manualmente si no se encuentra el término
+        return self::sanitize_local_attribute_value($display_value);
+    }
+
+    /**
+     * Sanitiza un valor de atributo para usarlo como fallback
+     *
+     * @param string $value Valor a sanitizar
+     * @return string Valor sanitizado
+     */
+    private static function sanitize_local_attribute_value(string $value): string {
+        return strtolower(str_replace(' ', '-', trim($value)));
+    }
+
 
     /**
      * Extrae los datos del cliente de una orden

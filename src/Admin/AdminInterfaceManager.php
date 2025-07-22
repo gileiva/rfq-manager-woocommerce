@@ -156,8 +156,8 @@ class AdminInterfaceManager {
      */
     public static function add_menu_pages(): void {
         add_menu_page(
-            __('RFQ Manager', 'rfq-manager-woocommerce'),
-            __('RFQ Manager', 'rfq-manager-woocommerce'),
+            __('TCD Manager', 'rfq-manager-woocommerce'),
+            __('TCD Manager', 'rfq-manager-woocommerce'),
             'manage_options',
             'rfq-manager',
             [self::class, 'render_main_page'],
@@ -328,7 +328,7 @@ class AdminInterfaceManager {
             <div class="rfq-dashboard">
                 <div class="rfq-dashboard-section">
                     <h2><?php _e('Resumen de Solicitudes', 'rfq-manager-woocommerce'); ?></h2>
-                    <p><?php _e('Bienvenido al panel de control de RFQ Manager. Aquí podrás gestionar todas las solicitudes de cotización.', 'rfq-manager-woocommerce'); ?></p>
+                    <p><?php _e('Bienvenido al panel de control de TCD Manager. Aquí podrás gestionar todas las solicitudes de cotización.', 'rfq-manager-woocommerce'); ?></p>
                     
                     <div class="rfq-quick-links">
                         <a href="<?php echo admin_url('edit.php?post_type=solicitud'); ?>" class="button button-primary">

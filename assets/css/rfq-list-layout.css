@@ -593,3 +593,32 @@
   order: 3;
 }
 
+/* Media queries para responsive de botones de acción */
+@media (max-width: 1024px) {
+  .rfq-actions-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    width: 100%;
+  }
+  
+  /* Cambiar orden: Ver ofertas primero, luego los demás */
+  .rfq-actions-row .rfq-view-btn {
+    order: 1;
+    width: 100%;
+    text-align: center;
+  }
+  
+  .rfq-actions-row .rfq-cancel-btn-link {
+    order: 2;
+    width: 100%;
+    text-align: center;
+  }
+  
+  .rfq-actions-row .rfq-repeat-btn {
+    order: 3;
+    width: 100%;
+    text-align: center;
+  }
+}
+

@@ -555,9 +555,9 @@ class SolicitudShortcodes {
             $has_quote = !empty($provider_quotes);
         }
         
-        if (!$is_author && !$is_admin && !$has_quote) {
-            return '<p class="rfq-error">No tienes permiso para ver esta información.</p>';
-        }
+        // if (!$is_author && !$is_admin && !$has_quote) {
+        //     return '<p class="rfq-info">Esta solicitud no está disponible o no tienes acceso a ella.</p>';
+        // }
 
         // 4. Renderizar cotizaciones y mostrar mensaje si no hay
         $cotizaciones_html = self::render_solicitud_cotizaciones($solicitud_id, $solicitud);

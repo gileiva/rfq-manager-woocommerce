@@ -52,9 +52,11 @@ class SolicitudRepeat
         
         foreach ($items as $item) {
             $product_id = isset($item['product_id']) ? (int)$item['product_id'] : 0;
+            $variation_id = isset($item['variation_id']) ? (int)$item['variation_id'] : 0;
             $qty = isset($item['qty']) ? (int)$item['qty'] : 1;
+            $variation_data = isset($item['variation_data']) ? $item['variation_data'] : [];
             
-            error_log('[RFQ] Procesando producto: ' . $product_id . ' con cantidad: ' . $qty);
+            error_log('[RFQ] Procesando producto: ' . $product_id . ' (variación: ' . $variation_id . ') con cantidad: ' . $qty);
             
             if ($product_id <= 0 || $qty <= 0) {
                 error_log('[RFQ] Producto con ID o cantidad inválida: ' . $product_id . ', qty: ' . $qty);
@@ -65,11 +67,13 @@ class SolicitudRepeat
                 continue;
             }
             
-            $product = wc_get_product($product_id);
-            error_log('[RFQ] Producto obtenido: ' . ($product ? 'Sí' : 'No') . ', ID: ' . $product_id);
+            // Usar variation_id si existe, sino product_id
+            $target_product_id = $variation_id > 0 ? $variation_id : $product_id;
+            $product = wc_get_product($target_product_id);
+            error_log('[RFQ] Producto obtenido: ' . ($product ? 'Sí' : 'No') . ', ID: ' . $target_product_id);
             
             if (!$product || $product->get_status() !== 'publish' || !$product->is_purchasable()) {
-                error_log('[RFQ] Producto no disponible: ' . $product_id . ', status: ' . ($product ? $product->get_status() : 'N/A'));
+                error_log('[RFQ] Producto no disponible: ' . $target_product_id . ', status: ' . ($product ? $product->get_status() : 'N/A'));
                 $failed[] = [
                     'product_id' => $product_id,
                     'reason' => __('Producto no disponible.', 'rfq-manager-woocommerce')
@@ -77,9 +81,9 @@ class SolicitudRepeat
                 continue;
             }
             
-            // Intentar agregar al carrito
-            error_log('[RFQ] Intentando agregar al carrito: ' . $product_id . ' x ' . $qty);
-            $cart_item_key = WC()->cart->add_to_cart($product_id, $qty);
+            // Intentar agregar al carrito con información de variación
+            error_log('[RFQ] Intentando agregar al carrito: ' . $product_id . ' (variación: ' . $variation_id . ') x ' . $qty);
+            $cart_item_key = WC()->cart->add_to_cart($product_id, $qty, $variation_id, $variation_data);
             
             if ($cart_item_key) {
                 error_log('[RFQ] Producto agregado exitosamente: ' . $product_id . ', key: ' . $cart_item_key);
