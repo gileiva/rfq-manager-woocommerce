@@ -680,8 +680,9 @@ class SolicitudShortcodes {
             $output .= '<div class="rfq-cotizacion-actions">';
             $output .= '<h3 class="rfq-cotizacion-total">' . esc_html(number_format((float)$total, 2, ',', '.') . ' €') . '</h3>';
             if ($is_accepted) {
-                $output .= '<button type="button" class="button rfq-aceptar-cotizacion-btn" disabled style="background:rgba(239,239,239,1);color:#fff;cursor:default;">' . __('Aceptada', 'rfq-manager-woocommerce') . '</button>';
-                $output .= ' <button type="button" class="button rfq-pagar-cotizacion-btn" data-cotizacion-id="' . esc_attr($cotizacion->ID) . '">' . __('Pagar', 'rfq-manager-woocommerce') . '</button>';
+                $output .= '<button type="button" class="button rfq-aceptar-cotizacion-btn" disabled style="background:rgba(239,239,239,1);color:#fff;cursor:default;">' . __('Oferta aceptada', 'rfq-manager-woocommerce') . '</button>';
+                $output .= '<p class="rfq-cotizacion-confirmacion">' . __('Hemos enviado a tu correo electrónico toda la información de como proseguir', 'rfq-manager-woocommerce') . '</p>';
+                $output .= '<button type="button" class="button rfq-pagar-cotizacion-btn" data-cotizacion-id="' . esc_attr($cotizacion->ID) . '">' . __('Pagar', 'rfq-manager-woocommerce') . '</button>';
             } elseif (\GiVendor\GiPlugin\Solicitud\SolicitudAcceptHandler::can_accept(wp_get_current_user(), $solicitud, $cotizacion)) {
                 $output .= '<button type="button" class="rfq-aceptar-cotizacion-btn button" data-cotizacion-id="' . esc_attr($cotizacion->ID) . '">' . __('Aceptar oferta', 'rfq-manager-woocommerce') . '</button>';
             }

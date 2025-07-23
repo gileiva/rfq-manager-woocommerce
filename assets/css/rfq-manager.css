@@ -611,47 +611,7 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.rfq-aceptar-cotizacion-btn:disabled {
-    background-color: var(--rfq-gray-400);
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-}
 
-.rfq-pagar-cotizacion-btn {
-    background-color: var(--rfq-primary);
-    color: #fff;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: var(--rfq-border-radius);
-    cursor: pointer;
-    transition: var(--rfq-transition);
-    margin-left: 0.5rem;
-}
-
-.rfq-pagar-cotizacion-btn:hover {
-    background-color: var(--rfq-primary-dark);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-/* Estilos para las filas de cotizaciones */
-.rfq-cotizacion-aceptada {
-    background-color: #e8f5e9 !important;
-}
-
-.rfq-cotizacion-aceptada td {
-    color: #256029;
-    font-weight: 500;
-}
-
-.rfq-cotizacion-no-aceptada {
-    opacity: 0.6;
-}
-
-.rfq-cotizacion-no-aceptada .rfq-aceptar-cotizacion-btn {
-    display: none !important;
-}
 
 /* Estilos responsivos */
 @media screen and (max-width: 768px) {

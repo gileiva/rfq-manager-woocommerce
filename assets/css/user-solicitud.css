@@ -29,7 +29,7 @@
   margin-left: auto;
   flex: 0 0 auto;
 }
-.rfq-expiry-countdown {
+/* .rfq-expiry-countdown {
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
@@ -40,7 +40,7 @@
   max-width: 220px;
   flex-shrink: 0;
   box-sizing: border-box;
-}
+} */
 .rfq-countdown-block {
   display: flex;
   flex-direction: column;
@@ -123,10 +123,10 @@
     width: 100%;
     flex: none;
   }
-  .rfq-expiry-countdown {
+  /* .rfq-expiry-countdown {
     padding: 8px 8px;
     max-width: 100%;
-  }
+  } */
 }
 /* =============================================
    FIN BLOQUE CONSOLIDADO CABECERA RFQ
@@ -142,7 +142,7 @@
   background: rgba(255, 233, 219, 1);
   padding: 8px 32px;
   border-radius: 12px;
-  max-width: 220px;
+  /* max-width: 220px; */
   flex-shrink: 0;
   box-sizing: border-box;
 }
@@ -217,37 +217,6 @@
   letter-spacing: 0.5px;
   display: inline-block;
 }
-/* ==============================
-   RFQ - OFERTAS (FASE 3: ACEPTADA)
-   ============================== */
-
-.rfq-cotizacion-card.rfq-cotizacion-aceptada {
-  background-color: rgba(255, 247, 243, 1);
-  border-left: 6px solid var(--e-global-color-accent);
-  box-shadow: 0px 6px 24px rgba(0, 0, 0, 0.05);
-  padding-left: 32px;
-  padding-right: 24px;
-}
-
-.rfq-cotizacion-card.rfq-cotizacion-aceptada .rfq-cotizacion-actions .rfq-aceptar-cotizacion-btn[disabled],
-.rfq-cotizacion-card.rfq-cotizacion-aceptada .rfq-cotizacion-actions .rfq-aceptar-cotizacion-btn.button[disabled] {
-  background: var(--e-global-color-accent);
-  color: #fff;
-  cursor: default;
-  opacity: 1;
-  font-weight: bold;
-  pointer-events: none;
-  border: none;
-  box-shadow: none;
-}
-
-.rfq-cotizacion-card.rfq-cotizacion-aceptada .rfq-cotizacion-confirmacion {
-  font-size: 13px;
-  color: #555;
-  margin-top: 8px;
-  max-width: 200px;
-  line-height: 1.4;
-}
 /* ========================
    ESTRUCTURA Y SECCIONES
    ======================== */
@@ -261,14 +230,14 @@
 }
 .rfq-cotizar-container {
     width: 100%;
-    margin: 2em auto;
+    /* margin: 2em auto; */
     padding: 40px;
     background: #fff;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     border-radius: 12px;
 }
 .rfq-cotizaciones-received {
-  margin-top: 32px;
+  /* margin-top: 32px; */
   margin-left: auto;
   margin-right: auto;
   box-sizing: border-box;
@@ -299,25 +268,13 @@
   border-radius: 12px;
   box-shadow: 0px 6px 24px 0px rgba(0, 0, 0, 0.10);
   background: #fff;
-  gap: 24px;
-  margin-top: 32px;
+  /* gap: 24px; */
+  /* margin-top: 32px; */
   margin-left: auto;
   margin-right: auto;
   box-sizing: border-box;
   margin-bottom: 24px;
   transition: box-shadow 0.2s;
-}
-
-
-/* .rfq-cotizacion-card:last-child {
-  margin-bottom: 0;
-} */
-
-.rfq-cotizacion-header {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
 }
 
 .rfq-proveedor-info {
@@ -327,12 +284,12 @@
 }
 
 .rfq-proveedor-logo {
-  width: 200px;
-  height: auto;
+  width: 100px;
+  height: 100px;
   display: block;
   border-radius: 8px;
-  background: #f7f7f7;
-  object-fit: contain;
+  flex-shrink: 0;
+  overflow: hidden;
 }
 
 .rfq-proveedor-logo-wrapper img {
@@ -372,80 +329,16 @@
   line-height: 1.4;
 }
 
-.rfq-cotizacion-actions {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-end;
-  min-width: 140px;
-  text-align: right;
-  gap: 12px;
-}
 
-.rfq-cotizacion-total {
-  font-size: 22px;
-  font-weight: 700;
-  color: #1a7f37;
-  margin-bottom: 8px;
-}
-
-.rfq-aceptar-cotizacion-btn.button {
-  padding: 10px 24px;
-  font-size: 14px;
-  border-radius: 30px;
-  font-weight: 500;
-  background: #fff;
-  color: rgba(255, 103, 0, 1);
-  border: solid 1px rgba(255, 103, 0, 1);  
-}
-.rfq-aceptar-cotizacion-btn.button:disabled,
-.rfq-aceptar-cotizacion-btn[disabled] {
-  background: #bdbdbd;
-  color: #fff;
-  cursor: default;
-  box-shadow: none;
-}
-
-@media (max-width: 600px) {
-  .rfq-cotizacion-card {
-    flex-direction: column;
-    gap: 16px;
-    padding: 16px;
-  }
-  .rfq-cotizacion-actions {
-    align-items: flex-start;
-    min-width: 0;
-    text-align: left;
-  }
-  .rfq-cotizacion-total {
-    font-size: 18px;
-  }
-  .rfq-cotizar-container,
-  .rfq-cotizaciones-received {
-    max-width: 100vw;
-    padding-left: 8px;
-    padding-right: 8px;
-  }
-}
 /* =====================
    RFQ - OFERTAS (FASE 2)
    ===================== */
-
-
-.rfq-cotizacion-header {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
 .rfq-proveedor-info {
   display: flex;
   align-items: flex-start;
   gap: 16px;
   border-bottom: 2px solid rgba(239, 239, 239, 1);
 }
-
 
 .rfq-proveedor-nombre {
   font-weight: 600;
@@ -459,23 +352,6 @@
   font-size: 15px;
   color: #888;
   line-height: 1.4;
-}
-
-.rfq-cotizacion-actions {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-end;
-  min-width: 140px;
-  text-align: right;
-  gap: 12px;
-}
-
-.rfq-cotizacion-total {
-  font-size: 20px;
-  font-weight: 700;
-  color: #222;
-  margin-bottom: 8px;
 }
 
 /* Responsive: stack cards vertically on small screens */
@@ -578,33 +454,21 @@
   border-bottom: 1px solid #f1f1f1;
   text-align: left;
 }
-.rfq-cotizacion-aceptada {
-  background: #e8f5e9 !important;
-}
-.rfq-cotizacion-aceptada td {
-  color: #256029;
-  font-weight: bold;
-}
 .rfq-cotizacion-no-aceptada {
   opacity: 0.6;
 }
 .rfq-cotizacion-no-aceptada .rfq-aceptar-cotizacion-btn {
   display: none !important;
 }
+
+
 .rfq-aceptar-cotizacion-btn.rfq-disabled {
   background: #ccc !important;
   color: #666 !important;
   cursor: not-allowed !important;
 }
-.rfq-pagar-cotizacion-btn {
-  background: #007cba;
-  border-color: #005a87;
-  color: #fff;
-}
-.rfq-pagar-cotizacion-btn:hover {
-  background: #005a87;
-  border-color: #003f5c;
-}
+
+
 
 /* 7. Modales */
 .rfq-modal {
@@ -751,8 +615,6 @@
 .rfq-list-table .status-historic { background-color: #95a5a6; color: white; padding: 5px 10px; border-radius: 3px; }
 
 /* Estilos para cotizaciones */
-.rfq-cotizacion-aceptada { background: #e8f5e9 !important; }
-.rfq-cotizacion-aceptada td { color: #256029; font-weight: bold; }
 .rfq-cotizacion-no-aceptada { opacity: 0.6; }
 .rfq-cotizacion-no-aceptada .rfq-aceptar-cotizacion-btn { display: none !important; }
 .rfq-aceptar-cotizacion-btn.rfq-disabled { 
@@ -761,16 +623,20 @@
     cursor: not-allowed !important; 
 }
 
-/* Botón de pago */
+
 .rfq-pagar-cotizacion-btn {
-    background: #007cba;
-    border-color: #005a87;
-    color: #fff;
+    background-color: transparent !important;
+    color: rgba(255, 103, 0, 1)!important;
+    border: 1px solid rgba(255, 103, 0, 1)!important;
+    padding: 0.5rem 1rem;
+    border-radius: var(--rfq-border-radius);
+    margin: 0 auto;
+    width: 50%!important;
 }
 
 .rfq-pagar-cotizacion-btn:hover {
-    background: #005a87;
-    border-color: #003f5c;
+    background: rgba(255, 103, 0, 1) !important;
+    color: #fff !important;
 }
 
 /* Modales */
@@ -1022,6 +888,126 @@
   }
 }
 /* Eliminada definición duplicada de .rfq-header-item */
+
+/* Responsive styles for tablets and below (1024px down to 0px) */
+@media (max-width: 1024px) {
+  .rfq-solicitud-header {
+    flex-direction: column;
+    padding-bottom: 32px;
+  }
+  
+  .rfq-header-item-countdown {
+    order: -1;
+    margin-left: 0;
+    justify-content: center;
+    align-self: center;
+    width: 100%;
+  }
+  
+  .rfq-header-item-countdown .rfq-expiry-countdown {
+    justify-content: center;
+    margin: 0 auto;
+  }
+  
+  .rfq-cotizar-container {
+    padding: 24px;
+  }
+  
+  /* Products table horizontal scroll - ALWAYS HORIZONTAL, NEVER STACKED */
+  .rfq-productos-wrapper {
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-height: none;
+  }
+  
+  .rfq-productos-header-row,
+  .rfq-producto-row {
+    min-width: 650px;
+    flex-wrap: nowrap !important;
+  }
+  
+  .rfq-productos-header-col,
+  .rfq-producto-col {
+    flex-shrink: 0;
+  }
+  
+  .rfq-productos-header-producto,
+  .rfq-producto-col-producto {
+    min-width: 200px;
+    flex: 1 1 40% !important;
+  }
+  
+  .rfq-productos-header-cantidad,
+  .rfq-producto-col-cantidad {
+    min-width: 80px;
+    flex: 0 0 12% !important;
+  }
+  
+  .rfq-productos-header-precio,
+  .rfq-producto-col-precio {
+    min-width: 120px;
+    flex: 0 0 16% !important;
+  }
+  
+  .rfq-productos-header-iva,
+  .rfq-producto-col-iva {
+    min-width: 120px;
+    flex: 0 0 16% !important;
+  }
+  
+  .rfq-productos-header-subtotal,
+  .rfq-producto-col-subtotal {
+    min-width: 100px;
+    flex: 0 0 16% !important;
+  }
+  .rfq-output-subtotal{
+    text-align: right!important;
+  }
+  
+  /* RFQ View Ofertas responsive styles */
+  .rfq-cotizacion-card {
+    flex-direction: column;
+    padding: 0;
+  }
+  
+  .rfq-cotizacion-actions {
+    order: -1;
+    flex: none;
+    /* padding: 16px 24px; */
+    border-left: none;
+    border-bottom: 1px solid rgba(239, 239, 239, 1);
+    align-items: flex-start;
+    text-align: left;
+    min-height: 150px;
+  }
+  
+  .rfq-cotizacion-header {
+    padding: 24px;
+  }
+  
+  .rfq-proveedor-info {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    gap: 0 !important;
+  }
+  
+  .rfq-proveedor-logo {
+    order: -1;
+    align-self: flex-start;
+  }
+  
+  .rfq-proveedor-details {
+    align-items: flex-start;
+    text-align: left;
+  }
+  
+  .rfq-proveedor-nombre,
+  .rfq-proveedor-about {
+    text-align: left;
+  }
+}
+
 @media (max-width: 1199px) and (min-width: 769px) {
   .rfq-filter-header {
     flex-direction: column;
@@ -1114,7 +1100,7 @@
 
 /* 1. Logotipo del proveedor */
 .rfq-proveedor-logo img {
-  width: 100px;
+  width: 100px !important;
   height: 100px;
   object-fit: cover;
   border-radius: 8px;
@@ -1141,6 +1127,7 @@
   display: flex;
   justify-content: space-between;
   padding: 0;
+  min-height: 250px;
 }
 .rfq-cotizacion-header {
   flex: 1 1 0;
@@ -1149,7 +1136,6 @@
 }
 .rfq-cotizacion-actions {
   flex: 0 0 25%;
-  padding-left: 32px;
   border-left: 1px solid rgba(239, 239, 239, 1);
   display: flex;
   flex-direction: column;
@@ -1157,9 +1143,27 @@
   align-items: center;
   padding-top: 24px;
   padding-bottom: 24px;
+  gap: 24px;
 }
 
-@media (max-width: 700px) {
+
+.rfq-cotizacion-header {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: #fff;
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+}
+@media (max-width: 1024px) {
+  .rfq-cotizacion-header {
+    padding: 32px;
+    border-top-left-radius: 0!important;
+    border-bottom-right-radius: 12px!important;
+  }
+}
+@media (max-width: 767px) {
   .rfq-cotizacion-card {
     flex-direction: column;
   }
@@ -1171,30 +1175,14 @@
     padding-top: 16px;
     padding-bottom: 0;
     align-items: center;
+    margin-top: 25px;
   }
   .rfq-cotizacion-header {
-    padding: 16px 0 0 0;
+    border-top-left-radius: 0;
+    border-bottom-right-radius: 12px;
   }
 }
-/* =============================
-   Bloque de productos RFQ (unificado para lectura y formulario)
-   ============================= */
-/* .rfq-productos-wrapper {
-  max-height: 528px;
-  overflow-y: auto;
-  margin-bottom: 40px;
-  padding: 0 32px;
-  box-sizing: border-box;
-  scrollbar-width: thin;
-}
-.rfq-productos-wrapper::-webkit-scrollbar {
-  width: 8px;
-  background: transparent;
-}
-.rfq-productos-wrapper::-webkit-scrollbar-thumb {
-  background: #e0e0e0;
-  border-radius: 8px;
-} */
+
 /* Cabecera de productos alineada y sin desborde */
 .rfq-productos-header-row {
   display: flex;
@@ -1204,7 +1192,7 @@
   padding: 0 0 12px 0; /* Sin padding lateral, pegado al borde */
   box-sizing: border-box;
   border: none;
-  gap: 0;
+  gap: 10px;
 }
 .rfq-productos-header-col {
   text-transform: uppercase;
@@ -1222,7 +1210,7 @@
   white-space: nowrap;
 }
 .rfq-productos-header-producto { flex: 1 1 40%; min-width: 0; }
-.rfq-productos-header-cantidad { flex: 0 0 12%; min-width: 40px; justify-content: flex-start; text-align: right; }
+.rfq-productos-header-cantidad { flex: 0 0 16%; min-width: 40px; justify-content: flex-start; text-align: right; }
 .rfq-productos-header-precio { flex: 0 0 16%; min-width: 70px; justify-content: flex-start; text-align: right; }
 .rfq-productos-header-iva { flex: 0 0 16%; min-width: 60px; justify-content: flex-start; text-align: right; }
 .rfq-productos-header-subtotal { flex: 0 0 16%; min-width: 70px; justify-content: flex-start; text-align: right; }
@@ -1237,8 +1225,8 @@
 /* Alineación exacta de columnas de items con cabecera */
 .rfq-producto-col-producto { flex: 1 1 40%; min-width: 0; gap: 12px; justify-content: flex-start; text-align: left; }
 .rfq-producto-col-cantidad { flex: 0 0 12%; min-width: 40px; justify-content: flex-start; text-align: right; align-items: center; }
-.rfq-producto-col-precio { flex: 0 0 16%; min-width: 70px; justify-content: flex-start; text-align: right; align-items: center; }
-.rfq-producto-col-iva { flex: 0 0 16%; min-width: 60px; justify-content: flex-start; text-align: right; align-items: center; }
+.rfq-producto-col-precio { flex: 0 0 16%; justify-content: flex-start; text-align: right; align-items: center; }
+.rfq-producto-col-iva { flex: 0 0 16%; justify-content: flex-start; text-align: right; align-items: center; }
 .rfq-producto-col-subtotal { flex: 0 0 16%; min-width: 70px; justify-content: flex-start; text-align: right; align-items: center; }
 /* Input de precio más ancho */
 .rfq-input-precio {
@@ -1304,6 +1292,7 @@
   width: 100%;
   min-height: 80px;
   box-sizing: border-box;
+  gap: 10px;
 }
 
 .rfq-producto-thumb {
@@ -1377,25 +1366,6 @@
   .rfq-producto-col-precio { flex: 0 0 16%; }
   .rfq-producto-col-iva { flex: 0 0 16%; }
   .rfq-producto-col-subtotal { flex: 0 0 16%; }
-}
-@media (max-width: 768px) {
-  .rfq-productos-header-row {
-    padding: 0 0 8px 0;
-  }
-  .rfq-producto-col,
-  .rfq-producto-col-producto,
-  .rfq-producto-col-cantidad,
-  .rfq-producto-col-precio,
-  .rfq-producto-col-iva,
-  .rfq-producto-col-subtotal {
-    flex: 0 0 100%;
-    min-width: 0;
-    margin-bottom: 6px;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-  }
-  .rfq-producto-row { flex-wrap: wrap; }
-  .rfq-producto-thumb, .rfq-producto-thumb img { width: 48px; height: 48px; }
 }
 
 /* === Mensaje de error debajo de la fila de producto === */
@@ -1640,5 +1610,119 @@
     min-width: 0;
     padding: 12px 0;
     font-size: 15px;
+  }
+}
+
+/* ==============================
+   RFQ - OFERTAS (FASE 3: ACEPTADA)
+   ============================== */
+
+.rfq-cotizacion-card.rfq-cotizacion-aceptada {
+  /* background-color: rgba(255, 247, 243, 1); */
+  box-shadow: 0px 6px 24px rgba(0, 0, 0, 0.05);
+  /* padding-left: 32px;
+  padding-right: 24px; */
+}
+
+.rfq-cotizacion-card.rfq-cotizacion-aceptada .rfq-cotizacion-actions .rfq-aceptar-cotizacion-btn[disabled],
+.rfq-cotizacion-card.rfq-cotizacion-aceptada .rfq-cotizacion-actions .rfq-aceptar-cotizacion-btn.button[disabled] {
+  background: rgba(255, 103, 0, 1) !important;
+  color: #fff;
+  cursor: default;
+  opacity: 1;
+  font-weight: bold;
+  pointer-events: none;
+  border: none;
+  box-shadow: none;
+  border-radius: 0 !important;
+  width: 100%;
+  order: -1;
+  font-weight: 500;
+}
+
+.rfq-cotizacion-card.rfq-cotizacion-aceptada .rfq-cotizacion-confirmacion {
+  font-size: 13px;
+  color: #555;
+  padding: 0 40px;
+  line-height: 1.4;
+  text-align: center;
+  margin-bottom: 0;
+}
+
+.rfq-cotizacion-card.rfq-cotizacion-aceptada .rfq-cotizacion-actions {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.rfq-cotizacion-card.rfq-cotizacion-aceptada {
+  background: rgba(255, 233, 219, 1);
+}
+
+.rfq-cotizacion-aceptada td {
+  color: #256029;
+  font-weight: bold;
+}
+
+/* Estilos para las filas de cotizaciones */
+/* .rfq-cotizacion-aceptada {
+    background-color: #e8f5e9 !important;
+} */
+
+.rfq-cotizacion-aceptada td {
+    color: #256029;
+    font-weight: 500;
+}
+
+.rfq-cotizacion-no-aceptada {
+    opacity: 0.6;
+}
+
+.rfq-cotizacion-no-aceptada .rfq-aceptar-cotizacion-btn {
+    display: none !important;
+}
+
+.rfq-cotizacion-total {
+  color: #000;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+/* .rfq-aceptar-cotizacion-btn.button {
+  padding: 10px 24px;
+  font-size: 14px;
+  border-radius: 30px;
+  font-weight: 500;
+  background: #fff;
+  color: rgba(255, 103, 0, 1);
+  border: solid 1px rgba(255, 103, 0, 1);  
+} */
+.rfq-aceptar-cotizacion-btn.button:disabled,
+.rfq-aceptar-cotizacion-btn[disabled] {
+  background: #bdbdbd;
+  color: #fff;
+  cursor: default;
+  box-shadow: none;
+}
+
+@media (max-width: 600px) {
+  /* .rfq-cotizacion-card {
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+  } */
+  /* .rfq-cotizacion-actions {
+    align-items: flex-start;
+    min-width: 0;
+    text-align: left;
+    gap: 12px;
+  } */
+  .rfq-cotizacion-total {
+    font-size: 39px;
+  }
+  .rfq-cotizar-container,
+  .rfq-cotizaciones-received {
+    max-width: 100vw;
+    padding-left: 8px;
+    padding-right: 8px;
   }
 }
