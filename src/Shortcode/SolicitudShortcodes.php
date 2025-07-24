@@ -824,10 +824,17 @@ class SolicitudShortcodes {
             $order = 'desc'; // fallback seguro
         }
 
+        // Validar y sanitizar parámetro de paginación
+        $paged = isset($_POST['paged']) ? absint($_POST['paged']) : 1;
+        if ($paged < 1) {
+            $paged = 1;
+        }
+
         $args = [
-            'per_page' => 10,
+            'per_page' => 6,
             'orderby'  => 'date',
-            'order'    => $order
+            'order'    => $order,
+            'paged'    => $paged
         ];
 
         // Si se seleccionó un estado específico, aplicarlo a la consulta

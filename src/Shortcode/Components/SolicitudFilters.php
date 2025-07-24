@@ -58,7 +58,7 @@ class SolicitudFilters
         $output .= sprintf(
             '<button class="rfq-status-tab%s" data-status="">%s</button>',
             ($selected === '' ? ' active' : ''),
-            esc_html__('Todos', 'rfq-manager-woocommerce')
+            esc_html__('Todas', 'rfq-manager-woocommerce')
         );
         // 2. Activas
         if (isset($counts['rfq-active'])) {
@@ -118,9 +118,9 @@ class SolicitudFilters
     {
         $labels = [
             'rfq-pending'  => __('Pendiente', 'rfq-manager-woocommerce'),
-            'rfq-active'   => __('Activa', 'rfq-manager-woocommerce'),
-            'rfq-historic' => __('Histórica', 'rfq-manager-woocommerce'),
-            'rfq-accepted' => __('Aceptada', 'rfq-manager-woocommerce'),
+            'rfq-active'   => __('Activas', 'rfq-manager-woocommerce'),
+            'rfq-historic' => __('Históricas', 'rfq-manager-woocommerce'),
+            'rfq-accepted' => __('Aceptadas', 'rfq-manager-woocommerce'),
             'rfq-closed'   => __('Cerrada', 'rfq-manager-woocommerce'),
         ];
         return $labels[$status] ?? $status;

@@ -25,7 +25,7 @@ class SolicitudListRenderer {
 
     private function render_by_role(): string {
         $atts = shortcode_atts([
-            'per_page' => 10,
+            'per_page' => 6,
             'status' => 'active',
             'orderby' => 'date',
             'order' => 'DESC',
@@ -75,7 +75,7 @@ class SolicitudListRenderer {
         $query_args = [
             'post_type' => 'solicitud',
             'posts_per_page' => intval($atts['per_page']),
-            'paged' => get_query_var('paged') ? get_query_var('paged') : 1,
+            'paged' => isset($atts['paged']) ? intval($atts['paged']) : (get_query_var('paged') ? get_query_var('paged') : 1),
             'author' => $user_id,
             'post_status' => isset($atts['post_status']) ? $atts['post_status'] : ['publish', 'rfq-pending', 'rfq-active', 'rfq-accepted', 'rfq-closed', 'rfq-historic'],
             'orderby' => 'date',
@@ -149,7 +149,7 @@ class SolicitudListRenderer {
         $query_args = [
             'post_type' => 'solicitud',
             'posts_per_page' => intval($args['per_page']),
-            'paged' => get_query_var('paged') ? get_query_var('paged') : 1,
+            'paged' => isset($args['paged']) ? intval($args['paged']) : (get_query_var('paged') ? get_query_var('paged') : 1),
             'orderby' => $args['orderby'],
             'order' => $args['order'],
         ];
