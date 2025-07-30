@@ -92,6 +92,11 @@ class RFQGateway extends \WC_Payment_Gateway {
      * @return array
      */
     public function process_payment($order_id) {
+        // Activar contexto RFQ durante procesamiento del pago
+        if (class_exists('\\GiVendor\\GiPlugin\\WooCommerce\\RFQPurchasableOverride')) {
+            \GiVendor\GiPlugin\WooCommerce\RFQPurchasableOverride::set_rfq_context(true);
+        }
+        
         $order = wc_get_order($order_id);
         
         // Aplicar directamente nuestro estado personalizado "rfq-enviada"

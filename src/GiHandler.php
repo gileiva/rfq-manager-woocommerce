@@ -373,6 +373,9 @@ class GiHandler {
         Services\PriceManager::init();         // Oculta precios en front-end y API
         Services\PaymentManager::init();       // Gestiona pasarelas de pago
         
+        // Initialize WooCommerce overrides
+        new WooCommerce\RFQPurchasableOverride(); // Permite productos sin precio en contexto RFQ
+        
         // Initialize auth and permissions
         Auth\PermissionHandler::init();        // Maneja permisos y redirecciones centralizadamente
         

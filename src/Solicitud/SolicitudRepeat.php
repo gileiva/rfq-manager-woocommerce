@@ -9,6 +9,10 @@ class SolicitudRepeat
 {
     /**
      * Agrega los productos de una solicitud anterior al carrito de WooCommerce.
+     * 
+     * MODIFICACIÓN RFQ: Este método ahora activa el contexto RFQ para permitir
+     * que productos sin precio o con precio 0 sean considerados comprables
+     * mediante la clase RFQPurchasableOverride.
      *
      * @param int $solicitud_id
      * @return array|\WP_Error
@@ -72,11 +76,35 @@ class SolicitudRepeat
             $product = wc_get_product($target_product_id);
             error_log('[RFQ] Producto obtenido: ' . ($product ? 'Sí' : 'No') . ', ID: ' . $target_product_id);
             
-            if (!$product || $product->get_status() !== 'publish' || !$product->is_purchasable()) {
+            // Activar contexto RFQ para permitir productos sin precio
+            \GiVendor\GiPlugin\WooCommerce\RFQPurchasableOverride::set_rfq_context(true);
+            
+            // Validaciones críticas manteniendo seguridad
+            if (!$product || $product->get_status() !== 'publish') {
                 error_log('[RFQ] Producto no disponible: ' . $target_product_id . ', status: ' . ($product ? $product->get_status() : 'N/A'));
                 $failed[] = [
                     'product_id' => $product_id,
                     'reason' => __('Producto no disponible.', 'rfq-manager-woocommerce')
+                ];
+                continue;
+            }
+            
+            // Verificar stock si se gestiona (mantener verificación crítica)
+            if ($product->managing_stock() && !$product->is_in_stock()) {
+                error_log('[RFQ] Producto sin stock: ' . $target_product_id);
+                $failed[] = [
+                    'product_id' => $product_id,
+                    'reason' => __('Producto sin stock.', 'rfq-manager-woocommerce')
+                ];
+                continue;
+            }
+            
+            // Verificar comprable en contexto RFQ (ahora permite productos sin precio)
+            if (!$product->is_purchasable()) {
+                error_log('[RFQ] Producto no comprable incluso en contexto RFQ: ' . $target_product_id);
+                $failed[] = [
+                    'product_id' => $product_id,
+                    'reason' => __('Producto no disponible para solicitud.', 'rfq-manager-woocommerce')
                 ];
                 continue;
             }
@@ -96,6 +124,9 @@ class SolicitudRepeat
                 ];
             }
         }
+        
+        // Desactivar contexto RFQ al finalizar procesamiento
+        \GiVendor\GiPlugin\WooCommerce\RFQPurchasableOverride::set_rfq_context(false);
         
         $result = [
             'added' => $added,
