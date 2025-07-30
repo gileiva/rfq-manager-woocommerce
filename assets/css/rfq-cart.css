@@ -1,0 +1,326 @@
+.rfq-cart-icon-trash:before {
+    content: "\e907";
+    font-family: inherit;
+    font-size: 18px;
+    color: #bcbcbc;
+    display: inline-block;
+    vertical-align: middle;
+    line-height: 1;
+}
+/* =============================
+   RFQ Cart Shortcode Styles
+   ============================= */
+
+.rfq-cart-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Header */
+.rfq-cart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    margin-bottom: 20px;
+}
+
+.rfq-cart-header-product,
+.rfq-cart-header-quantity {
+    font-size: 14px;
+    font-weight: 500;
+    color: rgba(160, 162, 163, 1);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.rfq-cart-header-product {
+    flex: 1;
+    text-align: left;
+}
+
+.rfq-cart-header-quantity {
+    width: 200px;
+    text-align: left;
+    padding-left: 20px;
+}
+
+/* Cart Items */
+.rfq-cart-items {
+    margin-bottom: 32px;
+}
+
+.rfq-cart-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+    transition: background-color 0.2s ease;
+}
+
+.rfq-cart-item:hover {
+    background-color: #f7f7f7;
+}
+
+.rfq-cart-item:hover .rfq-cart-remove-item {
+    color: #ff7500;
+}
+
+/* Product Info */
+.rfq-cart-item-product {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    gap: 15px;
+}
+
+.rfq-cart-item-image {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.rfq-cart-item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.rfq-cart-item-name {
+    font-size: 16px;
+    font-weight: 500;
+    color: #333;
+    line-height: 1.4;
+}
+
+/* Controls */
+.rfq-cart-item-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 30%;
+    justify-content: flex-start;
+    padding-left: 20px;
+}
+
+.rfq-cart-quantity-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;    
+    border-radius: 8px;
+    opacity: 1;
+    padding: 8px;
+    border: 1px solid rgba(160, 162, 163, 1)
+}
+
+.rfq-cart-quantity-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: none;
+    background: transparent!important;
+    color: rgba(81, 81, 81, 1)!important;
+    font-size: 18px!important;
+    font-weight: 400;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: none;
+}
+/* 
+.rfq-cart-quantity-btn:hover {
+    background: #ededed;
+    color: #222;
+} */
+
+.rfq-cart-quantity-input {
+    width: 56px;
+    height: 32px;
+    border: none!important;
+    background: #fff;
+    color: #2c2c2c;
+    font-size: 16px;
+    font-weight: 600;
+    text-align: center;
+    padding: 0 6px;
+    box-shadow: none;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: textfield;
+}
+
+.rfq-cart-quantity-input::-webkit-outer-spin-button,
+.rfq-cart-quantity-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.rfq-cart-quantity-input:focus {
+    outline: none;
+    border-color: #bcbcbc;
+}
+
+.rfq-cart-remove-item {
+    width: 32px;
+    height: 32px;
+    background: #fff;
+    border: none;
+    color: #bcbcbc;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    padding: 0;
+    box-shadow: none;
+    background: none!important;
+}
+
+.rfq-cart-remove-item:hover {
+    background: #f5f5f5;
+    color: #888;
+}
+
+/* Submit Button */
+.rfq-cart-actions {
+    text-align: center;
+    margin-top: 32px;
+}
+
+.rfq-cart-submit-btn {
+    width: 100%;
+    padding: 10px 24px;
+    background-color: #ff7500;
+    border: 1px solid #ff7500;
+    color: white;
+    border-radius: 32px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: none;
+}
+
+.rfq-cart-submit-btn:hover {
+    color: #ff7500;
+    background-color: transparent!important;
+    border: 1px solid #ff7500;
+}
+
+/* Empty Cart */
+.rfq-cart-empty {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.rfq-cart-empty-message {
+    font-size: 24px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.rfq-cart-empty-subtitle {
+    font-size: 16px;
+    color: #666;
+    margin: 0;
+}
+
+.rfq-cart-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin: 20px 0;
+}
+
+/* =============================
+   Responsive Design
+   ============================= */
+
+/* Tablet and Mobile */
+@media (max-width: 768px) {
+    .rfq-cart-container {
+        padding: 15px;
+    }
+    
+    .rfq-cart-header {
+        display: none; /* Hide headers on mobile for cleaner look */
+    }
+    
+    .rfq-cart-item {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 20px 0;
+        gap: 15px;
+    }
+    
+    .rfq-cart-item-product {
+        width: 100%;
+        gap: 12px;
+    }
+    
+    .rfq-cart-item-image {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .rfq-cart-item-name {
+        font-size: 15px;
+    }
+    
+    .rfq-cart-item-controls {
+        width: 100%;
+        justify-content: space-between;
+        padding-left: 0;
+        margin-left: 62px; /* Align with product name */
+    }
+    
+    .rfq-cart-quantity-control {
+        gap: 6px;
+    }
+    
+    .rfq-cart-quantity-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+    }
+    
+    .rfq-cart-quantity-input {
+        width: 50px;
+        height: 32px;
+        font-size: 14px;
+    }
+    
+    .rfq-cart-submit-btn {
+        font-size: 16px;
+        padding: 10px 20px;
+    }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+    .rfq-cart-container {
+        padding: 10px;
+    }
+    
+    .rfq-cart-item-controls {
+        margin-left: 0;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    
+    .rfq-cart-quantity-control {
+        align-self: flex-start;
+    }
+    
+    .rfq-cart-remove-item {
+        align-self: flex-end;
+        margin-top: -10px;
+    }
+}

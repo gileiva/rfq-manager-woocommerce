@@ -108,6 +108,11 @@ class GiHandler {
         
         // Cotizacion
         require_once RFQ_MANAGER_WOO_PLUGIN_DIR . 'src/Cotizacion/CotizacionHandler.php';
+
+        // WooCommerce integrations
+        require_once RFQ_MANAGER_WOO_PLUGIN_DIR . 'src/Woocommerce/RFQPurchasableOverride.php';
+        require_once RFQ_MANAGER_WOO_PLUGIN_DIR . 'src/WooCommerce/CartShortcode.php';
+        require_once RFQ_MANAGER_WOO_PLUGIN_DIR . 'src/WooCommerce/AjaxCart.php';
         
         // Initialize the loader
         self::$loader = new Core\Loader();
@@ -378,6 +383,7 @@ class GiHandler {
         // Initialize shortcodes
         Shortcode\SolicitudShortcodes::init(); // Registra shortcodes de solicitud
         Shortcode\CotizacionShortcodes::init(); // Registra shortcodes de cotización
+        WooCommerce\CartShortcode::register(); // Registra shortcode del carrito RFQ
         
         // Forzar flush de reglas de reescritura
         add_action('init', function() {
