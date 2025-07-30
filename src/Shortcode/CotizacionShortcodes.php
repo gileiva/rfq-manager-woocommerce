@@ -92,6 +92,7 @@ class CotizacionShortcodes {
             true
         );
         wp_localize_script('rfq-cotizar-scripts', 'rfqCotizarL10n', [
+            'currencySymbol' => function_exists('get_woocommerce_currency_symbol') ? get_woocommerce_currency_symbol() : '€',
             'completePrices' => __('Por favor, complete todos los precios.', 'rfq-manager-woocommerce'),
             'invalidPrice' => __('El precio debe ser mayor a 0.', 'rfq-manager-woocommerce'),
             'priceTooHigh' => __('Tu precio inicial fue de %s, no puedes cambiarlo a un precio más alto.', 'rfq-manager-woocommerce'),
@@ -107,9 +108,16 @@ class CotizacionShortcodes {
      * @return string       Output HTML del formulario
      */
     public static function render_cotizar_form($atts = []): string {
-        // Verificar permisos
-        if (!self::check_permissions()) {
-            return '<div class="rfq-error">' . esc_html__('No tienes permisos para ver esta página.', 'rfq-manager-woocommerce') . '</div>';
+        // Usar el handler centralizado de permisos
+        $slug = get_query_var('rfq_cotizacion_slug');
+        $permission_error = \GiVendor\GiPlugin\Auth\PermissionHandler::check_and_handle_permissions(
+            \GiVendor\GiPlugin\Auth\PermissionHandler::PAGE_TYPE_COTIZAR,
+            $slug,
+            true // Retornar mensaje en lugar de redirigir
+        );
+        
+        if ($permission_error) {
+            return $permission_error;
         }
 
         $slug = get_query_var('rfq_cotizacion_slug');
@@ -137,6 +145,14 @@ class CotizacionShortcodes {
         }
 
         $output = '';
+        
+        // Mostrar mensajes de error si existen
+        if (isset($_GET['rfq_error']) && isset($_GET['rfq_message'])) {
+            $error_message = urldecode($_GET['rfq_message']);
+            $output .= '<div class="rfq-error" style="background: #f8d7da; color: #721c24; padding: 12px; border: 1px solid #f5c6cb; border-radius: 4px; margin-bottom: 20px;">';
+            $output .= '<strong>Error:</strong> ' . esc_html($error_message);
+            $output .= '</div>';
+        }
         $output .= '<div class="rfq-cotizar-container">';
         ob_start();
         echo \GiVendor\GiPlugin\Solicitud\View\SolicitudHeaderRenderer::render($solicitud, 'proveedor', ['show_expiry' => true]);
@@ -156,10 +172,11 @@ class CotizacionShortcodes {
 
         // --- FOOTER ---
         $total = $cotizacion ? get_post_meta($cotizacion->ID, '_total', true) : '';
+        $currency_symbol = function_exists('get_woocommerce_currency_symbol') ? get_woocommerce_currency_symbol() : '€';
         $output .= '<div class="rfq-solicitud-formulario">';
         $output .= '<div class="rfq-total-row">';
         $output .= '<span class="rfq-total-label">' . __('TOTAL', 'rfq-manager-woocommerce') . '</span>';
-        $output .= '<span class="rfq-total-amount">' . ($total ? wc_price($total) : '0.00') . '</span>';
+        $output .= '<span class="rfq-total-amount">' . ($total ? wc_price($total) : wc_price(0)) . '</span>';
         $output .= '</div>';
         $output .= '<div class="rfq-form-footer">';
         $output .= '<input type="checkbox" id="rfq-stock-checkbox" name="stock_confirmation" class="rfq-stock-checkbox" required />';
@@ -187,6 +204,47 @@ class CotizacionShortcodes {
         $user = wp_get_current_user();
         return in_array('proveedor', (array) $user->roles);
     }
+
+    // /**
+    //  * Verifica permisos y maneja redirecciones para diferentes tipos de usuario
+    //  *
+    //  * @since  0.1.0
+    //  * @return bool|string True si tiene permisos, string con mensaje si no
+    //  */
+    // private static function check_permissions_with_redirect() {
+    //     // Si no está logueado, redirigir a login
+    //     if (!is_user_logged_in()) {
+    //         wp_redirect(wp_login_url(get_permalink()));
+    //         exit;
+    //     }
+
+    //     $user = wp_get_current_user();
+        
+    //     // Si es proveedor, permitir acceso
+    //     if (in_array('proveedor', (array) $user->roles)) {
+    //         return true;
+    //     }
+
+    //     // Si es cliente, verificar si es autor de la solicitud
+    //     if (in_array('customer', (array) $user->roles) || in_array('subscriber', (array) $user->roles)) {
+    //         $slug = get_query_var('rfq_cotizacion_slug');
+    //         if ($slug) {
+    //             $solicitud = get_page_by_path($slug, OBJECT, 'solicitud');
+    //             if ($solicitud && (int)$solicitud->post_author === (int)$user->ID) {
+    //                 // Es autor, redirigir a ver-solicitud
+    //                 wp_redirect(home_url('/ver-solicitud/' . $slug . '/'));
+    //                 exit;
+    //             } else {
+    //                 // No es autor, redirigir a lista-solicitudes
+    //                 wp_redirect(home_url('/lista-solicitudes/'));
+    //                 exit;
+    //             }
+    //         }
+    //     }
+
+    //     // Para otros roles, mostrar mensaje de error
+    //     return '<div class="rfq-error">' . esc_html__('No tienes permisos para ver esta página.', 'rfq-manager-woocommerce') . '</div>';
+    // }
 
     /**
      * Obtiene el mensaje de error según el tipo de error

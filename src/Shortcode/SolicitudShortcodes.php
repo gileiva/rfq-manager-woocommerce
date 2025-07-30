@@ -384,15 +384,8 @@ class SolicitudShortcodes {
                     $output .= \GiVendor\GiPlugin\Cotizacion\OfertaBadgeHelper::render_new_badge();
                 }
 
-                // Botón de repetir solicitud - solo para estados históricos o aceptados
-                if (in_array($estado, ['rfq-historic', 'rfq-accepted'])) {
-                    // Verificar si el usuario actual es el propietario de la solicitud
-                    $current_user_id = get_current_user_id();
-                    $solicitud_author_id = get_post_field('post_author', $solicitud_id);
-                    if ($current_user_id === (int)$solicitud_author_id) {
-                        $output .= '<button type="button" class="rfq-repeat-btn" data-solicitud="' . esc_attr($solicitud_id) . '" title="Repetir solicitud">' . __('Repetir', 'rfq-manager-woocommerce') . '</button>';
-                    }
-                }
+                // Mostrar botón repetir usando el handler centralizado, igual que en la vista individual
+                // ...existing code...
 
                 // Botón de cancelar (solo si el handler lo permite)
                 if (\GiVendor\GiPlugin\Solicitud\SolicitudCancelationHandler::can_cancel(wp_get_current_user(), $post)) {
@@ -574,14 +567,6 @@ class SolicitudShortcodes {
         return $cotizaciones_html;
     }
 
-    /**
-     * Renderiza el bloque de cotizaciones recibidas para una solicitud.
-     *
-     * @since  0.1.0
-     * @param  int $solicitud_id
-     * @param  \WP_Post $solicitud
-     * @return string
-     */
     /**
      * Renderiza el bloque de cotizaciones recibidas para una solicitud.
      *

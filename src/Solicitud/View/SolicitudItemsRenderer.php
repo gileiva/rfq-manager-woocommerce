@@ -27,7 +27,7 @@ class SolicitudItemsRenderer
                 <div class="rfq-productos-header-col rfq-productos-header-producto">Producto</div>
                 <div class="rfq-productos-header-col rfq-productos-header-cantidad">Cantidad</div>
                 <?php if ($modo === 'formulario'): ?>
-                    <div class="rfq-productos-header-col rfq-productos-header-precio">Precio</div>
+                    <div class="rfq-productos-header-col rfq-productos-header-precio">Precio unidad</div>
                     <div class="rfq-productos-header-col rfq-productos-header-iva">IVA</div>
                     <div class="rfq-productos-header-col rfq-productos-header-subtotal">Subtotal</div>
                 <?php endif; ?>
@@ -77,7 +77,7 @@ class SolicitudItemsRenderer
                         <input type="number" step="0.01" min="0" name="precios[<?php echo esc_attr($product_id); ?>]" value="<?php echo esc_attr($precio); ?>" class="rfq-input-precio" <?php if ($original_price) echo 'data-original-price="' . esc_attr($original_price) . '"'; ?> />
                     </div>
                     <div class="rfq-producto-col rfq-producto-col-iva">
-                        <select name="iva[<?php echo esc_attr($product_id); ?>]" class="rfq-input-iva">
+                        <select name="iva[<?php echo esc_attr($product_id); ?>]" class="rfq-input-iva" required>
                             <option value="" <?php selected($iva, ''); ?>>-</option>
                             <option value="4" <?php selected($iva, '4'); ?>>4%</option>
                             <option value="10" <?php selected($iva, '10'); ?>>10%</option>
@@ -86,7 +86,15 @@ class SolicitudItemsRenderer
                     </div>
                     <div class="rfq-producto-col rfq-producto-col-subtotal">
                         <output class="rfq-output-subtotal" for="precios[<?php echo esc_attr($product_id); ?>],iva[<?php echo esc_attr($product_id); ?>]">
-                            <?php echo esc_html($subtotal); ?>
+                            <?php 
+                            if ($subtotal) {
+                                // Mostrar subtotal con símbolo de moneda
+                                $currency_symbol = function_exists('get_woocommerce_currency_symbol') ? get_woocommerce_currency_symbol() : '€';
+                                echo esc_html($subtotal) . ' ' . $currency_symbol;
+                            } else {
+                                echo esc_html($subtotal);
+                            }
+                            ?>
                         </output>
                     </div>
                 <?php endif; ?>

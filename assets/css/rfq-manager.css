@@ -160,36 +160,6 @@
     background-color: #6c757d;
 }
 
-/* Botones */
-.rfq-view-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.5rem 1rem;
-    background-color: rgba(26, 113, 252, 1);
-    color: #fff;
-    text-decoration: none;
-    border-radius: var(--rfq-border-radius);
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition: var(--rfq-transition);
-    border: none;
-    cursor: pointer;
-}
-
-.rfq-view-btn:hover {
-    background-color: rgba(26, 113, 252, 1);
-    color: #fff;
-    text-decoration: none;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.rfq-view-btn:active {
-    transform: translateY(0);
-    box-shadow: none;
-}
-
 /* Paginación */
 .rfq-pagination {
     margin-top: 1.5rem;
@@ -639,13 +609,4 @@
   display: flex;
   justify-content: flex-end;
   margin-top: 16px;
-}
-
-.rfq-cancel-btn-link {
-  background: none;
-  border: none;
-  color: #dc3545;
-  cursor: pointer;
-  font-size: 14px;
-  padding: 0;
 }

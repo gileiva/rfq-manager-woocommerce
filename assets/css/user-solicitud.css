@@ -266,7 +266,7 @@
   align-items: stretch;
   /* padding eliminado para border individual en header/actions */
   border-radius: 12px;
-  box-shadow: 0px 6px 24px 0px rgba(0, 0, 0, 0.10);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
   background: #fff;
   /* gap: 24px; */
   /* margin-top: 32px; */
@@ -406,40 +406,6 @@
     flex: none;
   }
 }
-
-/* 3. Cabecera de productos */
-.rfq-productos-header-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  width: 100%;
-  padding: 0 32px 12px 32px;
-  box-sizing: border-box;
-  border: none;
-}
-.rfq-productos-header-col {
-  text-transform: uppercase;
-  font-size: 14px;
-  font-weight: 500;
-  color: rgba(160, 162, 163, 1);
-  line-height: 140%;
-  letter-spacing: 0.5px;
-  padding: 0;
-  display: flex;
-  align-items: flex-end;
-}
-.rfq-productos-header-producto {
-  flex: 0 0 80%;
-  justify-content: flex-start;
-  text-align: left;
-}
-.rfq-productos-header-cantidad {
-  flex: 0 0 20%;
-  justify-content: flex-end;
-  text-align: right;
-}
-
-
 
 /* 6. Cotizaciones recibidas */
 
@@ -708,7 +674,7 @@
 /* =============================
    Cabecera de la grilla de productos en la vista de solicitud (FASE 1)
    ============================= */
-.rfq-productos-header-row {
+/* .rfq-productos-header-row {
   display: flex;
   flex-direction: row;
   width: 100%;
@@ -757,58 +723,40 @@
   color: var(--e-global-color-accent);
   margin: 0;
   text-align: left;
-}
+} */
 
-.rfq-status-tabs {
+/* 3. Cabecera de productos */
+/* .rfq-productos-header-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.rfq-status-tab {
-  background-color: #fff!important;
-  color: rgba(160, 162, 163, 1)!important;
-  border: 1px solid rgba(160, 162, 163, 1)!important;
-  border-radius: 8px!important;
-  padding: 10px 24px!important;
-  font-size: 14px!important;
-  gap: 8px;
-  height: 40px;
-  min-width: 98px;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s, border 0.2s;
-}
-.rfq-status-tab:hover {
-    background-color: var(--e-global-color-accent)!important;
-    color: #fff!important;
-    border-color: var(--e-global-color-accent);
-}
-
-.rfq-status-tab.active {
-    background-color: var(--e-global-color-accent)!important;
-    color: #fff!important;
-    border-color: var(--e-global-color-accent)!important;
-}
-
-.rfq-order-dropdown {
-  width: 180px;
-  height: 40px;
-  border-radius: 8px;
-  border: 1px solid rgba(160, 162, 163, 1);
-  color: rgba(160, 162, 163, 1);
-  font-size: 16px;
-  appearance: none;
-  background-color: #fff;
+  flex-direction: row;
+  align-items: center;
+  width: 100%;
+  padding: 0 32px 12px 32px;
   box-sizing: border-box;
-  outline: none;
-  transition: border-color 0.2s;
-  order: 2;
+  border: none;
 }
+.rfq-productos-header-col {
+  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(160, 162, 163, 1);
+  line-height: 140%;
+  letter-spacing: 0.5px;
+  padding: 0;
+  display: flex;
+  align-items: flex-end;
+}
+.rfq-productos-header-producto {
+  flex: 0 0 80%;
+  justify-content: flex-start;
+  text-align: left;
+}
+.rfq-productos-header-cantidad {
+  flex: 0 0 20%;
+  justify-content: flex-end;
+  text-align: right;
+} */
 
-.rfq-order-dropdown:focus,
-.rfq-order-dropdown:hover {
-  border-color: var(--e-global-color-accent);
-}
 
 /* ========================
    MEDIA QUERIES
@@ -978,7 +926,7 @@
     border-bottom: 1px solid rgba(239, 239, 239, 1);
     align-items: flex-start;
     text-align: left;
-    min-height: 150px;
+    min-height: 250px;
   }
   
   .rfq-cotizacion-header {
@@ -1008,92 +956,6 @@
   }
 }
 
-@media (max-width: 1199px) and (min-width: 769px) {
-  .rfq-filter-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-  .rfq-filter-header-right {
-    flex: none;
-    width: 100%;
-  }
-
-  .rfq-status-tabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  .rfq-status-tab {
-    flex: 1 1 auto; /* se adaptan al ancho disponible */
-    max-width: calc(50% - 6px); /* 2 columnas si entran */
-    padding: 10px 20px;
-    font-size: 14px;
-    text-align: center;
-  }
-
-  .rfq-order-dropdown {
-    /* order: 1;  */
-    width: 100%;
-  }
-
-  .rfq-status-tabs {
-    order: 2;
-    width: 100%;
-  }
-
-  .rfq-filter-header-right {
-    justify-content: flex-start;
-  }
-  }
-
-
-@media (max-width: 768px) {
-  .rfq-filter-header {
-    flex-direction: column;
-    align-items: stretch;
-    height: auto;
-    padding-bottom: 16px;
-    gap: 20px;
-  }
-  .rfq-filter-header-left {
-    flex: none;
-    width: 100%;
-  }
-  .rfq-section-title {
-    text-align: center;
-    font-size: 24px;
-    margin-bottom: 8px;
-  }
-  .rfq-filter-header-right {
-    flex: none;
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-    justify-content: flex-start;
-  }
-  .rfq-status-tabs {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    justify-items: stretch;
-  }
-  .rfq-status-tab {
-    min-width: 0;
-    width: 100%;
-    padding: 12px 0;
-    font-size: 15px;
-  }
-  .rfq-order-dropdown {
-    width: 100%;
-    min-width: 0;
-    margin-top: 4px;
-  }
-}
-
 /* =============================
    Estilos específicos para rfq_view_ofertas
    ============================= */
@@ -1117,7 +979,7 @@
   line-height: 1.4rem;
 }
 .rfq-proveedor-fecha-value {
-  font-size: 14px;
+  font-size: 16px;
   color: #000;
   font-weight: 400;
 }
@@ -1176,7 +1038,9 @@
     padding-bottom: 0;
     align-items: center;
     margin-top: 25px;
+    min-height: 250px;
   }
+  
   .rfq-cotizacion-header {
     border-top-left-radius: 0;
     border-bottom-right-radius: 12px;
@@ -1184,16 +1048,16 @@
 }
 
 /* Cabecera de productos alineada y sin desborde */
-.rfq-productos-header-row {
+/* .rfq-productos-header-row {
   display: flex;
   flex-direction: row;
   align-items: stretch;
   width: 100%;
-  padding: 0 0 12px 0; /* Sin padding lateral, pegado al borde */
+  padding: 0 0 12px 0;
   box-sizing: border-box;
   border: none;
   gap: 10px;
-}
+} */
 .rfq-productos-header-col {
   text-transform: uppercase;
   font-size: 14px;
@@ -1201,7 +1065,7 @@
   color: rgba(160, 162, 163, 1);
   line-height: 140%;
   letter-spacing: 0.5px;
-  padding: 0 0 0 0; /* Sin padding lateral, pegado al borde */
+  padding: 0 0 0 0;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -1209,7 +1073,7 @@
   min-width: 0;
   white-space: nowrap;
 }
-.rfq-productos-header-producto { flex: 1 1 40%; min-width: 0; }
+/* .rfq-productos-header-producto { flex: 1 1 40%; min-width: 0; } */
 .rfq-productos-header-cantidad { flex: 0 0 16%; min-width: 40px; justify-content: flex-start; text-align: right; }
 .rfq-productos-header-precio { flex: 0 0 16%; min-width: 70px; justify-content: flex-start; text-align: right; }
 .rfq-productos-header-iva { flex: 0 0 16%; min-width: 60px; justify-content: flex-start; text-align: right; }
@@ -1220,14 +1084,17 @@
   align-items: center;
   min-height: 80px;
   box-sizing: border-box;
-  padding: 0 0 0 0; /* Sin padding lateral, pegado al borde */
+  padding: 0 0 0 0; 
 }
-/* Alineación exacta de columnas de items con cabecera */
+
 .rfq-producto-col-producto { flex: 1 1 40%; min-width: 0; gap: 12px; justify-content: flex-start; text-align: left; }
 .rfq-producto-col-cantidad { flex: 0 0 12%; min-width: 40px; justify-content: flex-start; text-align: right; align-items: center; }
 .rfq-producto-col-precio { flex: 0 0 16%; justify-content: flex-start; text-align: right; align-items: center; }
 .rfq-producto-col-iva { flex: 0 0 16%; justify-content: flex-start; text-align: right; align-items: center; }
-.rfq-producto-col-subtotal { flex: 0 0 16%; min-width: 70px; justify-content: flex-start; text-align: right; align-items: center; }
+.rfq-producto-col-subtotal { flex: 0 0 16%; min-width: 70px; justify-content: flex-start; text-align: right; align-items: center; } */
+
+
+
 /* Input de precio más ancho */
 .rfq-input-precio {
   width: 120px;
@@ -1321,13 +1188,14 @@
   word-break: break-word;
 }
 
-
-
 /* 5. Botón Cancelar y Acciones */
 .rfq-solicitud-actions-wrapper {
   margin-top: 24px;
   display: flex;
   justify-content: flex-end;
+}
+.rfq-solicitud-actions {
+  margin-top: 30px;
 }
 /* Botón cancelar como enlace simple */
 .rfq-cancel-btn,
@@ -1407,9 +1275,9 @@
 }
 
 /* === RFQ FORM FOOTER: TOTAL ROW & ACTIONS === */
-.rfq-solicitud-items {
+/* .rfq-solicitud-items {
   border-bottom: 2px solid rgba(239, 239, 239, 1);
-}
+} */
 .rfq-total-row {
   display: flex;
   flex-direction: row;
@@ -1628,6 +1496,7 @@
 .rfq-cotizacion-card.rfq-cotizacion-aceptada .rfq-cotizacion-actions .rfq-aceptar-cotizacion-btn.button[disabled] {
   background: rgba(255, 103, 0, 1) !important;
   color: #fff;
+  box-shadow: 0px 4px 16px 0px rgba(0, 0, 0, 0.12)!important;
   cursor: default;
   opacity: 1;
   font-weight: bold;
@@ -1638,10 +1507,11 @@
   width: 100%;
   order: -1;
   font-weight: 500;
+  font-size: 16px;
 }
 
 .rfq-cotizacion-card.rfq-cotizacion-aceptada .rfq-cotizacion-confirmacion {
-  font-size: 13px;
+  font-size: 12px;
   color: #555;
   padding: 0 40px;
   line-height: 1.4;
@@ -1687,7 +1557,7 @@
   text-align: center;
 }
 
-/* .rfq-aceptar-cotizacion-btn.button {
+.rfq-aceptar-cotizacion-btn.button {
   padding: 10px 24px;
   font-size: 14px;
   border-radius: 30px;
@@ -1695,7 +1565,7 @@
   background: #fff;
   color: rgba(255, 103, 0, 1);
   border: solid 1px rgba(255, 103, 0, 1);  
-} */
+}
 .rfq-aceptar-cotizacion-btn.button:disabled,
 .rfq-aceptar-cotizacion-btn[disabled] {
   background: #bdbdbd;
@@ -1725,4 +1595,59 @@
     padding-left: 8px;
     padding-right: 8px;
   }
+}
+
+/* Cabecera de productos */
+.rfq-productos-header-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  width: 100%;
+  padding: 0 0 12px 0;
+  box-sizing: border-box;
+  border: none;
+  gap: 10px;
+}
+.rfq-productos-header-col,
+.rfq-producto-col {
+  /* Mismos estilos en ambos */
+  box-sizing: border-box;
+  min-width: 0;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0;
+}
+
+/* --- Columnas: unificá los flex EXACTOS --- */
+.rfq-productos-header-producto, .rfq-producto-col-producto { flex: 1 1 40%; min-width: 0; gap: 12px; }
+.rfq-productos-header-cantidad, .rfq-producto-col-cantidad { flex: 0 0 12%; min-width: 40px; }
+.rfq-productos-header-precio, .rfq-producto-col-precio { flex: 0 0 16%; min-width: 70px; }
+.rfq-productos-header-iva, .rfq-producto-col-iva { flex: 0 0 16%; min-width: 60px; }
+.rfq-productos-header-subtotal, .rfq-producto-col-subtotal { flex: 0 0 16%; min-width: 70px; }
+
+/* --- Responsive, Tablet y Mobile --- */
+@media (max-width: 900px) {
+  .rfq-productos-header-col,
+  .rfq-producto-col {
+    font-size: 13px;
+  }
+  .rfq-productos-header-producto, .rfq-producto-col-producto { flex: 1 1 40%; }
+  .rfq-productos-header-cantidad, .rfq-producto-col-cantidad { flex: 0 0 12%; }
+  .rfq-productos-header-precio, .rfq-producto-col-precio { flex: 0 0 16%; }
+  .rfq-productos-header-iva, .rfq-producto-col-iva { flex: 0 0 16%; }
+  .rfq-productos-header-subtotal, .rfq-producto-col-subtotal { flex: 0 0 16%; }
+}
+
+@media (max-width: 768px) {
+  .rfq-productos-header-col,
+  .rfq-producto-col {
+    font-size: 12px;
+  }
+  .rfq-productos-header-producto, .rfq-producto-col-producto { flex: 1 1 40%; }
+  .rfq-productos-header-cantidad, .rfq-producto-col-cantidad { flex: 0 0 12%; }
+  .rfq-productos-header-precio, .rfq-producto-col-precio { flex: 0 0 16%; }
+  .rfq-productos-header-iva, .rfq-producto-col-iva { flex: 0 0 16%; }
+  .rfq-productos-header-subtotal, .rfq-producto-col-subtotal { flex: 0 0 16%; }
 }

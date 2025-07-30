@@ -123,9 +123,12 @@ class SolicitudListRenderer {
                 ]);
             }
             if ($query->max_num_pages > 1) {
-                $current_page = max(1, get_query_var('paged'));
+                $current_page = isset($atts['paged']) ? intval($atts['paged']) : (get_query_var('paged') ? get_query_var('paged') : 1);
+                
+                // Generar URL base para paginación
+                $current_url = home_url(add_query_arg(array(), $GLOBALS['wp']->request));
                 $pagination = paginate_links([
-                    'base' => str_replace(999999999, '%#%', esc_url(get_pagenum_link(999999999))),
+                    'base' => $current_url . '%_%',
                     'format' => '?paged=%#%',
                     'current' => $current_page,
                     'total' => $query->max_num_pages,
@@ -216,9 +219,12 @@ class SolicitudListRenderer {
             ]);
         }
         if ($query->max_num_pages > 1) {
-            $current_page = max(1, get_query_var('paged'));
+            $current_page = isset($args['paged']) ? intval($args['paged']) : (get_query_var('paged') ? get_query_var('paged') : 1);
+            
+            // Generar URL base para paginación
+            $current_url = home_url(add_query_arg(array(), $GLOBALS['wp']->request));
             $pagination = paginate_links([
-                'base' => str_replace(999999999, '%#%', esc_url(get_pagenum_link(999999999))),
+                'base' => $current_url . '%_%',
                 'format' => '?paged=%#%',
                 'current' => $current_page,
                 'total' => $query->max_num_pages,
@@ -340,10 +346,10 @@ class SolicitudListRenderer {
                     $html .= '<button type="button" class="rfq-cancel-btn rfq-cancel-btn-link" data-solicitud="' . esc_attr($solicitud_id) . '" title="Cancelar solicitud">' . __('Cancelar', 'rfq-manager-woocommerce') . '</button>';
                 }
             }
-            
-            // Botón Repetir - solo para estados histórica
-            if ($estado === 'rfq-historic') {
-                if (\GiVendor\GiPlugin\Solicitud\SolicitudRepeatHandler::can_repeat($user, $post)) {
+            // Botón Repetir - para estados histórica y aceptada
+            if (in_array($estado, ['rfq-historic', 'rfq-accepted'], true)) {
+                $can_repeat = \GiVendor\GiPlugin\Solicitud\SolicitudRepeatHandler::can_repeat($user, $post);
+                if ($can_repeat) {
                     $html .= '<button type="button" class="rfq-repeat-btn" data-solicitud="' . esc_attr($solicitud_id) . '" title="Repetir solicitud">' . __('Repetir Solicitud', 'rfq-manager-woocommerce') . '</button>';
                 }
             }

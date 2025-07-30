@@ -77,7 +77,13 @@ class CotizacionHandler {
         // Procesar precios y calcular total
         $precios = self::process_precios($solicitud_id, !empty($existing_cotizacion));
         if (is_wp_error($precios)) {
-            wp_die($precios->get_error_message());
+            // En lugar de wp_die, redirigir con parámetros de error
+            $redirect_url = add_query_arg([
+                'rfq_error' => $precios->get_error_code(),
+                'rfq_message' => urlencode($precios->get_error_message())
+            ], wp_get_referer() ?: get_permalink());
+            wp_redirect($redirect_url);
+            exit;
         }
 
         // Crear o actualizar cotización
@@ -205,11 +211,21 @@ class CotizacionHandler {
             }
 
             $precio = floatval($_POST['precios'][$product_id]);
-            $iva = floatval($_POST['iva'][$product_id]);
+            $iva = $_POST['iva'][$product_id];
             
             if ($precio <= 0) {
                 continue;
             }
+
+            // Validar que el IVA esté seleccionado
+            if (empty($iva) || !in_array($iva, ['4', '10', '21'])) {
+                return new \WP_Error(
+                    'missing_tax',
+                    __('Debe seleccionar un tipo de IVA para todos los productos.', 'rfq-manager-woocommerce')
+                );
+            }
+
+            $iva = floatval($iva);
 
             // Validar que el nuevo precio no sea mayor que el actual
             if ($is_update && isset($current_prices[$product_id])) {

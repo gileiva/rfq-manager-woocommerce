@@ -282,7 +282,7 @@
   font-weight: 500;
   border-top-left-radius: 20px;
   border-bottom-left-radius: 20px;
-  font-size: 14px;
+  font-size: 16px;
 }
 .rfq-cotizacion-card .rfq-nueva-oferta {
   position: absolute;
@@ -291,10 +291,10 @@
   background-color: rgba(255, 233, 219, 1);
   color: var(--e-global-color-accent, #ff5722);
   font-weight: 500;
-  padding: 6px 14px;
+  padding: 8px 24px;
   border-top-left-radius: 20px;
   border-bottom-left-radius: 20px;
-  font-size: 14px;
+  font-size: 16px;
   z-index: 2;
 }
 
@@ -308,9 +308,8 @@
 
   .rfq-nueva-oferta {
     display: block;
-    width: 100%;
+    /* width: 100%; */
     padding: 10px 0;
-    border-radius: 999px;
     text-align: center;
   }
 }
@@ -397,19 +396,6 @@
   margin-left: 0;
 }
 
-.rfq-actions-row {
-  text-align: right;
-}
-/*
-.rfq-btn-detalles {
-  padding: 12px 24px;
-  border-radius: 30px;
-  display: inline-block;
-  border: none;
-  cursor: pointer;
-  background: #ddd; 
-}*/
-
 .rfq-header-title{
     font-weight:500;
     font-size: 14px;
@@ -423,23 +409,7 @@
     line-height: 150%;
     letter-spacing: 0%;
 }
-.rfq-btn-detalles{
-    background-color: rgba(255, 103, 0, 1);
-    font-weight: 500;
-    font-size: 14px;
-    line-height: 140%;
-    letter-spacing: 0%;
-    color: rgba(255, 255, 255, 1);
-    padding: 12px 24px;
-    border-radius: 30px;
-    display: inline-block;
-    border: none;
-    cursor: pointer;
-    /* background: #ddd;  */
-}
-.rfq-btn-detalles :hover {
-    background-color: rgba(26, 113, 252, 1);
-}
+
 
 @media (max-width: 768px) {
   .rfq-header-row {
@@ -458,10 +428,6 @@
     justify-content: flex-start;
     margin-top: 1em;
     text-align: left;
-  }
-  .rfq-btn-detalles{
-    width: 100%;
-    text-align: center;
   }
 }
 
@@ -518,50 +484,68 @@
   }
 }
 
-/* Estilos para botones de acción en [rfq-list] */
+/* BOTONES DE LISTA DE SOLICITUDES */
 .rfq-actions-row {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 12px;
   justify-content: flex-end;
 }
 
-/* Botón Cancelar Solicitud - estilo enlace como en vista individual */
+/* Estilos generales para los 3 botones de acción */
+.rfq-repeat-btn,
+.rfq-view-btn,
 .rfq-cancel-btn-link {
-  background: none !important;
-  border: none !important;
-  padding: 12px 24px !important;
-  color: var(--e-global-color-accent) !important;
-  text-decoration: none;
-  font-weight: 500;
-  font-size: 14px;
-  line-height: 1.5;
-  cursor: pointer;
-  display: inline-block;
-  box-shadow: none !important;
+  display: inline-flex!important;
+  align-items: center; 
+  justify-content: center; 
+  height: 40px;
+  padding: 12px 24px!important; 
 }
 
-.rfq-cancel-btn-link:hover {
-  text-decoration: underline;
+/* Botones */
+.rfq-view-btn {
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    background-color: rgba(26, 113, 252, 1);
+    color: #fff;
+    text-decoration: none;
+    border-radius: var(--rfq-border-radius);
+    font-size: 14px;
+    font-weight: 500;
+    transition: var(--rfq-transition);
+    border: none;
+    cursor: pointer;
+    order: 3;
+}
+
+.rfq-view-btn:hover {
+    background-color: rgba(26, 113, 252, 1);
+    color: #fff;
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.rfq-view-btn:active {
+    transform: translateY(0);
+    box-shadow: none;
 }
 
 /* Botón Repetir Solicitud - estilo personalizado según especificaciones */
 .rfq-repeat-btn {
-  border-radius: 30px;
-  padding: 12px 24px!important;
   gap: 8px;
   border: 1px solid rgba(255, 103, 0, 1)!important;
   background: transparent!important;
   color: rgba(255, 103, 0, 1)!important;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
+  order: 2;
 }
 
 .rfq-repeat-btn:hover {
-  background: rgba(255, 103, 0, 0.1);
+  background-color: rgba(255, 103, 0, 1)!important;
+  color: #fff!important;
+  border: 1px solid rgba(255, 103, 0, 1)!important;
   transform: translateY(-1px);
 }
 
@@ -580,18 +564,37 @@
   transform: none;
 }
 
-/* Asegurar orden correcto de los botones */
-.rfq-actions-row .rfq-cancel-btn-link {
+/* Botón Cancelar Solicitud - estilo enlace como en vista individual */
+.rfq-cancel-btn-link {
+  background: none !important;
+  border: none !important;
+  color: var(--e-global-color-accent) !important;
+  text-decoration: none;  
+  box-shadow: none !important;
   order: 1;
 }
 
-.rfq-actions-row .rfq-repeat-btn {
-  order: 2;
+.rfq-cancel-btn-link:hover {
+  text-decoration: underline;
 }
 
-.rfq-actions-row .rfq-view-btn {
-  order: 3;
+.rfq-btn-detalles{
+    background-color: rgba(255, 103, 0, 1);
+    /* font-weight: 500;
+    font-size: 14px; */
+    /* line-height: 140%;
+    letter-spacing: 0%; */
+    color: rgba(255, 255, 255, 1);
+    /* padding: 12px 24px; */
+    border-radius: 30px;
+    /* display: inline-block; */
+    border: none;
+    /* cursor: pointer; */
 }
+.rfq-btn-detalles :hover {
+    background-color: rgba(26, 113, 252, 1);
+} 
+
 
 /* Media queries para responsive de botones de acción */
 @media (max-width: 1024px) {
@@ -600,25 +603,17 @@
     align-items: stretch;
     gap: 8px;
     width: 100%;
-  }
+  }  
   
-  /* Cambiar orden: Ver ofertas primero, luego los demás */
-  .rfq-actions-row .rfq-view-btn {
+  .rfq-btn-detalles{
+    width: 100%;
+    text-align: center;
+  }
+ .rfq-view-btn {
     order: 1;
-    width: 100%;
-    text-align: center;
-  }
-  
-  .rfq-actions-row .rfq-cancel-btn-link {
-    order: 2;
-    width: 100%;
-    text-align: center;
-  }
-  
-  .rfq-actions-row .rfq-repeat-btn {
-    order: 3;
-    width: 100%;
-    text-align: center;
-  }
+ }
+ .rfq-cancel-btn-link{
+   order: 2;
+ }
 }
 

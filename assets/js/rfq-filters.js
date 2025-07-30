@@ -37,6 +37,23 @@ jQuery(document).ready(function($) {
                 } else {
                     $container.html(response);
                 }
+                // Scroll automático al tope de la página
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                
+                // Actualizar URL con parámetros de filtro
+                var newUrl = new URL(window.location);
+                if (status) {
+                    newUrl.searchParams.set('status', status);
+                } else {
+                    newUrl.searchParams.delete('status');
+                }
+                if (order) {
+                    newUrl.searchParams.set('order', order);
+                } else {
+                    newUrl.searchParams.delete('order');
+                }
+                newUrl.searchParams.delete('paged'); // Eliminar paged al filtrar
+                window.history.pushState({}, '', newUrl);
             },
             error: function() {
                 $container.html('<p class="rfq-error">' + (rfqManagerL10n.error || 'Error al cargar las solicitudes') + '</p>');
@@ -67,6 +84,23 @@ jQuery(document).ready(function($) {
                 } else {
                     $container.html(response);
                 }
+                // Scroll automático al tope de la página
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                
+                // Actualizar URL con parámetros de filtro
+                var newUrl = new URL(window.location);
+                if (status) {
+                    newUrl.searchParams.set('status', status);
+                } else {
+                    newUrl.searchParams.delete('status');
+                }
+                if (order) {
+                    newUrl.searchParams.set('order', order);
+                } else {
+                    newUrl.searchParams.delete('order');
+                }
+                newUrl.searchParams.delete('paged'); // Eliminar paged al filtrar
+                window.history.pushState({}, '', newUrl);
             },
             error: function() {
                 $container.html('<p class="rfq-error">' + (rfqManagerL10n.error || 'Error al cargar las solicitudes') + '</p>');
@@ -141,6 +175,27 @@ jQuery(document).ready(function($) {
                 } else {
                     $container.html(response);
                 }
+                // Scroll automático al tope de la página
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                
+                // Actualizar URL con parámetros de paginación
+                var newUrl = new URL(window.location);
+                if (status) {
+                    newUrl.searchParams.set('status', status);
+                } else {
+                    newUrl.searchParams.delete('status');
+                }
+                if (order) {
+                    newUrl.searchParams.set('order', order);
+                } else {
+                    newUrl.searchParams.delete('order');
+                }
+                if (paged > 1) {
+                    newUrl.searchParams.set('paged', paged);
+                } else {
+                    newUrl.searchParams.delete('paged');
+                }
+                window.history.pushState({}, '', newUrl);
             },
             error: function() {
                 $container.html('<p class="rfq-error">' + (rfqManagerL10n.error || 'Error al cargar las solicitudes') + '</p>');

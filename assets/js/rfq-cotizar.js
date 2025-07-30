@@ -2,9 +2,11 @@ jQuery(document).ready(function($) {
 
     'use strict';
 
-    // Formatea como moneda (sin símbolo) - debe estar en el scope global del closure
+    // Formatea como moneda CON símbolo
     function formatMoney(amount) {
-        return Number(amount).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const formatted = Number(amount).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const symbol = (typeof rfqCotizarL10n !== 'undefined' && rfqCotizarL10n.currencySymbol) ? rfqCotizarL10n.currencySymbol : '€';
+        return formatted + ' ' + symbol;
     }
 
     // Solo ejecutar si existe el bloque de cotización
@@ -24,18 +26,19 @@ jQuery(document).ready(function($) {
         // Actualiza el subtotal de una fila
         function actualizarSubtotalFila($row) {
             const { subtotal } = calcularSubtotalFila($row);
-            $row.find('.rfq-output-subtotal').val(formatMoney(subtotal)).text(formatMoney(subtotal));
+            $row.find('.rfq-output-subtotal').html(formatMoney(subtotal));
         }
 
         // Actualiza el total general
         function actualizarTotalGeneral() {
             let total = 0;
             $('.rfq-output-subtotal').each(function() {
-                let val = $(this).val() || $(this).text();
+                let val = $(this).text();
+                // Extraer solo números y comas/puntos decimales, quitar símbolo de moneda
                 val = (val + '').replace(/[^\d.,]/g, '').replace(',', '.');
                 total += parseFloat(val) || 0;
             });
-            $('.rfq-total-amount').text(formatMoney(total));
+            $('.rfq-total-amount').html(formatMoney(total));
         }
 
         // Eventos: recalcular al cambiar precio o IVA y validar
