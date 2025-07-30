@@ -43,6 +43,7 @@ class GiHandler {
      * @var      \GiVendor\GiPlugin\Core\Loader    $loader    Maintains and registers all hooks for the plugin.
      */
     protected static $loader;
+    private $rfq_gateway_filters;
 
     /**
      * The unique identifier of this plugin.
@@ -170,20 +171,6 @@ class GiHandler {
             }
         });
 
-        // Redirección automática a login para páginas protegidas
-        // add_action('template_redirect', function() {
-        //     if (!is_user_logged_in()) {
-        //         global $wp;
-        //         $request_path = $wp->request;
-                
-        //         // Verificar si está accediendo a páginas protegidas
-        //         if (preg_match('#^(ver-solicitud|cotizar-solicitud|lista-solicitudes)/#', $request_path) || 
-        //             preg_match('#^(ver-solicitud|cotizar-solicitud|lista-solicitudes)$#', $request_path)) {
-        //             wp_redirect(wp_login_url(home_url($request_path)));
-        //             exit;
-        //         }
-        //     }
-        // });
 
         // Forzar plantilla de la página base en /ver-solicitud/{slug}/ y /cotizar-solicitud/{slug}/
         add_filter('template_include', function($template) {
@@ -376,6 +363,7 @@ class GiHandler {
         // Initialize WooCommerce overrides
         new WooCommerce\RFQPurchasableOverride(); // Permite productos sin precio en contexto RFQ
         
+        
         // Initialize auth and permissions
         Auth\PermissionHandler::init();        // Maneja permisos y redirecciones centralizadamente
         
@@ -398,6 +386,22 @@ class GiHandler {
                 delete_option('rfq_flush_rewrite_rules');
             }
         }, 999);
+
+        new \GiVendor\GiPlugin\Services\Payment\RFQGatewayFilters();
+
+        add_filter('woocommerce_cart_needs_payment', function($needs_payment, $cart) {
+        // Si hay productos en el carrito y la RFQ está habilitada, SIEMPRE mostramos la pantalla de métodos de pago, aunque el total sea 0
+        if ($cart && count($cart->get_cart()) > 0) {
+            foreach ($cart->get_cart() as $cart_item) {
+                // Puedes agregar lógica aquí si solo quieres para ciertos productos, pero para RFQ, queremos mostrar siempre
+                return true;
+            }
+        }
+        return $needs_payment;
+    }, 20, 2);
+
+
+
     }
 
     /**

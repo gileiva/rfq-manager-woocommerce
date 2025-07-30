@@ -44,6 +44,7 @@ class RFQGateway extends \WC_Payment_Gateway {
         $this->has_fields = false;
         $this->supports = [
             'products',
+            'free_payments',
         ];
 
         // Ícono para mostrar en checkout (opcional)
@@ -126,5 +127,31 @@ class RFQGateway extends \WC_Payment_Gateway {
             'result'   => 'success',
             'redirect' => $redirect_url,
         ];
+    }
+
+    /**
+     * Sobrescribe is_available para forzar disponibilidad con carritos de total 0
+     * 
+     * @since 0.1.0
+     * @return bool
+     */
+    public function is_available() {
+        // Verificar configuración básica
+        if ($this->enabled !== 'yes') {
+            return false;
+        }
+
+        // Verificar que WooCommerce esté disponible
+        if (!function_exists('WC') || !WC()->cart) {
+            return false;
+        }
+
+        // CRÍTICO: Forzar disponibilidad cuando el total es 0
+        if (WC()->cart->total == 0) {
+            return true;
+        }
+
+        // Para otros casos, usar la lógica predeterminada de WooCommerce
+        return parent::is_available();
     }
 }

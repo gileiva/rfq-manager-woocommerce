@@ -111,6 +111,7 @@ class RFQGatewayBlocks extends AbstractPaymentMethodType {
     public function get_supported_features() {
         return [
             'products',
+            'free_payments',
         ];
     }
 }
