@@ -52,6 +52,7 @@
         window.location.href = rfq_cart_data.checkout_url;
     });
 
+
     // Botón +
     $(document).on('click', '.rfq-cart-quantity-plus', function(){
         var $item = $(this).closest('.rfq-cart-item');
@@ -68,6 +69,22 @@
         var $input = $item.find('.rfq-cart-quantity-input');
         var quantity = Math.max(1, parseInt($input.val(), 10) - 1);
         updateCartItem(cartKey, quantity, $input);
+    });
+
+    // Input manual: blur o Enter
+    $(document).on('change blur', '.rfq-cart-quantity-input', function(e){
+        var $input = $(this);
+        var $item = $input.closest('.rfq-cart-item');
+        var cartKey = $item.data('cart-key');
+        var val = parseInt($input.val(), 10);
+        var quantity = isNaN(val) ? 1 : Math.max(1, val);
+        $input.val(quantity);
+        updateCartItem(cartKey, quantity, $input);
+    });
+    $(document).on('keydown', '.rfq-cart-quantity-input', function(e){
+        if(e.key === 'Enter') {
+            $(this).trigger('blur');
+        }
     });
 
     // Botón eliminar

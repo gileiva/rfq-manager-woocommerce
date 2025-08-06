@@ -111,8 +111,9 @@ class GiHandler {
 
         // WooCommerce integrations
         require_once RFQ_MANAGER_WOO_PLUGIN_DIR . 'src/Woocommerce/RFQPurchasableOverride.php';
-        require_once RFQ_MANAGER_WOO_PLUGIN_DIR . 'src/WooCommerce/CartShortcode.php';
-        require_once RFQ_MANAGER_WOO_PLUGIN_DIR . 'src/WooCommerce/AjaxCart.php';
+        require_once RFQ_MANAGER_WOO_PLUGIN_DIR . 'src/Woocommerce/CartShortcode.php';
+        require_once RFQ_MANAGER_WOO_PLUGIN_DIR . 'src/Woocommerce/AjaxCart.php';
+        
         
         // Initialize the loader
         self::$loader = new Core\Loader();

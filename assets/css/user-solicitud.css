@@ -1566,6 +1566,11 @@
   color: rgba(255, 103, 0, 1);
   border: solid 1px rgba(255, 103, 0, 1);  
 }
+.rfq-aceptar-cotizacion-btn:hover{
+  background: rgba(255, 103, 0, 1)!important;
+  color: #fff;
+  border: solid 1px rgba(255, 103, 0, 1);  
+}
 .rfq-aceptar-cotizacion-btn.button:disabled,
 .rfq-aceptar-cotizacion-btn[disabled] {
   background: #bdbdbd;

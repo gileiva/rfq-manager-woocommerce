@@ -565,7 +565,7 @@
 }
 
 /* Estilos para los botones de acción */
-.rfq-aceptar-cotizacion-btn {
+/* .rfq-aceptar-cotizacion-btn {
     background-color: var(--rfq-success);
     color: #fff;
     border: none;
@@ -579,7 +579,7 @@
     background-color: var(--rfq-success-dark);
     transform: translateY(-1px);
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
+} */
 
 
 

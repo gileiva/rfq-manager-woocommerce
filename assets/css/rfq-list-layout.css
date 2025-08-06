@@ -308,9 +308,10 @@
 
   .rfq-nueva-oferta {
     display: block;
-    /* width: 100%; */
+    width: 100%;
     padding: 10px 0;
     text-align: center;
+    border-radius: 20px;
   }
 }
 

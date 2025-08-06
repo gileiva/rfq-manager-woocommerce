@@ -89,12 +89,14 @@ class CotizacionHandler {
         // Crear o actualizar cotización
         if (!empty($existing_cotizacion)) {
             $cotizacion_id = self::update_cotizacion($existing_cotizacion[0]->ID, $precios['precio_items'], $precios['total']);
+            $is_update = true;
         } else {
             $cotizacion_id = CotizacionCreator::create(
                 $solicitud_id,
                 $precios['precio_items'],
                 $precios['total']
             );
+            $is_update = false;
         }
 
         if (!$cotizacion_id) {
@@ -104,7 +106,15 @@ class CotizacionHandler {
         // Notificar
         self::send_notifications($cotizacion_id, $solicitud_id);
 
-        // Redirigir
+        // Redirección tras envío exitoso de oferta por proveedor
+        // Solo para usuarios autenticados y ofertas procesadas exitosamente
+        if (is_user_logged_in() && !headers_sent()) {
+            $redirect_url = site_url('oferta-creada-gracias/');
+            wp_redirect($redirect_url);
+            exit;
+        }
+
+        // Fallback: redirigir con parámetro de éxito (mantener lógica anterior)
         wp_redirect(add_query_arg('cotizacion_sent', 'true', wp_get_referer()));
         exit;
     }

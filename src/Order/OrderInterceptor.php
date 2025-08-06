@@ -53,6 +53,15 @@ class OrderInterceptor {
             10, 
             1
         );
+        
+        // Filtro para redireccionar después del checkout con RFQ Gateway
+        // Solo afecta pedidos enviados con el método de cotización (ID: 'rfq_gateway')
+        add_filter(
+            'woocommerce_get_return_url',
+            [ __CLASS__, 'maybe_redirect_rfq_return_url' ],
+            10,
+            2
+        );
     }
 
     /**
@@ -129,5 +138,38 @@ class OrderInterceptor {
         
         // Disparar acción para integración con otros sistemas
         do_action('rfq_manager_solicitud_created', $solicitud_id, $order_id);
+    }
+    
+    /**
+     * Filtra la URL de retorno para redireccionar solicitudes de cotización
+     * 
+     * Este método intercepta la URL de retorno de WooCommerce únicamente
+     * para pedidos creados con el gateway de RFQ (ID: 'rfq_gateway').
+     * Permite mantener el flujo estándar de thank you para pagos reales.
+     *
+     * @since 0.1.0
+     * @param string $return_url URL de retorno original de WooCommerce
+     * @param \WC_Order|null $order Objeto de la orden (opcional)
+     * @return string URL de retorno modificada o original
+     */
+    public static function maybe_redirect_rfq_return_url($return_url, $order = null): string {
+        // Verificar que tenemos una orden válida
+        if (!$order instanceof \WC_Order) {
+            return $return_url;
+        }
+        
+        // Verificar que la orden fue creada con el gateway RFQ
+        // ID del gateway obtenido del código fuente: RFQGateway->id = 'rfq_gateway'
+        if ($order->get_payment_method() !== 'rfq_gateway') {
+            return $return_url;
+        }
+        
+        // Verificar que el usuario esté autenticado
+        if (!is_user_logged_in()) {
+            return $return_url;
+        }
+        
+        // Redirigir a la página de agradecimiento específica para RFQ
+        return site_url('solicitud-creada-gracias/');
     }
 }

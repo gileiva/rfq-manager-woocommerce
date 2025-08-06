@@ -116,22 +116,24 @@ class CartShortcode {
                                 <input type="number" 
                                        class="rfq-cart-quantity-input" 
                                        value="<?php echo esc_attr($quantity); ?>" 
-                                       min="1" 
-                                       readonly />
+                                       min="1" />
                                 <button type="button" class="rfq-cart-quantity-btn rfq-cart-quantity-plus" data-action="increase">+</button>
                             </div>
-                            <button type="button" class="rfq-cart-remove-item rfq-cart-icon-trash" data-action="remove" title="Eliminar producto"></button>
+                            <button type="button" class="rfq-cart-remove-item" data-action="remove" title="Eliminar producto">
+                                <img src="https://thecleverdentist.com/wp-content/uploads/2025/07/cart_delete.png" alt="Eliminar" width="24" height="24" style="display:block;margin:auto;" />
+                            </button>
                         </div>
                     </div>
                 <?php endforeach; ?>
             </div>
             
-            <div class="rfq-cart-actions">
+            
+        </div>
+        <div class="rfq-cart-actions">
                 <button type="button" class="rfq-cart-submit-btn">
                     Finalizar solicitud →
                 </button>
             </div>
-        </div>
         <?php
         return ob_get_clean();
     }
