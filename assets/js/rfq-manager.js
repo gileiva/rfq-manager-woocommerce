@@ -162,6 +162,14 @@ jQuery(document).ready(function($) {
             console.log('[RFQ][DEBUG] Respuesta AJAX accept_quote:', resp);
             if (resp.success) {
                 console.log('[RFQ] Cotización aceptada correctamente. ID:', cotizacionId);
+                
+                // Si hay URL de checkout y redirect es true, redirigir inmediatamente
+                if (resp.data && resp.data.checkout_url && resp.data.redirect) {
+                    console.log('[RFQ] Redirigiendo al checkout:', resp.data.checkout_url);
+                    window.location.href = resp.data.checkout_url;
+                    return; // Evitar ejecutar el resto del código
+                }
+                
                 // Marcar la tarjeta aceptada
                 $card.removeClass('rfq-cotizacion-no-aceptada').addClass('rfq-cotizacion-aceptada');
                 $btn.prop('disabled', true)

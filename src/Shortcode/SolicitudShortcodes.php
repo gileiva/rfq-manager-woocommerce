@@ -766,6 +766,18 @@ class SolicitudShortcodes {
         if (is_wp_error($result)) {
             wp_send_json_error(['message' => $result->get_error_message()]);
         }
+
+        // El método ahora devuelve un array con datos de la orden creada
+        if (is_array($result) && isset($result['success']) && $result['success']) {
+            wp_send_json_success([
+                'message' => $result['message'],
+                'order_id' => $result['order_id'],
+                'checkout_url' => $result['checkout_url'],
+                'redirect' => true
+            ]);
+        }
+
+        // Fallback para mantener compatibilidad
         wp_send_json_success(['message' => __('Cotización aceptada con éxito.', 'rfq-manager-woocommerce')]);
     }
 

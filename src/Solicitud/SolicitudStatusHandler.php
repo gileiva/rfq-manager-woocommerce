@@ -32,7 +32,7 @@ class SolicitudStatusHandler {
         // Cambio de prioridad para ejecutar después del metabox y con verificación
         add_action('save_post_solicitud', [__CLASS__, 'check_and_update_status'], 20, 3);
         add_action('save_post_cotizacion', [__CLASS__, 'update_solicitud_status'], 10, 3);
-        add_action('rfq_cotizacion_accepted', [__CLASS__, 'handle_cotizacion_accepted'], 10, 2);
+        add_action('rfq_cotizacion_accepted', [__CLASS__, 'handle_cotizacion_accepted'], 10, 4);
         
         // Agregar acción para limpiar la caché cuando se actualiza el estado
         add_action('post_updated', [__CLASS__, 'clear_status_cache'], 10, 3);
@@ -317,10 +317,20 @@ class SolicitudStatusHandler {
      * @param  int $solicitud_id ID de la solicitud relacionada
      * @return void
      */
-    public static function handle_cotizacion_accepted(int $cotizacion_id, int $solicitud_id): void {
-        error_log("[RFQ-FLOW] Iniciando handle_cotizacion_accepted - Cotización: {$cotizacion_id}, Solicitud: {$solicitud_id}");
+    /**
+     * Maneja cuando se acepta una cotización
+     *
+     * @since  0.1.0
+     * @param  int $cotizacion_id ID de la cotización aceptada
+     * @param  int $solicitud_id ID de la solicitud
+     * @param  int $order_id ID de la orden creada (opcional)
+     * @param  int $user_id ID del usuario que acepta (opcional)
+     * @return void
+     */
+    public static function handle_cotizacion_accepted(int $cotizacion_id, int $solicitud_id, int $order_id = 0, int $user_id = 0): void {
+        error_log("[RFQ-FLOW] Iniciando handle_cotizacion_accepted - Cotización: {$cotizacion_id}, Solicitud: {$solicitud_id}, Orden: {$order_id}");
         
-        // Verificar que la solicitud existe y está en un estado válido
+        // Verificar que la solicitud existe
         $solicitud = get_post($solicitud_id);
         if (!$solicitud || $solicitud->post_type !== 'solicitud') {
             error_log("[RFQ-ERROR] No se pudo encontrar la solicitud {$solicitud_id} o no es del tipo correcto");
@@ -329,12 +339,21 @@ class SolicitudStatusHandler {
         
         error_log("[RFQ-FLOW] Solicitud encontrada. Estado actual: {$solicitud->post_status}");
         
-        // Solo permitir la transición a aceptada si está en estado activo
-        if ($solicitud->post_status === 'rfq-active') {
-            error_log("[RFQ-FLOW] Solicitud está en estado activo, procediendo a actualizar a estado aceptado");
+        // Solo actualizar si no está ya en estado aceptado (evitar duplicaciones)
+        if ($solicitud->post_status !== 'rfq-accepted') {
+            error_log("[RFQ-FLOW] Solicitud no está aceptada, procediendo a actualizar estado");
             self::update_status($solicitud_id, 'rfq-accepted');
         } else {
-            error_log("[RFQ-ERROR] No se puede aceptar una cotización para una solicitud en estado {$solicitud->post_status}");
+            error_log("[RFQ-FLOW] Solicitud ya está en estado aceptado, omitiendo actualización de estado");
+        }
+        
+        // Guardar referencia de la cotización aceptada en la solicitud
+        update_post_meta($solicitud_id, '_rfq_accepted_cotizacion', $cotizacion_id);
+        
+        // Si se proporcionó el ID de la orden, guardarlo también
+        if ($order_id > 0) {
+            update_post_meta($solicitud_id, '_rfq_generated_order', $order_id);
+            error_log("[RFQ-FLOW] Referencia de orden {$order_id} guardada en solicitud {$solicitud_id}");
         }
     }
 } 

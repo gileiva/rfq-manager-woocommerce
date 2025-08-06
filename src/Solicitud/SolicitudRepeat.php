@@ -79,6 +79,9 @@ class SolicitudRepeat
             // Activar contexto RFQ para permitir productos sin precio
             \GiVendor\GiPlugin\WooCommerce\RFQPurchasableOverride::set_rfq_context(true);
             
+            // LIMPIEZA AGRESIVA: Establecer flags para nueva solicitud RFQ
+            \GiVendor\GiPlugin\Services\RFQFlagsManager::set_rfq_request_context('SolicitudRepeat_add_to_cart');
+            
             // Validaciones críticas manteniendo seguridad
             if (!$product || $product->get_status() !== 'publish') {
                 error_log('[RFQ] Producto no disponible: ' . $target_product_id . ', status: ' . ($product ? $product->get_status() : 'N/A'));
@@ -127,6 +130,11 @@ class SolicitudRepeat
         
         // Desactivar contexto RFQ al finalizar procesamiento
         \GiVendor\GiPlugin\WooCommerce\RFQPurchasableOverride::set_rfq_context(false);
+        
+        // LIMPIEZA AGRESIVA: Limpiar flags si el carrito está vacío o hay errores
+        if (WC()->session && WC()->cart && WC()->cart->is_empty()) {
+            \GiVendor\GiPlugin\Services\RFQFlagsManager::clear_all_flags('SolicitudRepeat_empty_cart_after_add');
+        }
         
         $result = [
             'added' => $added,

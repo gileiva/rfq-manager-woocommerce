@@ -32,7 +32,7 @@ class RFQPurchasableOverride {
         
         // Log de inicialización
         if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('[RFQ-DEBUG] RFQPurchasableOverride inicializado');
+            // error_log('[RFQ-DEBUG] RFQPurchasableOverride inicializado');
         }
     }
 
@@ -103,7 +103,7 @@ class RFQPurchasableOverride {
      * @since 0.1.0
      * @return bool
      */
-    private function detect_rfq_context_active() {
+    public function detect_rfq_context_active() {
         // Variable estática local para cachear durante la misma petición
         static $context_checked = null;
         static $is_rfq_context = false;
@@ -118,32 +118,54 @@ class RFQPurchasableOverride {
         // Criterio 1: Gateway RFQ seleccionado en sesión/POST
         if ($this->is_rfq_gateway_selected()) {
             $is_rfq_context = true;
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[RFQ-DEBUG] RFQPurchasableOverride: Contexto RFQ detectado por gateway/sesión');
+            }
             return $is_rfq_context;
         }
 
         // Criterio 2: Endpoint de repetir solicitud
         if ($this->is_repeat_solicitud_endpoint()) {
             $is_rfq_context = true;
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[RFQ-DEBUG] RFQPurchasableOverride: Contexto RFQ detectado por endpoint repeat');
+            }
             return $is_rfq_context;
         }
 
         // Criterio 3: POST con acción RFQ
         if ($this->is_rfq_action_request()) {
             $is_rfq_context = true;
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[RFQ-DEBUG] RFQPurchasableOverride: Contexto RFQ detectado por acción POST');
+            }
             return $is_rfq_context;
         }
 
         // Criterio 4: Activación manual por otras clases (ej: SolicitudRepeat)
         if ($this->is_manual_rfq_activation()) {
             $is_rfq_context = true;
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[RFQ-DEBUG] RFQPurchasableOverride: Contexto RFQ detectado por activación manual');
+            }
             return $is_rfq_context;
+        }
+
+        // Log cuando no se detecta ningún contexto
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[RFQ-DEBUG] RFQPurchasableOverride: Ningún contexto RFQ detectado');
+            error_log('[RFQ-DEBUG] RFQPurchasableOverride: URL=' . ($_SERVER['REQUEST_URI'] ?? 'N/A'));
+            if (WC()->session) {
+                error_log('[RFQ-DEBUG] RFQPurchasableOverride: rfq_context=' . (WC()->session->get('rfq_context') ? 'true' : 'false'));
+                error_log('[RFQ-DEBUG] RFQPurchasableOverride: rfq_offer_payment=' . (WC()->session->get('rfq_offer_payment') ? 'true' : 'false'));
+            }
         }
 
         return $is_rfq_context;
     }
 
     /**
-     * Verifica si el gateway RFQ está seleccionado
+     * Verifica si el gateway RFQ está seleccionado o si hay contexto RFQ activo
      *
      * @since 0.1.0
      * @return bool
@@ -152,6 +174,16 @@ class RFQPurchasableOverride {
         // Verificar WooCommerce disponible
         if (!function_exists('WC') || !WC()->session) {
             return false;
+        }
+
+        // PRIORIDAD 1: Si estamos en pay_for_order, NO es contexto RFQ (es pago de oferta)
+        if ($this->is_pay_for_order_context()) {
+            return false;
+        }
+
+        // Verificar flag de contexto RFQ en sesión (establecida por SolicitudRepeat)
+        if (WC()->session->get('rfq_context')) {
+            return true;
         }
 
         // Verificar método de pago seleccionado en sesión
@@ -248,11 +280,55 @@ class RFQPurchasableOverride {
 
     /**
      * Método estático para verificar contexto RFQ (compatibilidad)
+     * 
+     * REFACTOR: Ahora ejecuta la detección completa para uso desde filtros de gateway
      *
      * @since 0.1.0
      * @return bool
      */
     public static function is_rfq_context_active() {
-        return isset($GLOBALS['rfq_context_manual_override']) && $GLOBALS['rfq_context_manual_override'] === true;
+        // Verificar primero la activación manual
+        if (isset($GLOBALS['rfq_context_manual_override']) && $GLOBALS['rfq_context_manual_override'] === true) {
+            return true;
+        }
+        
+        // Si no hay instancia disponible, crear una temporal para la detección
+        static $temp_instance = null;
+        if ($temp_instance === null) {
+            $temp_instance = new self();
+        }
+        
+        // Ejecutar detección completa a través de la instancia
+        return $temp_instance->detect_rfq_context_active();
+    }
+
+    /**
+     * Verifica si estamos en contexto pay_for_order (pago de orden existente)
+     * 
+     * Este contexto indica que se está pagando una orden ya creada (como en ofertas aceptadas)
+     * y NO debe tratarse como una nueva solicitud RFQ.
+     *
+     * @since 0.1.0
+     * @return bool
+     */
+    private function is_pay_for_order_context() {
+        // Verificar parámetro GET pay_for_order
+        if (isset($_GET['pay_for_order']) && $_GET['pay_for_order'] === 'true') {
+            return true;
+        }
+
+        // Verificar si estamos en endpoint de pago de orden
+        if (is_wc_endpoint_url('order-pay')) {
+            return true;
+        }
+
+        // Verificar URL patterns de pago de orden
+        $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+        if (strpos($request_uri, '/order-pay/') !== false || 
+            strpos($request_uri, 'pay_for_order=true') !== false) {
+            return true;
+        }
+
+        return false;
     }
 }

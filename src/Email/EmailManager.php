@@ -64,7 +64,7 @@ class EmailManager {
         
         // Log de inicialización
         if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('[RFQ-DEBUG] EmailManager - Sistema de notificaciones inicializado');
+            // error_log('[RFQ-DEBUG] EmailManager - Sistema de notificaciones inicializado');
         }
     }
 

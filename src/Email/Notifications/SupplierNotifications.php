@@ -47,7 +47,7 @@ class SupplierNotifications {
         
         // Log de inicialización
         add_action('init', function() {
-            error_log('RFQ Manager - SupplierNotifications inicializado');
+            // error_log('RFQ Manager - SupplierNotifications inicializado');
         }, 999);
     }
     

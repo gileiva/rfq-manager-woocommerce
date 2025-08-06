@@ -18,6 +18,8 @@ use GiVendor\GiPlugin\Shortcode\SolicitudShortcodes;
 use GiVendor\GiPlugin\Shortcode\CotizacionShortcodes;
 use GiVendor\GiPlugin\Cotizacion\CotizacionHandler;
 use GiVendor\GiPlugin\Solicitud\SolicitudStatusHandler;
+use GiVendor\GiPlugin\Order\OrderInterceptor;
+use GiVendor\GiPlugin\Order\OfferOrderCreator;
 
 /**
  * GiHandler - Main plugin class that handles plugin initialization
@@ -108,6 +110,9 @@ class GiHandler {
         
         // Cotizacion
         require_once RFQ_MANAGER_WOO_PLUGIN_DIR . 'src/Cotizacion/CotizacionHandler.php';
+
+        // Order management
+        require_once RFQ_MANAGER_WOO_PLUGIN_DIR . 'src/Order/OfferOrderCreator.php';
 
         // WooCommerce integrations
         require_once RFQ_MANAGER_WOO_PLUGIN_DIR . 'src/Woocommerce/RFQPurchasableOverride.php';
@@ -384,6 +389,7 @@ class GiHandler {
         // Initialize shortcodes
         Shortcode\SolicitudShortcodes::init(); // Registra shortcodes de solicitud
         Shortcode\CotizacionShortcodes::init(); // Registra shortcodes de cotización
+        Shortcode\RFQDiagnosticShortcode::register(); // Registra shortcode de diagnóstico
         WooCommerce\CartShortcode::register(); // Registra shortcode del carrito RFQ
         
         // Forzar flush de reglas de reescritura
@@ -394,18 +400,73 @@ class GiHandler {
             }
         }, 999);
 
+        OrderInterceptor::init(); // Maneja redirecciones de órdenes RFQ
+        OfferOrderCreator::init_hooks(); // Limpieza de sesión para pagos de ofertas
+
         new \GiVendor\GiPlugin\Services\Payment\RFQGatewayFilters();
 
-        add_filter('woocommerce_cart_needs_payment', function($needs_payment, $cart) {
-        // Si hay productos en el carrito y la RFQ está habilitada, SIEMPRE mostramos la pantalla de métodos de pago, aunque el total sea 0
-        if ($cart && count($cart->get_cart()) > 0) {
-            foreach ($cart->get_cart() as $cart_item) {
-                // Puedes agregar lógica aquí si solo quieres para ciertos productos, pero para RFQ, queremos mostrar siempre
-                return true;
+        // HOOK CRÍTICO: Establecer contexto RFQ automáticamente al agregar productos al carrito
+        add_action('woocommerce_add_to_cart', function() {
+            if (WC()->session) {
+                // PRIORIDAD: Solo establecer si NO estamos en contexto de pago de oferta
+                if (!WC()->session->get('rfq_offer_payment')) {
+                    \GiVendor\GiPlugin\Services\RFQFlagsManager::set_rfq_request_context('woocommerce_add_to_cart');
+                } else {
+                    error_log('[RFQ-FLAGS] Producto agregado pero contexto de pago de oferta activo - no se modifica contexto');
+                }
             }
-        }
-        return $needs_payment;
-    }, 20, 2);
+        }, 10);
+
+        // Hook para limpiar todas las flags RFQ cuando el carrito se vacía
+        add_action('woocommerce_cart_emptied', function() {
+            \GiVendor\GiPlugin\Services\RFQFlagsManager::clear_all_flags('woocommerce_cart_emptied');
+        });
+
+        // Hook para limpiar todas las flags RFQ al cerrar sesión
+        add_action('wp_logout', function() {
+            \GiVendor\GiPlugin\Services\RFQFlagsManager::clear_all_flags('wp_logout');
+        });
+
+        // Hooks adicionales para limpiar flags después de completar flujos
+        add_action('woocommerce_thankyou', function($order_id) {
+            \GiVendor\GiPlugin\Services\RFQFlagsManager::clear_all_flags('woocommerce_thankyou_order_' . $order_id);
+        });
+
+        // Limpiar flags cuando el estado de orden cambia a completado o procesando
+        add_action('woocommerce_order_status_changed', function($order_id, $old_status, $new_status) {
+            if (in_array($new_status, ['completed', 'processing', 'cancelled', 'failed', 'refunded'])) {
+                \GiVendor\GiPlugin\Services\RFQFlagsManager::clear_all_flags("order_status_changed_{$old_status}_to_{$new_status}_order_{$order_id}");
+            }
+        }, 10, 3);
+
+        // DIAGNÓSTICO: Endpoint para verificar estado de flags (solo para admins)
+        add_action('wp_ajax_rfq_flags_diagnostic', function() {
+            if (!current_user_can('manage_options')) {
+                wp_die('Unauthorized');
+            }
+            
+            $diagnostic = \GiVendor\GiPlugin\Services\RFQFlagsManager::get_diagnostic_info();
+            $issues = \GiVendor\GiPlugin\Services\RFQFlagsManager::detect_flag_issues();
+            
+            \GiVendor\GiPlugin\Services\RFQFlagsManager::log_current_state();
+            
+            wp_send_json_success([
+                'diagnostic' => $diagnostic,
+                'issues' => $issues,
+                'timestamp' => current_time('mysql')
+            ]);
+        });
+
+        add_filter('woocommerce_cart_needs_payment', function($needs_payment, $cart) {
+            // Si hay productos en el carrito y la RFQ está habilitada, SIEMPRE mostramos la pantalla de métodos de pago, aunque el total sea 0
+            if ($cart && count($cart->get_cart()) > 0) {
+                foreach ($cart->get_cart() as $cart_item) {
+                    // Puedes agregar lógica aquí si solo quieres para ciertos productos, pero para RFQ, queremos mostrar siempre
+                    return true;
+                }
+            }
+            return $needs_payment;
+        }, 20, 2);
 
 
 
@@ -431,8 +492,6 @@ class GiHandler {
                 'post_content'  => '[rfq_view_solicitud]',
             ]);
         }
-
-        // No crear la página 'cotizar-solicitud' automáticamente para evitar conflicto con el CPT
 
         // Forzar flush de reglas de reescritura
         flush_rewrite_rules();

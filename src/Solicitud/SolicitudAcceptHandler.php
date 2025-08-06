@@ -4,6 +4,7 @@ namespace GiVendor\GiPlugin\Solicitud;
 use WP_Post;
 use WP_User;
 use WP_Error;
+use GiVendor\GiPlugin\Order\OfferOrderCreator;
 
 class SolicitudAcceptHandler {
     public static function can_accept(WP_User $user, WP_Post $solicitud, WP_Post $cotizacion): bool {
@@ -44,21 +45,38 @@ class SolicitudAcceptHandler {
     }
 
     /**
-     * Acepta una cotización para una solicitud.
-     * @return true|WP_Error
+     * Acepta una cotización para una solicitud y crea la orden de WooCommerce
+     * @return array|WP_Error Array con datos de éxito o WP_Error si falla
      */
     public static function accept(WP_User $user, WP_Post $solicitud, WP_Post $cotizacion) {
+        error_log('[RFQ] SolicitudAcceptHandler::accept iniciado - Usuario: ' . $user->ID . ', Solicitud: ' . $solicitud->ID . ', Cotización: ' . $cotizacion->ID);
+
         // Validar primero con can_accept(). Si no se puede, devolver WP_Error.
         if (!self::can_accept($user, $solicitud, $cotizacion)) {
+            error_log('[RFQ] Error: No se puede aceptar la cotización - validación fallida');
             return new WP_Error('cannot_accept', __('No se puede aceptar esta cotización.', 'rfq-manager-woocommerce'));
         }
+
+        // Crear orden de WooCommerce antes de cambiar estados
+        $order_id = OfferOrderCreator::create_from_accepted_offer($user, $solicitud, $cotizacion);
+        
+        if (is_wp_error($order_id)) {
+            error_log('[RFQ] Error creando orden: ' . $order_id->get_error_message());
+            return $order_id;
+        }
+
+        error_log('[RFQ] Orden creada exitosamente: ' . $order_id);
 
         // Cambiar estado de cotización a rfq-accepted
         $cotizacion_update = wp_update_post([
             'ID' => $cotizacion->ID,
             'post_status' => 'rfq-accepted',
         ], true);
+        
         if (is_wp_error($cotizacion_update)) {
+            error_log('[RFQ] Error actualizando estado de cotización: ' . $cotizacion_update->get_error_message());
+            // Intentar limpiar la orden creada
+            wp_delete_post($order_id, true);
             return $cotizacion_update;
         }
 
@@ -67,7 +85,12 @@ class SolicitudAcceptHandler {
             'ID' => $solicitud->ID,
             'post_status' => 'rfq-accepted',
         ], true);
+        
         if (is_wp_error($solicitud_update)) {
+            error_log('[RFQ] Error actualizando estado de solicitud: ' . $solicitud_update->get_error_message());
+            // Intentar rollback
+            wp_update_post(['ID' => $cotizacion->ID, 'post_status' => 'publish'], true);
+            wp_delete_post($order_id, true);
             return $solicitud_update;
         }
 
@@ -84,18 +107,41 @@ class SolicitudAcceptHandler {
             'post_status' => ['publish', 'draft'],
             'fields' => 'ids',
         ]);
+        
         foreach ($cotizaciones as $cid) {
             if ((int)$cid !== (int)$cotizacion->ID) {
                 $historic_update = wp_update_post([
                     'ID' => $cid,
                     'post_status' => 'rfq-historic',
                 ], true);
-                // Si hay error, continuar con las demás, pero podrías loguear si lo deseas
+                
+                if (is_wp_error($historic_update)) {
+                    error_log('[RFQ] Error marcando cotización como histórica: ' . $cid);
+                }
             }
         }
 
-        // Disparar hook de aceptación
-        do_action('rfq_cotizacion_accepted', $cotizacion->ID, $solicitud->ID);
-        return true;
+        // Agregar referencia de la orden en la cotización aceptada
+        update_post_meta($cotizacion->ID, '_rfq_generated_order_id', $order_id);
+
+        // Disparar hook de aceptación con todos los datos
+        do_action('rfq_cotizacion_accepted', $cotizacion->ID, $solicitud->ID, $order_id, $user->ID);
+
+        error_log('[RFQ] Proceso de aceptación completado exitosamente - Orden: ' . $order_id);
+
+        // Obtener URL de checkout
+        $checkout_url = OfferOrderCreator::get_checkout_url($order_id);
+        error_log('[RFQ] URL de checkout generada: ' . $checkout_url);
+
+        // Retornar datos para redirección
+        $result = [
+            'success' => true,
+            'order_id' => $order_id,
+            'checkout_url' => $checkout_url,
+            'message' => __('Oferta aceptada exitosamente. Redirigiendo al pago...', 'rfq-manager-woocommerce')
+        ];
+        
+        error_log('[RFQ] Datos de retorno: ' . json_encode($result));
+        return $result;
     }
 }

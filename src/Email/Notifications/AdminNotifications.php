@@ -46,7 +46,7 @@ class AdminNotifications {
         add_action('rfq_cotizacion_accepted', [__CLASS__, 'send_cotizacion_accepted_notification'], 10, 2);
         
         if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('[RFQ-DEBUG] AdminNotifications registrado en hooks');
+            // error_log('[RFQ-DEBUG] AdminNotifications registrado en hooks');
         }
     }
     

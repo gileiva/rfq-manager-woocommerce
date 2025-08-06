@@ -98,6 +98,12 @@ class RFQGateway extends \WC_Payment_Gateway {
             \GiVendor\GiPlugin\WooCommerce\RFQPurchasableOverride::set_rfq_context(true);
         }
         
+        // Establecer flag de sesión RFQ para asegurar contexto correcto
+        if (WC()->session) {
+            WC()->session->set('rfq_context', true);
+            error_log('[RFQ] Flag rfq_context establecido en process_payment');
+        }
+        
         $order = wc_get_order($order_id);
         
         // Aplicar directamente nuestro estado personalizado "rfq-enviada"
@@ -118,6 +124,9 @@ class RFQGateway extends \WC_Payment_Gateway {
         
         // Vaciar el carrito
         WC()->cart->empty_cart();
+        
+        // LIMPIEZA AGRESIVA: Limpiar todas las flags RFQ después de completar solicitud
+        \GiVendor\GiPlugin\Services\RFQFlagsManager::clear_all_flags('RFQGateway_process_payment_completed');
 
         // Obtener la URL de agradecimiento
         $redirect_url = $this->get_return_url($order);
