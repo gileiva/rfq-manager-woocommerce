@@ -31,6 +31,10 @@ class AdminInterfaceManager {
         add_filter('manage_solicitud_posts_columns', [__CLASS__, 'add_solicitud_columns']);
         add_action('manage_solicitud_posts_custom_column', [__CLASS__, 'display_solicitud_column_content'], 10, 2);
         
+        // Añadir columnas personalizadas a la lista de cotizaciones
+        add_filter('manage_cotizacion_posts_columns', [__CLASS__, 'add_cotizacion_columns']);
+        add_action('manage_cotizacion_posts_custom_column', [__CLASS__, 'display_cotizacion_column_content'], 10, 2);
+        
         // Agregar estilos para los estados
         add_action('admin_head', [__CLASS__, 'add_admin_styles']);
         
@@ -61,6 +65,7 @@ class AdminInterfaceManager {
                 $new_columns['order_id'] = __('Orden Original', 'rfq-manager-woocommerce');
                 $new_columns['customer'] = __('Cliente', 'rfq-manager-woocommerce');
                 $new_columns['status'] = __('Estado', 'rfq-manager-woocommerce');
+                $new_columns['payment_status'] = __('Pago', 'rfq-manager-woocommerce');
                 $new_columns['cotizaciones'] = __('Cotizaciones', 'rfq-manager-woocommerce');
                 $new_columns['expiry'] = __('Expira', 'rfq-manager-woocommerce');
             }
@@ -113,6 +118,20 @@ class AdminInterfaceManager {
                 echo '<span class="rfq-status ' . esc_attr($status_class) . '">' . 
                      esc_html($status_labels[$status] ?? $status) . 
                      '</span>';
+                break;
+
+            case 'payment_status':
+                $post_status = get_post_status($post_id);
+                if ($post_status === 'rfq-accepted') {
+                    $payment_details = \GiVendor\GiPlugin\Services\RFQPaymentStatusManager::get_payment_status_details($post_id);
+                    if ($payment_details['is_paid']) {
+                        echo '<span class="rfq-payment-badge paid">✓ ' . __('Pagada', 'rfq-manager-woocommerce') . '</span>';
+                    } else {
+                        echo '<span class="rfq-payment-badge pending">⏳ ' . __('Pendiente', 'rfq-manager-woocommerce') . '</span>';
+                    }
+                } else {
+                    echo '<span class="rfq-payment-badge not-applicable">— ' . __('N/A', 'rfq-manager-woocommerce') . '</span>';
+                }
                 break;
 
             case 'cotizaciones':
@@ -380,6 +399,31 @@ class AdminInterfaceManager {
                 background-color: #dc3232;
                 color: #fff;
             }
+            .rfq-payment-badge {
+                display: inline-block;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 11px;
+                font-weight: 600;
+                text-align: center;
+                line-height: 1.2;
+                white-space: nowrap;
+            }
+            .rfq-payment-badge.paid {
+                background-color: #d4edda;
+                color: #155724;
+                border: 1px solid #c3e6cb;
+            }
+            .rfq-payment-badge.pending {
+                background-color: #fff3cd;
+                color: #856404;
+                border: 1px solid #ffeaa7;
+            }
+            .rfq-payment-badge.not-applicable {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border: 1px solid #dee2e6;
+            }
         </style>
         <?php
     }
@@ -473,5 +517,101 @@ class AdminInterfaceManager {
             'endpoint'    => rest_url('rfq/v1/create-payment-intent'),
             'publishable' => get_option('stripe_publishable_key', ''),
         ]);
+    }
+
+    /**
+     * Añade columnas personalizadas al listado de cotizaciones
+     * 
+     * @since 0.1.0
+     * @param array $columns Columnas actuales
+     * @return array Columnas modificadas
+     */
+    public static function add_cotizacion_columns($columns): array {
+        $new_columns = array();
+        
+        // Insertamos columnas personalizadas después de la columna de título
+        foreach ($columns as $key => $value) {
+            $new_columns[$key] = $value;
+            
+            if ($key === 'title') {
+                $new_columns['solicitud'] = __('Solicitud', 'rfq-manager-woocommerce');
+                $new_columns['provider'] = __('Proveedor', 'rfq-manager-woocommerce');
+                $new_columns['status'] = __('Estado', 'rfq-manager-woocommerce');
+                $new_columns['payment_status'] = __('Pago', 'rfq-manager-woocommerce');
+                $new_columns['total'] = __('Total', 'rfq-manager-woocommerce');
+            }
+        }
+        
+        return $new_columns;
+    }
+
+    /**
+     * Muestra el contenido de las columnas personalizadas para cotizaciones
+     * 
+     * @since 0.1.0
+     * @param string $column Nombre de la columna
+     * @param int $post_id ID del post
+     * @return void
+     */
+    public static function display_cotizacion_column_content($column, $post_id): void {
+        switch ($column) {
+            case 'solicitud':
+                $solicitud_parent = get_post_meta($post_id, '_solicitud_parent', true);
+                if ($solicitud_parent) {
+                    $solicitud_title = get_the_title($solicitud_parent);
+                    echo '<a href="' . get_edit_post_link($solicitud_parent) . '">' . esc_html($solicitud_title) . '</a>';
+                } else {
+                    echo '—';
+                }
+                break;
+                
+            case 'provider':
+                $supplier_id = get_post_meta($post_id, '_supplier_id', true);
+                if ($supplier_id) {
+                    $supplier = get_user_by('id', $supplier_id);
+                    if ($supplier) {
+                        echo esc_html($supplier->display_name) . '<br>';
+                        echo '<small>' . esc_html($supplier->user_email) . '</small>';
+                    } else {
+                        echo '—';
+                    }
+                } else {
+                    echo '—';
+                }
+                break;
+                
+            case 'status':
+                $status = get_post_status($post_id);
+                $status_name = self::get_status_label($status);
+                
+                echo '<span class="rfq-status-' . esc_attr($status) . '">' . 
+                     '<span class="dashicons dashicons-marker"></span> ' . 
+                     esc_html($status_name) . 
+                     '</span>';
+                break;
+
+            case 'payment_status':
+                $post_status = get_post_status($post_id);
+                if ($post_status === 'rfq-accepted') {
+                    $payment_details = \GiVendor\GiPlugin\Services\RFQPaymentStatusManager::get_payment_status_details($post_id);
+                    if ($payment_details['is_paid']) {
+                        echo '<span class="rfq-payment-badge paid">✓ ' . __('Pagada', 'rfq-manager-woocommerce') . '</span>';
+                    } else {
+                        echo '<span class="rfq-payment-badge pending">⏳ ' . __('Pendiente', 'rfq-manager-woocommerce') . '</span>';
+                    }
+                } else {
+                    echo '<span class="rfq-payment-badge not-applicable">— ' . __('N/A', 'rfq-manager-woocommerce') . '</span>';
+                }
+                break;
+
+            case 'total':
+                $total = get_post_meta($post_id, '_total', true);
+                if ($total) {
+                    echo '<strong>' . esc_html(number_format((float)$total, 2, ',', '.') . ' €') . '</strong>';
+                } else {
+                    echo '—';
+                }
+                break;
+        }
     }
 }

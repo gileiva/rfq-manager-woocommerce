@@ -403,6 +403,9 @@ class GiHandler {
         OrderInterceptor::init(); // Maneja redirecciones de órdenes RFQ
         OfferOrderCreator::init_hooks(); // Limpieza de sesión para pagos de ofertas
 
+        // INICIALIZAR: Gestor de estado de pago de ofertas RFQ
+        \GiVendor\GiPlugin\Services\RFQPaymentStatusManager::init_hooks();
+
         new \GiVendor\GiPlugin\Services\Payment\RFQGatewayFilters();
 
         // HOOK CRÍTICO: Establecer contexto RFQ automáticamente al agregar productos al carrito
@@ -455,6 +458,47 @@ class GiHandler {
                 'issues' => $issues,
                 'timestamp' => current_time('mysql')
             ]);
+        });
+
+        // ENDPOINT AJAX: Obtener URL de pago para orden RFQ
+        add_action('wp_ajax_rfq_get_payment_url', function() {
+            if (!wp_verify_nonce($_POST['nonce'] ?? '', 'rfq_manager_nonce')) {
+                wp_send_json_error(__('Nonce verification failed', 'rfq-manager-woocommerce'));
+                return;
+            }
+
+            $order_id = absint($_POST['order_id'] ?? 0);
+            if (!$order_id) {
+                wp_send_json_error(__('ID de orden requerido', 'rfq-manager-woocommerce'));
+                return;
+            }
+
+            $order = wc_get_order($order_id);
+            if (!$order) {
+                wp_send_json_error(__('Orden no encontrada', 'rfq-manager-woocommerce'));
+                return;
+            }
+
+            // Verificar que el usuario actual puede pagar esta orden
+            if ($order->get_customer_id() !== get_current_user_id()) {
+                wp_send_json_error(__('No autorizado para esta orden', 'rfq-manager-woocommerce'));
+                return;
+            }
+
+            $payment_url = $order->get_checkout_payment_url();
+            
+            error_log("[RFQ-PAGO] URL de pago generada para orden #{$order_id}: {$payment_url}");
+
+            wp_send_json_success([
+                'payment_url' => $payment_url,
+                'order_id' => $order_id,
+                'order_status' => $order->get_status()
+            ]);
+        });
+
+        // ENDPOINT AJAX: Obtener URL de pago para usuarios no loggeados
+        add_action('wp_ajax_nopriv_rfq_get_payment_url', function() {
+            wp_send_json_error(__('Debes iniciar sesión para pagar', 'rfq-manager-woocommerce'));
         });
 
         add_filter('woocommerce_cart_needs_payment', function($needs_payment, $cart) {

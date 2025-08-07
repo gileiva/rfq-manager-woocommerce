@@ -665,9 +665,22 @@ class SolicitudShortcodes {
             $output .= '<div class="rfq-cotizacion-actions">';
             $output .= '<h3 class="rfq-cotizacion-total">' . esc_html(number_format((float)$total, 2, ',', '.') . ' €') . '</h3>';
             if ($is_accepted) {
+                // Obtener estado de pago usando el nuevo PaymentStatusManager
+                $payment_details = \GiVendor\GiPlugin\Services\RFQPaymentStatusManager::get_payment_status_details($cotizacion->ID);
+                
                 $output .= '<button type="button" class="button rfq-aceptar-cotizacion-btn" disabled style="background:rgba(239,239,239,1);color:#fff;cursor:default;">' . __('Oferta aceptada', 'rfq-manager-woocommerce') . '</button>';
                 $output .= '<p class="rfq-cotizacion-confirmacion">' . __('Hemos enviado a tu correo electrónico toda la información de como proseguir', 'rfq-manager-woocommerce') . '</p>';
-                $output .= '<button type="button" class="button rfq-pagar-cotizacion-btn" data-cotizacion-id="' . esc_attr($cotizacion->ID) . '">' . __('Pagar', 'rfq-manager-woocommerce') . '</button>';
+                
+                // Mostrar botón de pagar o estado pagado según el PaymentStatusManager
+                if ($payment_details['show_pay_button']) {
+                    $output .= '<button type="button" class="button rfq-pagar-cotizacion-btn" data-cotizacion-id="' . esc_attr($cotizacion->ID) . '" data-order-id="' . esc_attr($payment_details['order_id']) . '">' . __('Pagar', 'rfq-manager-woocommerce') . '</button>';
+                    $output .= '<p class="rfq-pago-estado pending"><span class="dashicons dashicons-clock"></span> ' . esc_html($payment_details['status_text']) . '</p>';
+                } elseif ($payment_details['is_paid']) {
+                    $output .= '<button type="button" class="button rfq-pago-completado-btn" disabled style="background:#28a745;color:#fff;cursor:default;"><span class="dashicons dashicons-yes-alt"></span> ' . __('Pagado', 'rfq-manager-woocommerce') . '</button>';
+                    // $output .= '<p class="rfq-pago-estado paid"><span class="dashicons dashicons-yes-alt"></span> ' . esc_html($payment_details['status_text']) . '</p>';
+                } else {
+                    $output .= '<p class="rfq-pago-estado error"><span class="dashicons dashicons-warning"></span> ' . __('Estado de pago no disponible', 'rfq-manager-woocommerce') . '</p>';
+                }
             } elseif (\GiVendor\GiPlugin\Solicitud\SolicitudAcceptHandler::can_accept(wp_get_current_user(), $solicitud, $cotizacion)) {
                 $output .= '<button type="button" class="rfq-aceptar-cotizacion-btn button" data-cotizacion-id="' . esc_attr($cotizacion->ID) . '">' . __('Aceptar oferta', 'rfq-manager-woocommerce') . '</button>';
             }

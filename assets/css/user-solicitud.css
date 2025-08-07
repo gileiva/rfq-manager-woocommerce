@@ -1486,10 +1486,8 @@
    ============================== */
 
 .rfq-cotizacion-card.rfq-cotizacion-aceptada {
-  /* background-color: rgba(255, 247, 243, 1); */
-  box-shadow: 0px 6px 24px rgba(0, 0, 0, 0.05);
-  /* padding-left: 32px;
-  padding-right: 24px; */
+  box-shadow: 0px 6px 24px rgba(0, 0, 0, 0.12);
+
 }
 
 .rfq-cotizacion-card.rfq-cotizacion-aceptada .rfq-cotizacion-actions .rfq-aceptar-cotizacion-btn[disabled],
@@ -1580,17 +1578,6 @@
 }
 
 @media (max-width: 600px) {
-  /* .rfq-cotizacion-card {
-    flex-direction: column;
-    gap: 16px;
-    padding: 16px;
-  } */
-  /* .rfq-cotizacion-actions {
-    align-items: flex-start;
-    min-width: 0;
-    text-align: left;
-    gap: 12px;
-  } */
   .rfq-cotizacion-total {
     font-size: 39px;
   }

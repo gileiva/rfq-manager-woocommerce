@@ -610,3 +610,58 @@
   justify-content: flex-end;
   margin-top: 16px;
 }
+
+/* Estilos para estados de pago */
+.rfq-pago-estado {
+    /* margin-top: 0.5rem; */
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    /* gap: 0.25rem; */
+    margin: 0 auto;
+}
+
+.rfq-pago-estado.pending {
+    color: #856404;
+}
+
+.rfq-pago-estado.paid {
+    color: #155724;
+}
+
+.rfq-pago-estado.error {
+    color: #721c24;
+}
+
+.rfq-pago-estado .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    line-height: 1;
+}
+
+/* Botón de pago completado */
+.rfq-pago-completado-btn {
+    background: #28a745 !important;
+    color: #fff !important;
+    border-color: #28a745 !important;
+    cursor: default !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 0px !important;
+}
+
+.rfq-pago-completado-btn:hover,
+.rfq-pago-completado-btn:focus {
+    background: #28a745 !important;
+    color: #fff !important;
+    border-color: #28a745 !important;
+}
+
+.rfq-pago-completado-btn .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}

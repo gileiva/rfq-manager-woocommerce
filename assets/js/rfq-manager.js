@@ -206,8 +206,45 @@ jQuery(document).ready(function($) {
     // Handler para botones de pago
     $(document).on('click', '.rfq-pagar-cotizacion-btn', function() {
         var cotizacionId = $(this).data('cotizacion-id');
-        var paymentUrl = window.location.origin + '/pagar-cotizacion/' + cotizacionId + '/';
-        window.location.href = paymentUrl;
+        var orderId = $(this).data('order-id');
+        
+        // Si tenemos order-id, obtener la URL de pago via AJAX
+        if (orderId) {
+            console.log('[RFQ-PAGO] Obteniendo URL de pago para orden:', orderId);
+            
+            // Hacer una petición AJAX para obtener la URL de pago correcta
+            $.ajax({
+                url: rfqManagerL10n.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'rfq_get_payment_url',
+                    order_id: orderId,
+                    nonce: rfqManagerL10n.nonce
+                },
+                success: function(response) {
+                    if (response.success && response.data.payment_url) {
+                        console.log('[RFQ-PAGO] URL de pago obtenida:', response.data.payment_url);
+                        window.location.href = response.data.payment_url;
+                    } else {
+                        console.error('[RFQ-PAGO] Error obteniendo URL de pago:', response);
+                        // Fallback al método anterior
+                        var paymentUrl = window.location.origin + '/pagar-cotizacion/' + cotizacionId + '/';
+                        window.location.href = paymentUrl;
+                    }
+                },
+                error: function() {
+                    console.error('[RFQ-PAGO] Error AJAX obteniendo URL de pago');
+                    // Fallback al método anterior
+                    var paymentUrl = window.location.origin + '/pagar-cotizacion/' + cotizacionId + '/';
+                    window.location.href = paymentUrl;
+                }
+            });
+        } else {
+            // Fallback al método anterior
+            var paymentUrl = window.location.origin + '/pagar-cotizacion/' + cotizacionId + '/';
+            console.log('[RFQ-PAGO] Redirigiendo a pago por cotización:', cotizacionId);
+            window.location.href = paymentUrl;
+        }
     });
 
     // Handler para botón Repetir Solicitud
