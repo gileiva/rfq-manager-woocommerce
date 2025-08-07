@@ -208,6 +208,8 @@ jQuery(document).ready(function($) {
         var cotizacionId = $(this).data('cotizacion-id');
         var orderId = $(this).data('order-id');
         
+        console.log('[RFQ-PAGO] Click en botón pagar - Cotización:', cotizacionId, 'Orden:', orderId);
+        
         // Si tenemos order-id, obtener la URL de pago via AJAX
         if (orderId) {
             console.log('[RFQ-PAGO] Obteniendo URL de pago para orden:', orderId);
@@ -227,23 +229,18 @@ jQuery(document).ready(function($) {
                         window.location.href = response.data.payment_url;
                     } else {
                         console.error('[RFQ-PAGO] Error obteniendo URL de pago:', response);
-                        // Fallback al método anterior
-                        var paymentUrl = window.location.origin + '/pagar-cotizacion/' + cotizacionId + '/';
-                        window.location.href = paymentUrl;
+                        showToast('Error obteniendo URL de pago. Por favor, inténtelo de nuevo.', true);
                     }
                 },
-                error: function() {
-                    console.error('[RFQ-PAGO] Error AJAX obteniendo URL de pago');
-                    // Fallback al método anterior
-                    var paymentUrl = window.location.origin + '/pagar-cotizacion/' + cotizacionId + '/';
-                    window.location.href = paymentUrl;
+                error: function(xhr, status, error) {
+                    console.error('[RFQ-PAGO] Error AJAX obteniendo URL de pago:', error);
+                    showToast('Error de conexión. Por favor, inténtelo de nuevo.', true);
                 }
             });
         } else {
-            // Fallback al método anterior
-            var paymentUrl = window.location.origin + '/pagar-cotizacion/' + cotizacionId + '/';
-            console.log('[RFQ-PAGO] Redirigiendo a pago por cotización:', cotizacionId);
-            window.location.href = paymentUrl;
+            // Sin order-id, mostrar error al usuario
+            console.error('[RFQ-PAGO] No se encontró ID de orden para la cotización:', cotizacionId);
+            showToast('Error: No se pudo encontrar la orden de pago. Por favor, contacte con soporte.', true);
         }
     });
 
@@ -293,5 +290,124 @@ jQuery(document).ready(function($) {
                 $btn.prop('disabled', false);
             }
         });
+    });
+
+    // Handler para botón Pago Pendiente
+    $(document).on('click', '.rfq-pending-payment-btn', function(e) {
+        e.preventDefault();
+        console.log('[RFQ-PAGO] Click en botón pago pendiente');
+        
+        var $btn = $(this);
+        var orderId = $btn.data('order-id');
+        
+        console.log('[RFQ-PAGO] Order ID:', orderId);
+        
+        if (!orderId) {
+            console.error('[RFQ-PAGO] ID de orden inválido');
+            showToast('Error: ID de orden inválido.', true);
+            return;
+        }
+        
+        // Verificar que rfqManagerL10n esté disponible
+        if (typeof rfqManagerL10n === 'undefined') {
+            console.error('[RFQ-PAGO] rfqManagerL10n no disponible');
+            showToast('Error: No se pudo verificar la seguridad. Recargue la página.', true);
+            return;
+        }
+        
+        // Usar el nonce disponible (puede ser 'nonce' o 'solicitudStatusNonce')
+        var nonceToUse = rfqManagerL10n.solicitudStatusNonce || rfqManagerL10n.nonce;
+        if (!nonceToUse) {
+            console.error('[RFQ-PAGO] Ningún nonce disponible en rfqManagerL10n:', rfqManagerL10n);
+            showToast('Error: No se pudo verificar la seguridad. Recargue la página.', true);
+            return;
+        }
+        
+        console.log('[RFQ-PAGO] Usando nonce:', nonceToUse);
+        
+        // Deshabilitar botón y mostrar loading
+        $btn.prop('disabled', true);
+        var originalText = $btn.html();
+        $btn.html('<span class="rfq-payment-icon">⏳</span> Procesando...');
+        
+        console.log('[RFQ-PAGO] Obteniendo URL de pago para orden:', orderId);
+        
+        $.ajax({
+            url: rfqManagerL10n.ajaxurl,
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                action: 'rfq_get_payment_url',
+                order_id: orderId,
+                nonce: nonceToUse
+            },
+            success: function(response) {
+                console.log('[RFQ-PAGO] Respuesta AJAX:', response);
+                
+                if (response.success && response.data && response.data.payment_url) {
+                    console.log('[RFQ-PAGO] Redirigiendo a URL de pago:', response.data.payment_url);
+                    window.location.href = response.data.payment_url;
+                } else {
+                    var msg = (response.data && response.data.message) ? response.data.message : 'Error obteniendo URL de pago';
+                    console.error('[RFQ-PAGO] Error:', msg);
+                    showToast(msg, true);
+                    $btn.prop('disabled', false);
+                    $btn.html(originalText);
+                }
+            },
+            error: function(xhr) {
+                console.error('[RFQ-PAGO] Error AJAX:', xhr);
+                var msg = 'Error de conexión al obtener URL de pago';
+                if (xhr.responseJSON && xhr.responseJSON.data) {
+                    msg = xhr.responseJSON.data;
+                }
+                showToast(msg, true);
+                $btn.prop('disabled', false);
+                $btn.html(originalText);
+            }
+        });
+    });
+    
+    // =============================
+    // RFQ CHECKOUT PROTECTION
+    // =============================
+    
+    // Protección adicional del lado cliente para order-pay
+    if (window.location.href.includes('order-pay')) {
+        $(document).ready(function() {
+            // Bloquear intentos de modificación manual
+            $('.product-quantity, .quantity input, .qty').prop('readonly', true);
+            $('.remove, .product-remove').remove();
+            
+            // Observer para cambios dinámicos
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList') {
+                        $(mutation.addedNodes).find('.product-quantity, .quantity input, .qty').prop('readonly', true);
+                        $(mutation.addedNodes).find('.remove, .product-remove').remove();
+                    }
+                });
+            });
+            
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+            
+            console.log('[RFQ-PROTECCION] Protección client-side activada para order-pay');
+        });
+    }
+    
+    // Prevenir manipulación de formularios de pago RFQ
+    $(document).on('submit', 'form.woocommerce-checkout', function(e) {
+        const form = $(this);
+        const orderId = form.find('input[name="order_id"]').val();
+        
+        if (orderId && window.rfqProtectedOrders && window.rfqProtectedOrders.includes(orderId)) {
+            console.log('[RFQ-PROTECCION] Validando envío de formulario para orden protegida:', orderId);
+            
+            // Aquí podrías agregar validaciones adicionales client-side si es necesario
+            // Por ejemplo, verificar que ciertos campos no hayan sido modificados
+        }
     });
 });

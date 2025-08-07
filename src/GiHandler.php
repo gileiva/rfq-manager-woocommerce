@@ -370,6 +370,8 @@ class GiHandler {
         // Initialize services
         Services\PriceManager::init();         // Oculta precios en front-end y API
         Services\PaymentManager::init();       // Gestiona pasarelas de pago
+        Services\RFQPaymentStatusManager::init_hooks(); // Sistema de estado de pagos RFQ
+        Services\RFQCheckoutProtectionManager::init_hooks(); // Sistema de protección del checkout
         
         // Initialize WooCommerce overrides
         new WooCommerce\RFQPurchasableOverride(); // Permite productos sin precio en contexto RFQ
@@ -411,12 +413,14 @@ class GiHandler {
         // HOOK CRÍTICO: Establecer contexto RFQ automáticamente al agregar productos al carrito
         add_action('woocommerce_add_to_cart', function() {
             if (WC()->session) {
-                // PRIORIDAD: Solo establecer si NO estamos en contexto de pago de oferta
-                if (!WC()->session->get('rfq_offer_payment')) {
-                    \GiVendor\GiPlugin\Services\RFQFlagsManager::set_rfq_request_context('woocommerce_add_to_cart');
-                } else {
-                    error_log('[RFQ-FLAGS] Producto agregado pero contexto de pago de oferta activo - no se modifica contexto');
+                // SOLUCIÓN: Si hay flag de pago de oferta activo, limpiarlo antes de establecer contexto de nueva solicitud
+                if (WC()->session->get('rfq_offer_payment')) {
+                    error_log('[RFQ-FLAGS] Limpiando contexto de pago de oferta anterior para nueva solicitud RFQ');
+                    \GiVendor\GiPlugin\Services\RFQFlagsManager::clear_all_flags('woocommerce_add_to_cart_cleanup_offer_payment');
                 }
+                
+                // Establecer contexto de nueva solicitud RFQ
+                \GiVendor\GiPlugin\Services\RFQFlagsManager::set_rfq_request_context('woocommerce_add_to_cart');
             }
         }, 10);
 
@@ -462,7 +466,7 @@ class GiHandler {
 
         // ENDPOINT AJAX: Obtener URL de pago para orden RFQ
         add_action('wp_ajax_rfq_get_payment_url', function() {
-            if (!wp_verify_nonce($_POST['nonce'] ?? '', 'rfq_manager_nonce')) {
+            if (!wp_verify_nonce($_POST['nonce'] ?? '', 'rfq_solicitud_status_nonce')) {
                 wp_send_json_error(__('Nonce verification failed', 'rfq-manager-woocommerce'));
                 return;
             }
@@ -537,9 +541,71 @@ class GiHandler {
             ]);
         }
 
+        // // Verificar si la página 'gracias' ya existe
+        // $gracias = get_page_by_path('gracias');
+
+        // // Crear página de gracias si no existe
+        // if (!$gracias) {
+        //     wp_insert_post([
+        //         'post_title'    => __('Gracias por su pago', 'rfq-manager-woocommerce'),
+        //         'post_name'     => 'gracias',
+        //         'post_status'   => 'publish',
+        //         'post_type'     => 'page',
+        //         'post_content'  => self::get_gracias_page_content(),
+        //     ]);
+            
+        //     error_log('[RFQ-PROTECCION] Página /gracias creada automáticamente');
+        // }
+
         // Forzar flush de reglas de reescritura
         flush_rewrite_rules();
     }
+
+    /**
+     * Obtiene el contenido para la página de gracias
+     *
+     * @since  0.1.0
+     * @return string Contenido HTML de la página
+     */
+    // private static function get_gracias_page_content(): string {
+    //     return '
+    //     <div class="rfq-gracias-container" style="max-width: 800px; margin: 2rem auto; padding: 2rem; background: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+    //         <div style="text-align: center; margin-bottom: 2rem;">
+    //             <div style="font-size: 4rem; color: #28a745; margin-bottom: 1rem;">✅</div>
+    //             <h1 style="color: #28a745; margin-bottom: 1rem;">¡Pago Completado Exitosamente!</h1>
+    //             <p style="font-size: 1.2rem; color: #666; margin-bottom: 2rem;">
+    //                 Su pago ha sido procesado correctamente. Pronto recibirá un correo de confirmación con los detalles de su pedido.
+    //             </p>
+    //         </div>
+            
+    //         <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 6px; margin-bottom: 2rem;">
+    //             <h3 style="margin-top: 0; color: #333;">¿Qué sigue ahora?</h3>
+    //             <ul style="list-style: none; padding: 0;">
+    //                 <li style="margin-bottom: 1rem; display: flex; align-items: flex-start;">
+    //                     <span style="color: #28a745; margin-right: 0.5rem; font-weight: bold;">1.</span>
+    //                     <span>Recibirá un correo electrónico de confirmación con todos los detalles de su pedido.</span>
+    //                 </li>
+    //                 <li style="margin-bottom: 1rem; display: flex; align-items: flex-start;">
+    //                     <span style="color: #28a745; margin-right: 0.5rem; font-weight: bold;">2.</span>
+    //                     <span>El proveedor será notificado y comenzará a preparar su pedido.</span>
+    //                 </li>
+    //                 <li style="margin-bottom: 1rem; display: flex; align-items: flex-start;">
+    //                     <span style="color: #28a745; margin-right: 0.5rem; font-weight: bold;">3.</span>
+    //                     <span>Le informaremos sobre el estado de su pedido y los tiempos de entrega.</span>
+    //                 </li>
+    //             </ul>
+    //         </div>
+            
+    //         <div style="text-align: center;">
+    //             <a href="/" style="display: inline-block; background: #007cba; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: 500;">
+    //                 Volver al Inicio
+    //             </a>
+    //             <a href="/mis-solicitudes" style="display: inline-block; background: #fff; color: #007cba; padding: 12px 24px; text-decoration: none; border: 1px solid #007cba; border-radius: 4px; font-weight: 500; margin-left: 10px;">
+    //                 Ver Mis Solicitudes
+    //             </a>
+    //         </div>
+    //     </div>';
+    // }
 
     /**
      * The name of the plugin used to uniquely identify it within the context of

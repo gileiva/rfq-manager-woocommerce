@@ -493,10 +493,11 @@
   justify-content: flex-end;
 }
 
-/* Estilos generales para los 3 botones de acción */
+/* Estilos generales para los botones de acción */
 .rfq-repeat-btn,
 .rfq-view-btn,
-.rfq-cancel-btn-link {
+.rfq-cancel-btn-link,
+.rfq-pending-payment-btn {
   display: inline-flex!important;
   align-items: center; 
   justify-content: center; 
@@ -596,6 +597,35 @@
     background-color: rgba(26, 113, 252, 1);
 } 
 
+/* Botón de Pago Pendiente - estilo destacado para llamar la atención */
+.rfq-pending-payment-btn {
+  gap: 8px;
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%)!important;
+  color: #fff!important;
+  border: 1px solid #28a745!important;
+  border-radius: 6px!important;
+  font-weight: 600!important;
+  order: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.rfq-pending-payment-btn:hover {
+  background: linear-gradient(135deg, #218838 0%, #1ba085 100%)!important;
+  color: #fff!important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3)!important;
+}
+
+.rfq-pending-payment-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(40, 167, 69, 0.2)!important;
+}
+
+.rfq-payment-icon {
+  font-size: 16px;
+  margin-right: 4px;
+}
 
 /* Media queries para responsive de botones de acción */
 @media (max-width: 1024px) {

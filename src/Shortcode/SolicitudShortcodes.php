@@ -138,6 +138,7 @@ class SolicitudShortcodes {
             $localize_data = [
                 'ajaxurl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('rfq_solicitud_status_nonce'),
+                'solicitudStatusNonce' => wp_create_nonce('rfq_solicitud_status_nonce'), // Agregado para botón de pago
                 'cartUrl' => wc_get_cart_url(),
                 'loading' => __('Cargando...', 'rfq-manager-woocommerce'),
             ];

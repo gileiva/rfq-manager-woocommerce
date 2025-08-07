@@ -346,8 +346,22 @@ class SolicitudListRenderer {
                     $html .= '<button type="button" class="rfq-cancel-btn rfq-cancel-btn-link" data-solicitud="' . esc_attr($solicitud_id) . '" title="Cancelar solicitud">' . __('Cancelar', 'rfq-manager-woocommerce') . '</button>';
                 }
             }
-            // Botón Repetir - para estados histórica y aceptada
-            if (in_array($estado, ['rfq-historic', 'rfq-accepted'], true)) {
+            
+            // NUEVO: Verificar pago pendiente para solicitudes aceptadas
+            $pending_payment_info = null;
+            if ($estado === 'rfq-accepted') {
+                $pending_payment_info = self::get_pending_payment_info($solicitud_id);
+            }
+            
+            // Botón de Pago Pendiente - solo para aceptadas con orden pendiente de pago
+            if ($pending_payment_info) {
+                $html .= '<button type="button" class="rfq-pending-payment-btn" data-order-id="' . esc_attr($pending_payment_info['order_id']) . '" title="Completar pago">';
+                $html .= '<span class="rfq-payment-icon">💳</span> ' . __('Pagar Ahora', 'rfq-manager-woocommerce');
+                $html .= '</button>';
+            }
+            
+            // Botón Repetir - para estados histórica y aceptada (pero no si tiene pago pendiente)
+            if (in_array($estado, ['rfq-historic', 'rfq-accepted'], true) && !$pending_payment_info) {
                 $can_repeat = \GiVendor\GiPlugin\Solicitud\SolicitudRepeatHandler::can_repeat($user, $post);
                 if ($can_repeat) {
                     $html .= '<button type="button" class="rfq-repeat-btn" data-solicitud="' . esc_attr($solicitud_id) . '" title="Repetir solicitud">' . __('Repetir Solicitud', 'rfq-manager-woocommerce') . '</button>';
@@ -467,5 +481,45 @@ class SolicitudListRenderer {
         // Dot color para historic/accepted/closed
         $dot = '<span class="rfq-status-dot"></span>';
         return '<div class="' . $status_class . '">' . $dot . '<span class="rfq-status-text">' . esc_html($status_label) . '</span></div>';
+    }
+
+    /**
+     * Obtiene información de pago pendiente para una solicitud aceptada
+     * 
+     * @param int $solicitud_id ID de la solicitud
+     * @return array|null Información del pago pendiente o null si no hay pago pendiente
+     */
+    private static function get_pending_payment_info(int $solicitud_id): ?array {
+        // Buscar órdenes relacionadas con esta solicitud que estén pendientes de pago
+        $orders = wc_get_orders([
+            'meta_key' => '_rfq_solicitud_id',
+            'meta_value' => $solicitud_id,
+            'status' => 'pending', // Solo órdenes pendientes
+            'limit' => 1
+        ]);
+
+        if (empty($orders)) {
+            return null;
+        }
+
+        $order = $orders[0];
+        
+        // Verificar que la orden sea de RFQ y esté realmente pendiente de pago
+        if (!$order->get_meta('_rfq_cotizacion_id') || $order->is_paid()) {
+            return null;
+        }
+
+        // Verificar que no haya expirado (si implementamos expiración)
+        $expiry = $order->get_meta('_rfq_order_acceptance_expiry');
+        if ($expiry && $expiry < current_time('timestamp')) {
+            return null; // Pago expirado
+        }
+
+        return [
+            'order_id' => $order->get_id(),
+            'order_total' => $order->get_total(),
+            'payment_url' => $order->get_checkout_payment_url(),
+            'expiry' => $expiry
+        ];
     }
 }

@@ -182,29 +182,29 @@ class SolicitudView {
         echo '<th>' . __('SKU', 'rfq-manager-woocommerce') . '</th>';
         echo '<th>' . __('Producto', 'rfq-manager-woocommerce') . '</th>';
         echo '<th>' . __('Cantidad', 'rfq-manager-woocommerce') . '</th>';
-        echo '<th>' . __('Precio Tienda', 'rfq-manager-woocommerce') . '</th>';
-        echo '<th>' . __('Total', 'rfq-manager-woocommerce') . '</th>';
+        // echo '<th>' . __('Precio Tienda', 'rfq-manager-woocommerce') . '</th>';
+        // echo '<th>' . __('Total', 'rfq-manager-woocommerce') . '</th>';
         echo '</tr>';
         echo '</thead>';
         echo '<tbody>';
         
-        $gran_total = 0;
+        // $gran_total = 0;
         $total_items = 0;
 
         foreach ($items as $item) {
             $product = wc_get_product($item['product_id']);
             $sku = $product ? $product->get_sku() : __('N/A', 'rfq-manager-woocommerce');
-            $precio_unitario = floatval($item['subtotal']) / intval($item['qty']);
-            $total = floatval($item['subtotal']);
-            $gran_total += $total;
+            // $precio_unitario = floatval($item['subtotal']) / intval($item['qty']);
+            // $total = floatval($item['subtotal']);
+            // $gran_total += $total;
             $total_items += intval($item['qty']);
             
             echo '<tr>';
             echo '<td>' . esc_html($sku) . '</td>';
             echo '<td>' . esc_html($item['name']) . '</td>';
             echo '<td>' . absint($item['qty']) . '</td>';
-            echo '<td>' . wc_price($precio_unitario) . '</td>';
-            echo '<td>' . wc_price($total) . '</td>';
+            // echo '<td>' . wc_price($precio_unitario) . '</td>';
+            // echo '<td>' . wc_price($total) . '</td>';
             echo '</tr>';
         }
         
@@ -213,8 +213,8 @@ class SolicitudView {
         echo '<tr class="rfq-totals-row">';
         echo '<th colspan="2">' . __('Totales', 'rfq-manager-woocommerce') . '</th>';
         echo '<th>' . $total_items . '</th>';
-        echo '<th>' . __('Gran Total:', 'rfq-manager-woocommerce') . '</th>';
-        echo '<th>' . wc_price($gran_total) . '</th>';
+        // echo '<th>' . __('Gran Total:', 'rfq-manager-woocommerce') . '</th>';
+        // echo '<th>' . wc_price($gran_total) . '</th>';
         echo '</tr>';
         echo '</tfoot>';
         echo '</table>';
@@ -272,21 +272,21 @@ class SolicitudView {
             echo '</a></p>';
         }
         
-        echo '<hr>';
+        // echo '<hr>';
         
-        if (!empty($shipping_data)) {
-            echo '<h4>' . __('Dirección de Envío:', 'rfq-manager-woocommerce') . '</h4>';
-            echo '<p>' . esc_html($shipping_data['address_1']) . '</p>';
-            
-            if (!empty($shipping_data['address_2'])) {
-                echo '<p>' . esc_html($shipping_data['address_2']) . '</p>';
-            }
-            
-            echo '<p>' . esc_html($shipping_data['city'] . ', ' . 
-                  $shipping_data['state'] . ' ' . $shipping_data['postcode']) . '</p>';
-            
-            echo '<p>' . esc_html($shipping_data['country']) . '</p>';
-        }
+        // if (!empty($shipping_data)) {
+        //     echo '<h4>' . __('Dirección de Envío:', 'rfq-manager-woocommerce') . '</h4>';
+        //     echo '<p>' . esc_html($shipping_data['address_1']) . '</p>';
+        //     
+        //     if (!empty($shipping_data['address_2'])) {
+        //         echo '<p>' . esc_html($shipping_data['address_2']) . '</p>';
+        //     }
+        //     
+        //     echo '<p>' . esc_html($shipping_data['city'] . ', ' . 
+        //           $shipping_data['state'] . ' ' . $shipping_data['postcode']) . '</p>';
+        //     
+        //     echo '<p>' . esc_html($shipping_data['country']) . '</p>';
+        // }
         echo '</div>';
     }
 
@@ -344,6 +344,11 @@ class SolicitudView {
                 echo '</p>';
             }
         }
+        
+        // ID de solicitud
+        echo '<p><strong>' . __('ID Solicitud:', 'rfq-manager-woocommerce') . '</strong> ';
+        echo '#' . esc_html($post->ID);
+        echo '</p>';
         
         // Fecha de creación
         if ($creation_date) {
@@ -429,7 +434,7 @@ class SolicitudView {
         echo '<th>' . __('Proveedor', 'rfq-manager-woocommerce') . '</th>';
         echo '<th>' . __('Total', 'rfq-manager-woocommerce') . '</th>';
         echo '<th>' . __('Estado', 'rfq-manager-woocommerce') . '</th>';
-        echo '<th>' . __('%OFF', 'rfq-manager-woocommerce') . '</th>';
+        echo '<th>' . __('Estado Pago', 'rfq-manager-woocommerce') . '</th>';
         echo '<th>' . __('Acciones', 'rfq-manager-woocommerce') . '</th>';
         echo '</tr>';
         echo '</thead>';
@@ -440,21 +445,34 @@ class SolicitudView {
             $total = get_post_meta($cotizacion->ID, '_total', true);
             $estado = $cotizacion->post_status;
 
-            // Calcular el porcentaje de descuento
-            $items = json_decode(get_post_meta($post->ID, '_solicitud_items', true), true);
-            $gran_total = 0;
-            foreach ($items as $item) {
-                $gran_total += floatval($item['subtotal']);
-            }
-            
-            $porcentaje = 0;
-            if ($gran_total > 0) {
-                // Si el total de la cotización es mayor que el gran total, el porcentaje será negativo
-                // Si el total de la cotización es menor que el gran total, el porcentaje será positivo
-                $porcentaje = (($gran_total - $total) / $gran_total) * 100;
-                
-                // Formatear el porcentaje para mostrar solo 2 decimales
-                $porcentaje = round($porcentaje, 2);
+            // Obtener estado de pago si la cotización fue aceptada
+            $estado_pago = '-';
+            if ($estado === 'rfq-accepted') {
+                // Buscar la orden asociada a esta cotización
+                $orden_id = get_post_meta($cotizacion->ID, '_orden_asociada', true);
+                if ($orden_id) {
+                    $order = wc_get_order($orden_id);
+                    if ($order) {
+                        $order_status = $order->get_status();
+                        switch ($order_status) {
+                            case 'pending':
+                                $estado_pago = __('Pendiente', 'rfq-manager-woocommerce');
+                                break;
+                            case 'processing':
+                            case 'completed':
+                                $estado_pago = __('Pagado', 'rfq-manager-woocommerce');
+                                break;
+                            case 'failed':
+                                $estado_pago = __('Fallido', 'rfq-manager-woocommerce');
+                                break;
+                            case 'cancelled':
+                                $estado_pago = __('Cancelado', 'rfq-manager-woocommerce');
+                                break;
+                            default:
+                                $estado_pago = ucfirst($order_status);
+                        }
+                    }
+                }
             }
 
             echo '<tr>';
@@ -462,8 +480,7 @@ class SolicitudView {
             echo '<td>' . esc_html($proveedor ? $proveedor->display_name : __('N/A', 'rfq-manager-woocommerce')) . '</td>';
             echo '<td>' . wc_price($total) . '</td>';
             echo '<td class="rfq-estado-cotizacion ' . esc_attr($estado) . '">' . esc_html(self::get_cotizacion_status_label($estado)) . '</td>';
-            echo '<td class="rfq-porcentaje-descuento ' . ($porcentaje > 0 ? 'descuento-positivo' : 'descuento-negativo') . '">' . 
-                 number_format($porcentaje, 2) . '%' . '</td>';
+            echo '<td class="rfq-estado-pago">' . esc_html($estado_pago) . '</td>';
             echo '<td>';
             echo '<a href="' . esc_url(get_edit_post_link($cotizacion->ID)) . '" class="button button-small">';
             echo '<span class="dashicons dashicons-visibility"></span> ' . __('Ver Detalles', 'rfq-manager-woocommerce');
