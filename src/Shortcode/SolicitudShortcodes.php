@@ -348,7 +348,7 @@ class SolicitudShortcodes {
                 
                 // Obtener el UUID y formatear el ID de la solicitud
                 $uuid = get_post_meta($solicitud_id, '_solicitud_uuid', true);
-                $formatted_id = $uuid ? 'RFQ-' . substr(str_replace('-', '', $uuid), -5) : '';
+                $formatted_id = $uuid ? 'TCD-' . substr(str_replace('-', '', $uuid), -5) : '';
 
                 // Obtener número de cotizaciones
                 $cotizaciones = get_posts([

@@ -55,10 +55,16 @@ class CotizacionHandler {
             wp_die(__('ID de solicitud inválido.', 'rfq-manager-woocommerce'));
         }
 
-        // Validar solicitud
+        // Validar solicitud (incluyendo expiración)
         $solicitud = self::validate_solicitud($solicitud_id);
         if (is_wp_error($solicitud)) {
-            wp_die($solicitud->get_error_message());
+            // Redirigir con mensaje de error en lugar de wp_die para mejor UX
+            $redirect_url = add_query_arg([
+                'rfq_error' => $solicitud->get_error_code(),
+                'rfq_message' => urlencode($solicitud->get_error_message())
+            ], wp_get_referer() ?: get_permalink());
+            wp_redirect($redirect_url);
+            exit;
         }
 
         // Verificar si ya existe una cotización del mismo proveedor para esta solicitud
@@ -148,8 +154,31 @@ class CotizacionHandler {
             return new \WP_Error('not_found', __('La solicitud no existe.', 'rfq-manager-woocommerce'));
         }
 
+        // Verificar estado de la solicitud
         if (!in_array($solicitud->post_status, ['rfq-pending', 'rfq-active'])) {
             return new \WP_Error('not_available', __('Esta solicitud ya no está disponible para cotizar.', 'rfq-manager-woocommerce'));
+        }
+
+        // VALIDACIÓN CRÍTICA DE EXPIRACIÓN
+        $expiry_date = get_post_meta($solicitud_id, '_solicitud_expiry', true);
+        if (!empty($expiry_date)) {
+            $expiry_timestamp = strtotime($expiry_date);
+            $current_timestamp = current_time('timestamp');
+            
+            if ($expiry_timestamp && $current_timestamp >= $expiry_timestamp) {
+                error_log(sprintf(
+                    '[RFQ-SECURITY] Intento de cotización bloqueado por expiración - Solicitud: %d, Expiró: %s, Actual: %s',
+                    $solicitud_id,
+                    date('Y-m-d H:i:s', $expiry_timestamp),
+                    date('Y-m-d H:i:s', $current_timestamp)
+                ));
+                return new \WP_Error('expired', __('Esta solicitud ha expirado y no puede recibir más cotizaciones.', 'rfq-manager-woocommerce'));
+            }
+        }
+
+        // Verificación adicional: si el estado es histórico por alguna razón
+        if ($solicitud->post_status === 'rfq-historic') {
+            return new \WP_Error('expired', __('Esta solicitud ha expirado y no puede recibir más cotizaciones.', 'rfq-manager-woocommerce'));
         }
 
         return $solicitud;

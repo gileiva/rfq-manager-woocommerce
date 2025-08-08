@@ -68,6 +68,7 @@ class AdminInterfaceManager {
                 $new_columns['payment_status'] = __('Pago', 'rfq-manager-woocommerce');
                 $new_columns['cotizaciones'] = __('Cotizaciones', 'rfq-manager-woocommerce');
                 $new_columns['expiry'] = __('Expira', 'rfq-manager-woocommerce');
+                $new_columns['rfq_formatted_id'] = __('REF', 'rfq-manager-woocommerce');
             }
         }
         
@@ -91,7 +92,7 @@ class AdminInterfaceManager {
                 } else {
                     echo '—';
                 }
-                break;
+                break;                                                                   
                 
             case 'customer':
                 $customer_data = json_decode(get_post_meta($post_id, '_solicitud_customer', true), true);
@@ -164,6 +165,12 @@ class AdminInterfaceManager {
                     echo '—';
                 }
                 break;
+            
+            case 'rfq_formatted_id':
+                $uuid = get_post_meta($post_id, '_solicitud_uuid', true);
+                $formatted_id = $uuid ? 'TCD-' . substr(str_replace('-', '', $uuid), -5) : '';
+                echo esc_html($formatted_id);
+                break;            
         }
     }
 

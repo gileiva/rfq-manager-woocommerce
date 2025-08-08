@@ -491,7 +491,7 @@ class GiHandler {
 
             $payment_url = $order->get_checkout_payment_url();
             
-            error_log("[RFQ-PAGO] URL de pago generada para orden #{$order_id}: {$payment_url}");
+            // error_log("[RFQ-PAGO] URL de pago generada para orden #{$order_id}: {$payment_url}");
 
             wp_send_json_success([
                 'payment_url' => $payment_url,

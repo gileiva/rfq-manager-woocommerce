@@ -348,8 +348,27 @@ class SolicitudCreator {
         update_post_meta($solicitudId, '_solicitud_total', floatval($order->get_total()));
         update_post_meta($solicitudId, '_solicitud_date', current_time(self::DATE_FORMAT_DB));
         
-        $expiry_timestamp = current_time('timestamp') + (self::DEFAULT_EXPIRY_HOURS * HOUR_IN_SECONDS);
+        // CONFIGURACIÓN DE EXPIRACIÓN: Usar valor del admin con fallback
+        $expiry_hours = absint(get_option('rfq_default_expiry_hours', self::DEFAULT_EXPIRY_HOURS));
+        
+        // Validar que el valor sea razonable (entre 1 y 168 horas = 7 días)
+        if ($expiry_hours < 1 || $expiry_hours > 168) {
+            $expiry_hours = self::DEFAULT_EXPIRY_HOURS;
+            error_log(sprintf(
+                '[RFQ-CONFIG] Valor de expiración inválido detectado, usando fallback: %d horas',
+                self::DEFAULT_EXPIRY_HOURS
+            ));
+        }
+        
+        $expiry_timestamp = current_time('timestamp') + ($expiry_hours * HOUR_IN_SECONDS);
         update_post_meta($solicitudId, '_solicitud_expiry', date(self::DATE_FORMAT_DB, $expiry_timestamp));
+        
+        error_log(sprintf(
+            '[RFQ-CONFIG] Nueva solicitud #%d: expiración configurada en %d horas (%s)',
+            $solicitudId,
+            $expiry_hours,
+            date(self::DATE_FORMAT_DB, $expiry_timestamp)
+        ));
     }
 
     /**

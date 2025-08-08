@@ -17,7 +17,7 @@ class SolicitudHeaderRenderer
     {
         $solicitud_id = $solicitud->ID;
         $uuid = get_post_meta($solicitud_id, '_solicitud_uuid', true);
-        $numero = $uuid ? 'RFQ-' . substr(str_replace('-', '', $uuid), -5) : '';
+        $numero = $uuid ? 'TCD-' . substr(str_replace('-', '', $uuid), -5) : '';
 
         $fecha = get_the_date('', $solicitud_id);
         $author_id = get_post_field('post_author', $solicitud_id);

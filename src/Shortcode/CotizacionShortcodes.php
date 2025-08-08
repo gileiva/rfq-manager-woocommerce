@@ -126,8 +126,31 @@ class CotizacionShortcodes {
             return '<div class="rfq-error">' . esc_html__('No se encontró la solicitud para cotizar.', 'rfq-manager-woocommerce') . '</div>';
         }
         $solicitud_id = $solicitud->ID;
+        
+        // Verificar estado de la solicitud
         if (!in_array($solicitud->post_status, ['rfq-pending', 'rfq-active'], true)) {
             return '<div class="rfq-error">' . esc_html__('Esta solicitud ya no está disponible para cotizar.', 'rfq-manager-woocommerce') . '</div>';
+        }
+        
+        // VALIDACIÓN CRÍTICA DE EXPIRACIÓN EN FRONTEND
+        $expiry_date = get_post_meta($solicitud_id, '_solicitud_expiry', true);
+        if (!empty($expiry_date)) {
+            $expiry_timestamp = strtotime($expiry_date);
+            $current_timestamp = current_time('timestamp');
+            
+            if ($expiry_timestamp && $current_timestamp >= $expiry_timestamp) {
+                // Solicitud expirada, mostrar mensaje y script de redirección
+                $expired_message = __('Esta solicitud ha expirado y no puede recibir más cotizaciones.', 'rfq-manager-woocommerce');
+                return '<div class="rfq-error" style="background: #d63638; color: white; padding: 15px; border-radius: 4px; margin-bottom: 20px; text-align: center;">
+                    <strong>⏰ ' . esc_html($expired_message) . '</strong><br>
+                    <small>' . __('Serás redirigido a la lista de solicitudes automáticamente.', 'rfq-manager-woocommerce') . '</small>
+                </div>
+                <script>
+                    setTimeout(function() {
+                        window.location.href = "/lista-solicitudes/";
+                    }, 3000);
+                </script>';
+            }
         }
         $cotizacion = self::get_provider_cotizacion($solicitud_id);
         $items = self::get_solicitud_items($solicitud_id);

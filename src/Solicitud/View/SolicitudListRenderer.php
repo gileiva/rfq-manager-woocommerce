@@ -92,7 +92,7 @@ class SolicitudListRenderer {
                 $items = json_decode(get_post_meta($solicitud_id, '_solicitud_items', true), true);
                 $estado = get_post_status();
                 $uuid = get_post_meta($solicitud_id, '_solicitud_uuid', true);
-                $formatted_id = $uuid ? 'RFQ-' . substr(str_replace('-', '', $uuid), -5) : '';
+                $formatted_id = $uuid ? 'TCD-' . substr(str_replace('-', '', $uuid), -5) : '';
                 $cotizaciones = get_posts([
                     'post_type' => 'cotizacion',
                     'posts_per_page' => -1,
@@ -187,7 +187,7 @@ class SolicitudListRenderer {
             $items = json_decode(get_post_meta($solicitud_id, '_solicitud_items', true), true);
             $estado = get_post_status();
             $uuid = get_post_meta($solicitud_id, '_solicitud_uuid', true);
-            $formatted_id = $uuid ? 'RFQ-' . substr(str_replace('-', '', $uuid), -5) : '';
+            $formatted_id = $uuid ? 'TCD-' . substr(str_replace('-', '', $uuid), -5) : '';
             $ver_detalles_url = '';
             $user = wp_get_current_user();
             if (in_array($estado, ['rfq-accepted', 'rfq-closed', 'rfq-historic'])) {

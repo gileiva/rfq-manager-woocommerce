@@ -37,17 +37,17 @@ class RFQPaymentStatusManager
     public static function mark_offer_as_pending_payment(int $cotizacion_id, int $solicitud_id, int $order_id): void {
         // Marcar cotización como pendiente de pago
         update_post_meta($cotizacion_id, self::PAYMENT_STATUS_META_KEY, false);
-        error_log("[RFQ-PAGO] Cotización #{$cotizacion_id} marcada como pendiente de pago");
+        // error_log("[RFQ-PAGO] Cotización #{$cotizacion_id} marcada como pendiente de pago");
 
         // Marcar solicitud como pendiente de pago
         update_post_meta($solicitud_id, self::PAYMENT_STATUS_META_KEY, false);
-        error_log("[RFQ-PAGO] Solicitud #{$solicitud_id} marcada como pendiente de pago");
+        // error_log("[RFQ-PAGO] Solicitud #{$solicitud_id} marcada como pendiente de pago");
 
         // Guardar relación para tracking futuro
         update_post_meta($cotizacion_id, '_rfq_woocommerce_order_id', $order_id);
         update_post_meta($solicitud_id, '_rfq_woocommerce_order_id', $order_id);
         
-        error_log("[RFQ-PAGO] Relación establecida: Orden #{$order_id} ↔ Cotización #{$cotizacion_id} ↔ Solicitud #{$solicitud_id}");
+        // error_log("[RFQ-PAGO] Relación establecida: Orden #{$order_id} ↔ Cotización #{$cotizacion_id} ↔ Solicitud #{$solicitud_id}");
     }
 
     /**
@@ -59,7 +59,7 @@ class RFQPaymentStatusManager
     public static function mark_offer_as_paid(int $order_id): void {
         $order = wc_get_order($order_id);
         if (!$order) {
-            error_log("[RFQ-PAGO] ERROR: Orden #{$order_id} no encontrada para marcar como pagada");
+            // error_log("[RFQ-PAGO] ERROR: Orden #{$order_id} no encontrada para marcar como pagada");
             return;
         }
 
@@ -68,20 +68,20 @@ class RFQPaymentStatusManager
         $solicitud_id = $order->get_meta('_rfq_solicitud_id');
 
         if (!$cotizacion_id || !$solicitud_id) {
-            error_log("[RFQ-PAGO] Orden #{$order_id} no es una orden RFQ - saltando actualización de pago");
+            // error_log("[RFQ-PAGO] Orden #{$order_id} no es una orden RFQ - saltando actualización de pago");
             return;
         }
 
         // Marcar cotización como pagada
         update_post_meta($cotizacion_id, self::PAYMENT_STATUS_META_KEY, true);
-        error_log("[RFQ-PAGO] Cotización #{$cotizacion_id} marcada como PAGADA ✅");
+        // error_log("[RFQ-PAGO] Cotización #{$cotizacion_id} marcada como PAGADA ✅");
 
         // Marcar solicitud como pagada
         update_post_meta($solicitud_id, self::PAYMENT_STATUS_META_KEY, true);
-        error_log("[RFQ-PAGO] Solicitud #{$solicitud_id} marcada como PAGADA ✅");
+        // error_log("[RFQ-PAGO] Solicitud #{$solicitud_id} marcada como PAGADA ✅");
 
         // Log consolidado del cambio
-        error_log("[RFQ-PAGO] PAGO COMPLETADO: Orden #{$order_id} → Cotización #{$cotizacion_id} + Solicitud #{$solicitud_id} = PAGADAS");
+        // error_log("[RFQ-PAGO] PAGO COMPLETADO: Orden #{$order_id} → Cotización #{$cotizacion_id} + Solicitud #{$solicitud_id} = PAGADAS");
     }
 
     /**
@@ -95,7 +95,7 @@ class RFQPaymentStatusManager
     public static function is_offer_paid(int $post_id, string $post_type = 'post'): bool {
         $is_paid = (bool) get_post_meta($post_id, self::PAYMENT_STATUS_META_KEY, true);
         
-        error_log("[RFQ-PAGO] Consulta estado pago: {$post_type} #{$post_id} = " . ($is_paid ? 'PAGADA ✅' : 'PENDIENTE ⏳'));
+        // error_log("[RFQ-PAGO] Consulta estado pago: {$post_type} #{$post_id} = " . ($is_paid ? 'PAGADA ✅' : 'PENDIENTE ⏳'));
         
         return $is_paid;
     }
@@ -129,7 +129,7 @@ class RFQPaymentStatusManager
             }
         }
         
-        error_log("[RFQ-PAGO] Detalles estado pago para post #{$post_id}: " . json_encode($details));
+        // error_log("[RFQ-PAGO] Detalles estado pago para post #{$post_id}: " . json_encode($details));
         
         return $details;
     }
@@ -156,7 +156,7 @@ class RFQPaymentStatusManager
             ]
         ]);
 
-        error_log("[RFQ-PAGO] Ofertas pendientes de pago ({$post_type}): " . count($pending_offers) . " encontradas");
+        // error_log("[RFQ-PAGO] Ofertas pendientes de pago ({$post_type}): " . count($pending_offers) . " encontradas");
         
         return $pending_offers;
     }
@@ -174,7 +174,7 @@ class RFQPaymentStatusManager
         // Hook para marcar como pendiente al aceptar oferta
         add_action('rfq_cotizacion_accepted', [self::class, 'on_offer_accepted'], 10, 4);
         
-        error_log("[RFQ-PAGO] Hooks de pago inicializados: order_status_completed, order_status_processing, rfq_cotizacion_accepted");
+        // error_log("[RFQ-PAGO] Hooks de pago inicializados: order_status_completed, order_status_processing, rfq_cotizacion_accepted");
     }
 
     /**
@@ -187,7 +187,7 @@ class RFQPaymentStatusManager
      * @since 0.1.0
      */
     public static function on_offer_accepted(int $cotizacion_id, int $solicitud_id, int $order_id, int $user_id): void {
-        error_log("[RFQ-PAGO] Hook rfq_cotizacion_accepted ejecutado - iniciando marcado de pago pendiente");
+        // error_log("[RFQ-PAGO] Hook rfq_cotizacion_accepted ejecutado - iniciando marcado de pago pendiente");
         self::mark_offer_as_pending_payment($cotizacion_id, $solicitud_id, $order_id);
     }
 }
