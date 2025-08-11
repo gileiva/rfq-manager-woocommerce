@@ -6,6 +6,7 @@ use GiVendor\GiPlugin\Email\Templates\TemplateParser;
 class NotificationManager {
     private static $instance = null;
     private $roles = ['user', 'supplier', 'admin'];
+    private $tabs = ['user', 'supplier', 'admin', 'configuracion'];
     private $events = [
         'user' => [
             'solicitud_created' => 'Solicitud Creada',
@@ -198,11 +199,34 @@ class NotificationManager {
                 );
             }
         }
+        
+        // Registrar configuración del pie legal
+        register_setting(
+            'rfq_legal_footer_group',
+            'rfq_email_legal_footer',
+            [
+                'type' => 'string',
+                'sanitize_callback' => 'wp_kses_post',
+                'default' => ''
+            ]
+        );
     }
 
     public static function render_page(): void {
         if (!current_user_can('manage_options')) {
             return;
+        }
+
+        // Procesar la configuración del pie legal
+        if (isset($_POST['rfq_save_legal_footer']) && wp_verify_nonce($_POST['rfq_legal_footer_nonce'], 'rfq_save_legal_footer')) {
+            if (current_user_can('manage_options')) {
+                $legal_footer = wp_kses_post($_POST['rfq_email_legal_footer']);
+                update_option('rfq_email_legal_footer', $legal_footer);
+                
+                echo '<div class="notice notice-success is-dismissible">';
+                echo '<p>' . __('Pie legal guardado correctamente.', 'rfq-manager-woocommerce') . '</p>';
+                echo '</div>';
+            }
         }
 
         // Procesar el reset si se ha enviado
@@ -231,9 +255,73 @@ class NotificationManager {
                         <?php echo esc_html(ucfirst($role)); ?>
                     </a>
                 <?php endforeach; ?>
+                <a href="?page=rfq-notifications&tab=configuracion" 
+                   class="nav-tab <?php echo $active_tab === 'configuracion' ? 'nav-tab-active' : ''; ?>">
+                    <?php _e('Configuración', 'rfq-manager-woocommerce'); ?>
+                </a>
             </h2>
 
             <div class="rfq-templates-container">
+                <?php if ($active_tab === 'configuracion'): ?>
+                    <div class="rfq-config-form">
+                        <form method="post" action="">
+                            <?php wp_nonce_field('rfq_save_legal_footer', 'rfq_legal_footer_nonce'); ?>
+                            <h3><?php _e('Configuración del Pie Legal de Emails', 'rfq-manager-woocommerce'); ?></h3>
+                            <table class="form-table" role="presentation">
+                                <tbody>
+                                    <tr>
+                                        <th scope="row">
+                                            <label for="rfq_email_legal_footer">
+                                                <?php _e('Pie Legal de Emails', 'rfq-manager-woocommerce'); ?>
+                                            </label>
+                                        </th>
+                                        <td>
+                                            <div style="max-width: 100%;">
+                                                <?php
+                                                $legal_footer_content = get_option('rfq_email_legal_footer', '');
+                                                wp_editor($legal_footer_content, 'rfq_email_legal_footer', [
+                                                    'media_buttons' => false,
+                                                    'textarea_name' => 'rfq_email_legal_footer',
+                                                    'textarea_rows' => 10,
+                                                    'teeny' => true,
+                                                    'editor_css' => '<style>#wp-rfq_email_legal_footer-editor-container .wp-editor-area{height:200px;}</style>',
+                                                    'quicktags' => [
+                                                        'buttons' => 'strong,em,link,block,del,ins,img,ul,ol,li,code'
+                                                    ]
+                                                ]);
+                                                ?>
+                                            </div>
+                                            <p class="description">
+                                                <?php _e('Este texto aparecerá al final de todos los emails de notificación del sistema RFQ. Puedes usar HTML básico para formato.', 'rfq-manager-woocommerce'); ?>
+                                            </p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <button type="submit" name="rfq_save_legal_footer" class="button button-primary">
+                                <?php _e('Guardar Configuración', 'rfq-manager-woocommerce'); ?>
+                            </button>
+                        </form>
+                    </div>
+                    <div class="rfq-config-info">
+                        <div class="rfq-config-help">
+                            <h4><?php _e('Información', 'rfq-manager-woocommerce'); ?></h4>
+                            <p><?php _e('El pie legal se añadirá automáticamente a todas las notificaciones por email:', 'rfq-manager-woocommerce'); ?></p>
+                            <ul>
+                                <li>• <?php _e('Notificaciones a usuarios', 'rfq-manager-woocommerce'); ?></li>
+                                <li>• <?php _e('Notificaciones a proveedores', 'rfq-manager-woocommerce'); ?></li>
+                                <li>• <?php _e('Notificaciones a administradores', 'rfq-manager-woocommerce'); ?></li>
+                            </ul>
+                            <p><strong><?php _e('Ejemplo de uso:', 'rfq-manager-woocommerce'); ?></strong></p>
+                            <div style="background: #f9f9f9; padding: 10px; border-left: 4px solid #0073aa; margin: 10px 0;">
+                                <code>
+                                    &lt;p&gt;&lt;small&gt;Este email fue enviado automáticamente por el sistema TCD Manager.&lt;br&gt;
+                                    Para dudas contacta: &lt;a href="mailto:soporte@ejemplo.com"&gt;soporte@ejemplo.com&lt;/a&gt;&lt;/small&gt;&lt;/p&gt;
+                                </code>
+                            </div>
+                        </div>
+                    </div>
+                <?php else: ?>
                 <div class="rfq-templates-form">
             <form method="post" action="options.php">
                         <?php 
@@ -304,6 +392,7 @@ class NotificationManager {
                         </div>
             </div>
         </div>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -314,21 +403,29 @@ class NotificationManager {
                 gap: 20px;
                 margin-top: 20px;
             }
-            .rfq-templates-form {
+            .rfq-templates-form, .rfq-config-form {
                 background: #fff;
                 padding: 20px;
                 border: 1px solid #ccd0d4;
                 border-radius: 4px;
             }
-            .rfq-placeholders-sidebar {
+            .rfq-placeholders-sidebar, .rfq-config-info {
                 position: sticky;
                 top: 32px;
             }
-            .rfq-placeholders-docs {
+            .rfq-placeholders-docs, .rfq-config-help {
                 background: #fff;
                 border: 1px solid #ccd0d4;
                 padding: 15px;
                 border-radius: 4px;
+            }
+            .rfq-config-help ul {
+                margin-left: 20px;
+            }
+            .rfq-config-help code {
+                display: block;
+                font-size: 12px;
+                line-height: 1.4;
             }
             .rfq-placeholders-list {
                 display: flex;
@@ -619,6 +716,8 @@ class NotificationManager {
             'user_specific' => [
                 '{user_name}' => __('Nombre del usuario/cliente', 'rfq-manager-woocommerce'),
                 '{user_email}' => __('Email del usuario/cliente', 'rfq-manager-woocommerce'),
+                '{first_name}' => __('Nombre de pila del usuario', 'rfq-manager-woocommerce'),
+                '{last_name}' => __('Apellidos del usuario', 'rfq-manager-woocommerce'),
                 '{new_request_link}' => __('Enlace para crear nueva solicitud', 'rfq-manager-woocommerce'),
                 '{history_link}' => __('Enlace al historial de solicitudes', 'rfq-manager-woocommerce'),
             ],
@@ -628,6 +727,8 @@ class NotificationManager {
             'cross_info' => [
                 '{customer_name}' => __('Nombre del cliente (autor de la solicitud)', 'rfq-manager-woocommerce'),
                 '{customer_email}' => __('Email del cliente (autor de la solicitud)', 'rfq-manager-woocommerce'),
+                '{customer_first_name}' => __('Nombre de pila del cliente', 'rfq-manager-woocommerce'),
+                '{customer_last_name}' => __('Apellidos del cliente', 'rfq-manager-woocommerce'),
             ],
             'status_change' => [
                 '{status_new}' => __('Nuevo estado de la solicitud', 'rfq-manager-woocommerce'),
@@ -750,6 +851,58 @@ class NotificationManager {
     public function getBodyTemplate(string $role, string $event): string {
         $custom = get_option("rfq_notification_{$role}_{$event}_body", '');
         return $custom !== '' ? $custom : $this->getDefaultMessage($role, $event);
+    }
+    
+    /**
+     * Resuelve first_name y last_name para un usuario
+     *
+     * @since  0.1.0
+     * @param  int|WC_Order $user_or_order ID del usuario o objeto orden
+     * @return array ['first_name' => string, 'last_name' => string]
+     */
+    public static function resolve_user_names($user_or_order): array {
+        $first_name = '';
+        $last_name = '';
+        
+        // Caso 1: Si es una orden, intentar obtener datos del customer
+        if (is_object($user_or_order) && method_exists($user_or_order, 'get_billing_first_name')) {
+            $first_name = $user_or_order->get_billing_first_name();
+            $last_name = $user_or_order->get_billing_last_name();
+            
+            if (!empty($first_name) && !empty($last_name)) {
+                return ['first_name' => $first_name, 'last_name' => $last_name];
+            }
+            
+            // Fallback al customer de la orden
+            $user_id = $user_or_order->get_customer_id();
+            if ($user_id) {
+                return self::resolve_user_names($user_id);
+            }
+        }
+        
+        // Caso 2: ID de usuario - buscar en WP_User meta
+        if (is_numeric($user_or_order)) {
+            $user_id = (int)$user_or_order;
+            $first_name = get_user_meta($user_id, 'first_name', true);
+            $last_name = get_user_meta($user_id, 'last_name', true);
+            
+            if (!empty($first_name) && !empty($last_name)) {
+                return ['first_name' => $first_name, 'last_name' => $last_name];
+            }
+            
+            // Caso 3: Último recurso - partir display_name
+            $user = get_userdata($user_id);
+            if ($user && !empty($user->display_name)) {
+                $name_parts = explode(' ', trim($user->display_name), 2);
+                $first_name = $name_parts[0] ?? '';
+                $last_name = $name_parts[1] ?? '';
+                
+                return ['first_name' => $first_name, 'last_name' => $last_name];
+            }
+        }
+        
+        // Fallback: valores vacíos
+        return ['first_name' => '', 'last_name' => ''];
     }
 
     /**

@@ -262,6 +262,14 @@ class EmailManager {
             'sanitize_callback' => 'sanitize_text_field',
             'default' => get_option('admin_email'),
         ]);
+        
+        // Pie legal para emails
+        register_setting('rfq_email_settings', 'rfq_email_legal_footer', [
+            'type' => 'string',
+            'description' => __('Pie legal para emails (HTML)', 'rfq-manager-woocommerce'),
+            'sanitize_callback' => 'wp_kses_post',
+            'default' => '',
+        ]);
     }
     
     /**

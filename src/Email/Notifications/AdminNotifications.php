@@ -9,6 +9,7 @@
 namespace GiVendor\GiPlugin\Email\Notifications;
 
 use GiVendor\GiPlugin\Email\Templates\NotificationTemplateFactory;
+use GiVendor\GiPlugin\Email\Templates\TemplateRenderer;
 use GiVendor\GiPlugin\Email\Notifications\Custom\NotificationManager;
 use GiVendor\GiPlugin\Email\Templates\TemplateParser;
 use GiVendor\GiPlugin\Utils\RfqLogger;
@@ -77,17 +78,30 @@ class AdminNotifications {
         $solicitud_items_raw = get_post_meta($solicitud_id, '_solicitud_items', true);
         $solicitud_items = is_string($solicitud_items_raw) ? json_decode($solicitud_items_raw, true) : $solicitud_items_raw;
 
+        // Resolver first_name y last_name del usuario creador
+        $names = NotificationManager::resolve_user_names($user_id_creator);
+
         $template_args = array_merge($data, [
             'solicitud_id' => $solicitud_id,
             'user_name' => $user_creator ? $user_creator->display_name : __('Usuario Desconocido', 'rfq-manager-woocommerce'),
             'user_email' => $user_creator ? $user_creator->user_email : '',
+            'first_name' => $names['first_name'] ?: '',
+            'last_name' => $names['last_name'] ?: '',
             'productos' => self::format_items_for_email($solicitud_items ?? []),
             'request_title' => get_the_title($solicitud_id),
             'request_status' => get_post_status($solicitud_id),
             'request_link' => admin_url("admin.php?page=rfq-solicitudes&action=edit&post={$solicitud_id}"),
         ]);
         
-        $message = NotificationTemplateFactory::create('admin', $subject_template, $content_template, $template_args);
+        // Usar TemplateRenderer para generar HTML con pie legal
+        $legal_footer = get_option('rfq_email_legal_footer', '');
+        $legal_footer = wp_kses_post($legal_footer);
+        $message = TemplateRenderer::render_html(
+            $content_template, 
+            $template_args, 
+            $legal_footer,
+            ['notification_type' => 'admin_solicitud_created', 'solicitud_id' => $solicitud_id]
+        );
         
         // Normalizar destinatarios a array si es string
         if (is_string($admin_recipients)) {
@@ -132,6 +146,10 @@ class AdminNotifications {
         $precio_items_raw = get_post_meta($cotizacion_id, '_precio_items', true);
         $precio_items = is_string($precio_items_raw) ? json_decode($precio_items_raw, true) : $precio_items_raw;
         
+        // Resolver first_name y last_name del cliente y proveedor si aplica
+        $user_names = NotificationManager::resolve_user_names($user_id);
+        $supplier_names = NotificationManager::resolve_user_names($supplier_id);
+        
         $template_args = [
             'solicitud_id' => $solicitud_id,
             'cotizacion_id' => $cotizacion_id,
@@ -139,13 +157,25 @@ class AdminNotifications {
             'supplier_email' => $supplier ? $supplier->user_email : '',
             'user_name' => $user ? $user->display_name : __('Cliente Desconocido', 'rfq-manager-woocommerce'),
             'user_email' => $user ? $user->user_email : '',
+            'first_name' => $user_names['first_name'] ?: '',
+            'last_name' => $user_names['last_name'] ?: '',
+            'supplier_first_name' => $supplier_names['first_name'] ?: '',
+            'supplier_last_name' => $supplier_names['last_name'] ?: '',
             'quote_amount' => get_post_meta($cotizacion_id, '_total', true),
             'request_title' => get_the_title($solicitud_id),
             'quote_link' => admin_url("admin.php?page=rfq-cotizaciones&action=edit&post={$cotizacion_id}"),
             'productos_cotizados' => self::format_quoted_items_for_email($precio_items ?? []),
         ];
         
-        $message = NotificationTemplateFactory::create('admin', $subject_template, $content_template, $template_args);
+        // Usar TemplateRenderer para generar HTML con pie legal
+        $legal_footer = get_option('rfq_email_legal_footer', '');
+        $legal_footer = wp_kses_post($legal_footer);
+        $message = TemplateRenderer::render_html(
+            $content_template, 
+            $template_args, 
+            $legal_footer,
+            ['notification_type' => 'admin_cotizacion_submitted', 'cotizacion_id' => $cotizacion_id]
+        );
         
         // Normalizar destinatarios a array si es string
         if (is_string($admin_recipients)) {
@@ -189,6 +219,10 @@ class AdminNotifications {
         $precio_items_raw = get_post_meta($cotizacion_id, '_precio_items', true);
         $precio_items = is_string($precio_items_raw) ? json_decode($precio_items_raw, true) : $precio_items_raw;
         
+        // Resolver first_name y last_name del cliente y proveedor si aplica
+        $user_names = NotificationManager::resolve_user_names($user_id);
+        $supplier_names = NotificationManager::resolve_user_names($supplier_id);
+        
         $template_args = [
             'solicitud_id' => $solicitud_id,
             'cotizacion_id' => $cotizacion_id,
@@ -196,13 +230,25 @@ class AdminNotifications {
             'supplier_email' => $supplier ? $supplier->user_email : '',
             'user_name' => $user ? $user->display_name : __('Cliente Desconocido', 'rfq-manager-woocommerce'),
             'user_email' => $user ? $user->user_email : '',
+            'first_name' => $user_names['first_name'] ?: '',
+            'last_name' => $user_names['last_name'] ?: '',
+            'supplier_first_name' => $supplier_names['first_name'] ?: '',
+            'supplier_last_name' => $supplier_names['last_name'] ?: '',
             'quote_amount' => get_post_meta($cotizacion_id, '_total', true),
             'request_title' => get_the_title($solicitud_id),
             'quote_link' => admin_url("admin.php?page=rfq-cotizaciones&action=edit&post={$cotizacion_id}"),
             'productos_cotizados' => self::format_quoted_items_for_email($precio_items ?? []),
         ];
         
-        $message = NotificationTemplateFactory::create('admin', $subject_template, $content_template, $template_args);
+        // Usar TemplateRenderer para generar HTML con pie legal
+        $legal_footer = get_option('rfq_email_legal_footer', '');
+        $legal_footer = wp_kses_post($legal_footer);
+        $message = TemplateRenderer::render_html(
+            $content_template, 
+            $template_args, 
+            $legal_footer,
+            ['notification_type' => 'admin_cotizacion_accepted', 'cotizacion_id' => $cotizacion_id]
+        );
         
         // Normalizar destinatarios a array si es string
         if (is_string($admin_recipients)) {

@@ -11,6 +11,7 @@ namespace GiVendor\GiPlugin\Email\Notifications;
 use GiVendor\GiPlugin\Email\Templates\NotificationTemplateFactory;
 use GiVendor\GiPlugin\Email\Notifications\Custom\NotificationManager;
 use GiVendor\GiPlugin\Email\Templates\TemplateParser;
+use GiVendor\GiPlugin\Email\Templates\TemplateRenderer;
 use GiVendor\GiPlugin\Utils\RfqLogger;
 use GiVendor\GiPlugin\Email\EmailManager;
 
@@ -80,19 +81,32 @@ class UserNotifications {
         $subject_template = $notification_manager->getCurrentSubject('user', 'solicitud_created');
         $content_template = $notification_manager->getCurrentTemplate('user', 'solicitud_created');
         
+        // Resolver first_name y last_name
+        $names = NotificationManager::resolve_user_names($user_id);
+        
         $template_args = array_merge($data, [
             'solicitud_id' => $solicitud_id,
             'user_id' => $user_id,
             'user_name' => $user->display_name,
             'user_email' => $user->user_email,
+            'first_name' => $names['first_name'] ?: '',
+            'last_name' => $names['last_name'] ?: '',
             'nombre' => $user->display_name, // Por compatibilidad con placeholders antiguos
             'productos' => self::format_items_for_email($data['items'] ?? []),
         ]);
         
-        $message = NotificationTemplateFactory::create('user', $subject_template, $content_template, $template_args);
+        // Usar TemplateRenderer para generar HTML con pie legal
+        $legal_footer = get_option('rfq_email_legal_footer', '');
+        $legal_footer = wp_kses_post($legal_footer);
+        $message = TemplateRenderer::render_html(
+            $content_template, 
+            $template_args, 
+            $legal_footer,
+            ['notification_type' => 'solicitud_created', 'user_id' => $user_id]
+        );
         
         $headers = EmailManager::build_headers();
-        $result = wp_mail($to, TemplateParser::render($subject_template, $template_args), $message, $headers); // Asunto parseado aquí por si wp_mail lo necesita así
+        $result = wp_mail($to, TemplateParser::render($subject_template, $template_args), $message, $headers);
         
         self::log_result($result, 'solicitud_created', $user, $solicitud_id);
         return $result;
@@ -146,17 +160,30 @@ class UserNotifications {
         $solicitud_items = get_post_meta($solicitud_id, '_solicitud_items', true);
         if (is_string($solicitud_items)) $solicitud_items = json_decode($solicitud_items, true);
         
+        // Resolver first_name y last_name
+        $names = NotificationManager::resolve_user_names($user_id);
+        
         $template_args = [
             'solicitud_id' => $solicitud_id,
             'cotizacion_id' => $cotizacion_id,
             'user_id' => $user_id,
             'user_name' => $user->display_name,
             'user_email' => $user->user_email,
+            'first_name' => $names['first_name'] ?: '',
+            'last_name' => $names['last_name'] ?: '',
             'nombre' => $user->display_name,
             'productos' => self::format_items_for_email($solicitud_items ?? []),
         ];
         
-        $message = NotificationTemplateFactory::create('user', $subject_template, $content_template, $template_args);
+        // Usar TemplateRenderer para generar HTML con pie legal
+        $legal_footer = get_option('rfq_email_legal_footer', '');
+        $legal_footer = wp_kses_post($legal_footer);
+        $message = TemplateRenderer::render_html(
+            $content_template, 
+            $template_args, 
+            $legal_footer,
+            ['notification_type' => 'cotizacion_received', 'user_id' => $user_id]
+        );
         
         $headers = EmailManager::build_headers();
         $result = wp_mail($to, TemplateParser::render($subject_template, $template_args), $message, $headers);
@@ -243,11 +270,16 @@ class UserNotifications {
             }
         }
 
+        // Resolver first_name y last_name
+        $names = NotificationManager::resolve_user_names($user_id);
+        
         $template_args = [
             'solicitud_id' => $solicitud_id,
             'user_id' => $user_id,
             'user_name' => $user->display_name,
             'user_email' => $user->user_email,
+            'first_name' => $names['first_name'] ?: '',
+            'last_name' => $names['last_name'] ?: '',
             'nombre' => $user->display_name,
             'new_status' => $new_status, 
             'old_status' => $old_status,
@@ -266,10 +298,17 @@ class UserNotifications {
             $subject_template = $status_labels[$new_status] ?? sprintf(__('El estado de tu solicitud {request_title} es ahora: %s', 'rfq-manager-woocommerce'), $new_status);
         }
 
-        $message = NotificationTemplateFactory::create('user', $subject_template, $content_template, $template_args);
+        // Usar TemplateRenderer para generar HTML con pie legal
+        $legal_footer = get_option('rfq_email_legal_footer', '');
+        $legal_footer = wp_kses_post($legal_footer);
+        $message = TemplateRenderer::render_html(
+            $content_template, 
+            $template_args, 
+            $legal_footer,
+            ['notification_type' => 'status_change', 'user_id' => $user_id, 'new_status' => $new_status]
+        );
         
         $headers = EmailManager::build_headers();
-        // El asunto final ya está parseado por NotificationTemplateFactory::create, pero wp_mail lo necesita parseado explícitamente
         $final_subject = TemplateParser::render($subject_template, $template_args);
         $result = wp_mail($to, $final_subject, $message, $headers);
         
@@ -318,19 +357,32 @@ class UserNotifications {
             $porcentaje_ahorro = (($gran_total_solicitud - floatval($total_cotizacion)) / $gran_total_solicitud) * 100;
         }
         
+        // Resolver first_name y last_name
+        $names = NotificationManager::resolve_user_names($user_id);
+        
         $template_args = [
             'solicitud_id' => $solicitud_id,
             'cotizacion_id' => $cotizacion_id,
             'user_id' => $user_id,
             'user_name' => $user->display_name,
             'user_email' => $user->user_email,
+            'first_name' => $names['first_name'] ?: '',
+            'last_name' => $names['last_name'] ?: '',
             'nombre' => $user->display_name,
             'productos' => self::format_items_for_email($items_solicitud ?? []),
             'porcentaje_ahorro' => $porcentaje_ahorro,
             // El proveedor se añade en prepareCommonData si cotizacion_id está presente
         ];
         
-        $message = NotificationTemplateFactory::create('user', $subject_template, $content_template, $template_args);
+        // Usar TemplateRenderer para generar HTML con pie legal
+        $legal_footer = get_option('rfq_email_legal_footer', '');
+        $legal_footer = wp_kses_post($legal_footer);
+        $message = TemplateRenderer::render_html(
+            $content_template, 
+            $template_args, 
+            $legal_footer,
+            ['notification_type' => 'cotizacion_accepted', 'user_id' => $user_id]
+        );
         
         $headers = EmailManager::build_headers();
         $result = wp_mail($to, TemplateParser::render($subject_template, $template_args), $message, $headers);

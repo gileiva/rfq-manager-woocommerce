@@ -42,6 +42,12 @@ class TemplateParser {
             '{admin_name}' => (string)($data['nombre'] ?? $data['admin_name'] ?? ''),
             '{customer_name}' => (string)($data['customer_name'] ?? ''),
             '{customer_email}' => (string)($data['customer_email'] ?? ''),
+            '{first_name}' => (string)($data['first_name'] ?? ''),
+            '{last_name}' => (string)($data['last_name'] ?? ''),
+            '{customer_first_name}' => (string)($data['customer_first_name'] ?? $data['first_name'] ?? ''),
+            '{customer_last_name}' => (string)($data['customer_last_name'] ?? $data['last_name'] ?? ''),
+            '{supplier_first_name}' => (string)($data['supplier_first_name'] ?? ''),
+            '{supplier_last_name}' => (string)($data['supplier_last_name'] ?? ''),
             
             // Placeholders de solicitud
             '{request_id}' => (string)($data['request_id'] ?? $data['solicitud_id'] ?? ''),
@@ -78,6 +84,19 @@ class TemplateParser {
             array_values($placeholders),
             $template
         );
+
+        // Debug temporal: verificar si quedan placeholders sin reemplazar
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            if (strpos($content, '{first_name}') !== false || strpos($content, '{last_name}') !== false) {
+                RfqLogger::debug('[TemplateParser] Placeholders sin reemplazar detectados', [
+                    'has_first_name_data' => isset($data['first_name']),
+                    'has_last_name_data' => isset($data['last_name']),
+                    'first_name_value' => $data['first_name'] ?? 'NOT_SET',
+                    'last_name_value' => $data['last_name'] ?? 'NOT_SET',
+                    'template_excerpt' => substr($template, 0, 100)
+                ]);
+            }
+        }
 
         // Sanitizar el contenido
         $content = wp_kses_post($content);

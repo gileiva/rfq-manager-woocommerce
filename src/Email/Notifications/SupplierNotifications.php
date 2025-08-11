@@ -9,6 +9,7 @@
 namespace GiVendor\GiPlugin\Email\Notifications;
 
 use GiVendor\GiPlugin\Email\Templates\NotificationTemplateFactory;
+use GiVendor\GiPlugin\Email\Templates\TemplateRenderer;
 use GiVendor\GiPlugin\Email\Notifications\Custom\NotificationManager;
 use GiVendor\GiPlugin\Email\Templates\TemplateParser;
 use GiVendor\GiPlugin\Utils\RfqLogger;
@@ -84,6 +85,10 @@ class SupplierNotifications {
             'solicitud_id' => $solicitud_id,
             'productos'    => $formatted,
         ];
+        
+        // Obtener pie legal
+        $legal_footer = get_option('rfq_email_legal_footer', '');
+        $legal_footer = wp_kses_post($legal_footer);
     
         // Partir en batches de 20
         $batches = array_chunk($suppliers, 20);
@@ -144,7 +149,12 @@ class SupplierNotifications {
     
             // Renderizar asunto y cuerpo
             $subject = TemplateParser::render($subject_template, $template_args);
-            $message = NotificationTemplateFactory::create('supplier', $subject_template, $content_template, $template_args);
+            $message = TemplateRenderer::render_html(
+                $content_template, 
+                $template_args, 
+                $legal_footer,
+                ['notification_type' => 'supplier_solicitud_created', 'solicitud_id' => $solicitud_id, 'batch_size' => count($bcc_list)]
+            );
     
             // Envío
             $result = wp_mail($to, $subject, $message, $headers);
@@ -198,17 +208,30 @@ class SupplierNotifications {
         $precio_items_raw = get_post_meta($cotizacion_id, '_precio_items', true);
         $precio_items = is_string($precio_items_raw) ? json_decode($precio_items_raw, true) : $precio_items_raw;
         
+        // Resolver first_name y last_name del proveedor
+        $names = NotificationManager::resolve_user_names($supplier->ID);
+        
         $template_args = [
             'solicitud_id' => $solicitud_id,
             'cotizacion_id' => $cotizacion_id,
             'supplier_id' => $supplier->ID,
             'supplier_name' => $supplier->display_name,
             'supplier_email' => $supplier->user_email,
+            'first_name' => $names['first_name'] ?: '',
+            'last_name' => $names['last_name'] ?: '',
             'nombre' => $supplier->display_name,
             'productos_cotizados' => self::format_quoted_items_for_email($precio_items ?? []),
         ];
         
-        $message = NotificationTemplateFactory::create('supplier', $subject_template, $content_template, $template_args);
+        // Usar TemplateRenderer para generar HTML con pie legal
+        $legal_footer = get_option('rfq_email_legal_footer', '');
+        $legal_footer = wp_kses_post($legal_footer);
+        $message = TemplateRenderer::render_html(
+            $content_template, 
+            $template_args, 
+            $legal_footer,
+            ['notification_type' => 'supplier_cotizacion_accepted', 'supplier_id' => $supplier->ID, 'cotizacion_id' => $cotizacion_id]
+        );
         
         $headers = EmailManager::build_headers();
         $result = wp_mail($to, TemplateParser::render($subject_template, $template_args), $message, $headers);
@@ -274,17 +297,30 @@ class SupplierNotifications {
 
         error_log('[RFQ-DEBUG] send_cotizacion_submitted_notification: precio_items procesados = ' . print_r($precio_items, true));
 
+        // Resolver first_name y last_name del proveedor
+        $names = NotificationManager::resolve_user_names($supplier->ID);
+
         $template_args = [
             'solicitud_id' => $solicitud_id,
             'cotizacion_id' => $cotizacion_id,
             'supplier_id' => $supplier->ID,
             'supplier_name' => $supplier->display_name,
             'supplier_email' => $supplier->user_email,
+            'first_name' => $names['first_name'] ?: '',
+            'last_name' => $names['last_name'] ?: '',
             'nombre' => $supplier->display_name,
             'productos_cotizados' => self::format_quoted_items_for_email($precio_items),
         ];
         
-        $message = NotificationTemplateFactory::create('supplier', $subject_template, $content_template, $template_args);
+        // Usar TemplateRenderer para generar HTML con pie legal
+        $legal_footer = get_option('rfq_email_legal_footer', '');
+        $legal_footer = wp_kses_post($legal_footer);
+        $message = TemplateRenderer::render_html(
+            $content_template, 
+            $template_args, 
+            $legal_footer,
+            ['notification_type' => 'supplier_cotizacion_submitted', 'supplier_id' => $supplier->ID, 'cotizacion_id' => $cotizacion_id]
+        );
         
         $headers = EmailManager::build_headers();
         $result = wp_mail($to, TemplateParser::render($subject_template, $template_args), $message, $headers);
