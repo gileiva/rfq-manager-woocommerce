@@ -67,51 +67,54 @@ class UserNotifications {
         $user = get_userdata($user_id);
         
         if (!$user) {
-            error_log('[RFQ-ERROR] Usuario no encontrado para solicitud ' . $solicitud_id);
+            RfqLogger::warn('Usuario no encontrado para solicitud ' . $solicitud_id);
             return false;
         }
-        
-        $to = apply_filters('rfq_user_notification_recipient_solicitud_created', $user->user_email, $solicitud_id, $user);
-        if (empty($to)) {
-            error_log('[RFQ-ERROR] No se envió notificación: Destinatario vacío para solicitud_created ' . $solicitud_id);
-            return false;
-        }
-        
-        $notification_manager = NotificationManager::getInstance();
-        $subject_template = $notification_manager->getCurrentSubject('user', 'solicitud_created');
-        $content_template = $notification_manager->getCurrentTemplate('user', 'solicitud_created');
-        
-        // Resolver first_name y last_name
-        $names = NotificationManager::resolve_user_names($user_id);
-        
-        $template_args = array_merge($data, [
+
+        // 1. Construir contexto para el pipeline consolidado
+        $context = [
+            'role' => 'user',
+            'event' => 'solicitud_created',
             'solicitud_id' => $solicitud_id,
             'user_id' => $user_id,
+            'recipient_user_id' => $user_id,
             'user_name' => $user->display_name,
             'user_email' => $user->user_email,
-            'first_name' => $names['first_name'] ?: '',
-            'last_name' => $names['last_name'] ?: '',
-            'nombre' => $user->display_name, // Por compatibilidad con placeholders antiguos
             'productos' => self::format_items_for_email($data['items'] ?? []),
-        ]);
+        ];
         
-        // Usar TemplateRenderer para generar HTML con pie legal
-        $legal_footer = get_option('rfq_email_legal_footer', '');
-        $legal_footer = wp_kses_post($legal_footer);
-        $message = TemplateRenderer::render_html(
-            $content_template, 
-            $template_args, 
-            $legal_footer,
-            ['notification_type' => 'solicitud_created', 'user_id' => $user_id]
-        );
+        // Mergear datos adicionales del evento
+        $context = array_merge($context, $data);
+
+        // 2. Preparar mensaje con el pipeline consolidado
+        $message = NotificationManager::prepare_message('user_solicitud_created', $context);
+
+        // 3. Resolver destinatario
+        $to = apply_filters('rfq_user_notification_recipient_solicitud_created', $user->user_email, $solicitud_id, $user);
+        if (empty($to)) {
+            RfqLogger::warn('No se envió notificación: Destinatario vacío para solicitud_created ' . $solicitud_id);
+            return false;
+        }
+
+        // 4. Enviar usando el pipeline consolidado
+        $result = EmailManager::send($to, $message['subject'], $message['html'], $message['text'], $message['headers']);
         
-        $headers = EmailManager::build_headers();
-        $result = wp_mail($to, TemplateParser::render($subject_template, $template_args), $message, $headers);
-        
-        self::log_result($result, 'solicitud_created', $user, $solicitud_id);
+        // 5. Log resultado
+        if ($result) {
+            RfqLogger::info('Notificación user solicitud_created enviada exitosamente', [
+                'solicitud_id' => $solicitud_id,
+                'user_id' => $user_id
+            ]);
+        } else {
+            RfqLogger::warn('Error enviando notificación user solicitud_created', [
+                'solicitud_id' => $solicitud_id,
+                'user_id' => $user_id
+            ]);
+        }
+
         return $result;
     }
-    
+
     /**
      * Formatea los items para la plantilla
      */
@@ -142,52 +145,40 @@ class UserNotifications {
         $user = get_userdata($user_id);
         
         if (!$user) {
-            error_log('[RFQ-ERROR] Usuario no encontrado para cotizacion_received (solicitud ' . $solicitud_id . ')');
+            RfqLogger::warn('Usuario no encontrado para cotizacion_received (solicitud ' . $solicitud_id . ')');
             return false;
         }
-        
-        $to = apply_filters('rfq_user_notification_recipient_cotizacion_received', $user->user_email, $cotizacion_id, $solicitud_id, $user);
-        if (empty($to)) {
-            error_log('[RFQ-ERROR] No se envió notificación: Destinatario vacío para cotizacion_received ' . $cotizacion_id);
-            return false;
-        }
-        
-        $notification_manager = NotificationManager::getInstance();
-        // Para el usuario, el evento es 'cotizacion_received'
-        $subject_template = $notification_manager->getCurrentSubject('user', 'cotizacion_received'); 
-        $content_template = $notification_manager->getCurrentTemplate('user', 'cotizacion_received');
 
+        // 1. Construir contexto para el pipeline consolidado
         $solicitud_items = get_post_meta($solicitud_id, '_solicitud_items', true);
         if (is_string($solicitud_items)) $solicitud_items = json_decode($solicitud_items, true);
         
-        // Resolver first_name y last_name
-        $names = NotificationManager::resolve_user_names($user_id);
-        
-        $template_args = [
+        $context = [
+            'role' => 'user',
+            'event' => 'cotizacion_received',
             'solicitud_id' => $solicitud_id,
             'cotizacion_id' => $cotizacion_id,
             'user_id' => $user_id,
+            'recipient_user_id' => $user_id,
             'user_name' => $user->display_name,
             'user_email' => $user->user_email,
-            'first_name' => $names['first_name'] ?: '',
-            'last_name' => $names['last_name'] ?: '',
-            'nombre' => $user->display_name,
             'productos' => self::format_items_for_email($solicitud_items ?? []),
         ];
+
+        // 2. Preparar mensaje con el pipeline consolidado
+        $message = NotificationManager::prepare_message('user_cotizacion_received', $context);
+
+        // 3. Resolver destinatario
+        $to = apply_filters('rfq_user_notification_recipient_cotizacion_received', $user->user_email, $cotizacion_id, $solicitud_id, $user);
+        if (empty($to)) {
+            RfqLogger::warn('No se envió notificación: Destinatario vacío para cotizacion_received ' . $cotizacion_id);
+            return false;
+        }
+
+        // 4. Enviar usando el pipeline consolidado
+        $result = EmailManager::send($to, $message['subject'], $message['html'], $message['text'], $message['headers']);
         
-        // Usar TemplateRenderer para generar HTML con pie legal
-        $legal_footer = get_option('rfq_email_legal_footer', '');
-        $legal_footer = wp_kses_post($legal_footer);
-        $message = TemplateRenderer::render_html(
-            $content_template, 
-            $template_args, 
-            $legal_footer,
-            ['notification_type' => 'cotizacion_received', 'user_id' => $user_id]
-        );
-        
-        $headers = EmailManager::build_headers();
-        $result = wp_mail($to, TemplateParser::render($subject_template, $template_args), $message, $headers);
-        
+        // 5. Log resultado
         self::log_result($result, 'cotizacion_received', $user, $cotizacion_id);
         return $result;
     }

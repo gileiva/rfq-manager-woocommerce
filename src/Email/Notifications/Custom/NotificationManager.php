@@ -2,6 +2,9 @@
 namespace GiVendor\GiPlugin\Email\Notifications\Custom;
 
 use GiVendor\GiPlugin\Email\Templates\TemplateParser;
+use GiVendor\GiPlugin\Email\Templates\TemplateRenderer;
+use GiVendor\GiPlugin\Email\EmailManager;
+use GiVendor\GiPlugin\Utils\RfqLogger;
 
 class NotificationManager {
     private static $instance = null;
@@ -1115,4 +1118,216 @@ class NotificationManager {
     public function getCompiledTemplate(string $role, string $event): string {
         return $this->loadHeader() . $this->getBodyTemplate($role, $event) . $this->loadFooter();
     }
+
+    /**
+     * Pipeline consolidado: prepara el mensaje completo para envío
+     *
+     * @since  0.2.0
+     * @param  string $event   Clave del evento (ej: 'user_solicitud_created')
+     * @param  array  $context Array con datos del contexto
+     * @return array Array con 'subject', 'html', 'text', 'headers'
+     */
+    public static function prepare_message(string $event, array $context): array {
+        // 1. Resolver rol desde el evento
+        $role = self::extract_role_from_event($event);
+        $event_key = self::extract_event_key_from_event($event);
+        
+        if (!$role || !$event_key) {
+            RfqLogger::warn('[prepare_message] Evento inválido: ' . $event, ['context' => $context]);
+            return self::get_empty_message();
+        }
+
+        $instance = self::getInstance();
+        
+        // 2. Resolver plantilla actual (subject y body)
+        $subject_template = $instance->getCurrentSubject($role, $event_key);
+        $body_template = $instance->getBodyTemplate($role, $event_key);
+        
+        // Aplicar filtros de personalización
+        $subject_template = apply_filters('rfq_prepare_message_subject', $subject_template, $event, $context);
+        $body_template = apply_filters('rfq_prepare_message_body', $body_template, $event, $context);
+        
+        // 3. Construir variables (reusar helpers existentes + mergear context)
+        $base_vars = self::build_base_variables($context, $role);
+        $final_vars = array_merge($base_vars, $context);
+        
+        // Aplicar filtro de variables
+        $final_vars = apply_filters('rfq_prepare_message_vars', $final_vars, $event, $context);
+        
+        // 4. Render con TemplateRenderer (HTML y texto)
+        $legal_footer = get_option('rfq_email_legal_footer', '');
+        $legal_footer = wp_kses_post($legal_footer);
+        
+        $html = TemplateRenderer::render_html(
+            $body_template,
+            $final_vars,
+            $legal_footer,
+            ['notification_type' => $event] + $context
+        );
+        
+        $subject = TemplateParser::render($subject_template, $final_vars);
+        $text = TemplateRenderer::render_text($html);
+        
+        // 5. Headers con EmailManager
+        $extra_headers = $context['extra_headers'] ?? [];
+        $headers = EmailManager::build_headers($extra_headers);
+        
+        // 6. Logging
+        RfqLogger::debug('[prepare_message] listo', [
+            'event' => $event,
+            'vars_count' => count($final_vars),
+            'has_legal_footer' => !empty($legal_footer)
+        ]);
+        
+        return [
+            'subject' => $subject,
+            'html' => $html,
+            'text' => $text,
+            'headers' => $headers
+        ];
+    }
+    
+    /**
+     * Extrae el rol desde la clave del evento
+     * 
+     * @param  string $event Ej: 'user_solicitud_created', 'admin_cotizacion_submitted'
+     * @return string|null
+     */
+    private static function extract_role_from_event(string $event): ?string {
+        $parts = explode('_', $event, 2);
+        $role = $parts[0] ?? null;
+        
+        if (in_array($role, ['user', 'supplier', 'admin'])) {
+            return $role;
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Extrae la clave del evento desde la clave completa
+     * 
+     * @param  string $event Ej: 'user_solicitud_created' -> 'solicitud_created'
+     * @return string|null
+     */
+    private static function extract_event_key_from_event(string $event): ?string {
+        $parts = explode('_', $event, 2);
+        return $parts[1] ?? null;
+    }
+    
+    /**
+     * Construye variables base usando helpers existentes
+     * 
+     * @param  array  $context Array con datos del contexto
+     * @param  string $role    Rol del destinatario
+     * @return array Variables base normalizadas
+     */
+    private static function build_base_variables(array $context, string $role): array {
+        $vars = [
+            'site_name' => get_bloginfo('name'),
+            'site_url' => get_bloginfo('url'),
+            'admin_email' => get_option('admin_email'),
+            'fecha' => date_i18n(get_option('date_format') . ' ' . get_option('time_format')),
+            'current_year' => date('Y')
+        ];
+        
+        // Resolver first_name y last_name si hay usuario en contexto
+        if (isset($context['user_id'])) {
+            $names = self::resolve_user_names($context['user_id']);
+            $vars['first_name'] = $names['first_name'];
+            $vars['last_name'] = $names['last_name'];
+        }
+        
+        // Resolver nombres de usuario creador si hay solicitud
+        if (isset($context['solicitud_id'])) {
+            $author_id = get_post_field('post_author', $context['solicitud_id']);
+            if ($author_id) {
+                $author = get_userdata($author_id);
+                $author_names = self::resolve_user_names($author_id);
+                $vars['customer_name'] = $author ? $author->display_name : '';
+                $vars['customer_email'] = $author ? $author->user_email : '';
+                $vars['customer_first_name'] = $author_names['first_name'];
+                $vars['customer_last_name'] = $author_names['last_name'];
+                
+                // Para usuario también es user_name
+                if ($role === 'user') {
+                    $vars['user_name'] = $vars['customer_name'];
+                    $vars['user_email'] = $vars['customer_email'];
+                }
+            }
+        }
+        
+        // Resolver datos de proveedor si hay supplier_id
+        if (isset($context['supplier_id'])) {
+            $supplier = get_userdata($context['supplier_id']);
+            $supplier_names = self::resolve_user_names($context['supplier_id']);
+            $vars['supplier_name'] = $supplier ? $supplier->display_name : '';
+            $vars['supplier_email'] = $supplier ? $supplier->user_email : '';
+            $vars['supplier_first_name'] = $supplier_names['first_name'];
+            $vars['supplier_last_name'] = $supplier_names['last_name'];
+        }
+        
+        return $vars;
+    }
+    
+    /**
+     * Retorna un mensaje vacío en caso de error
+     */
+    private static function get_empty_message(): array {
+        return [
+            'subject' => '[Error] Mensaje no disponible',
+            'html' => '<p>Error al generar el mensaje.</p>',
+            'text' => 'Error al generar el mensaje.',
+            'headers' => ['Content-Type: text/html; charset=UTF-8']
+        ];
+    }
 }
+
+/**
+ * HOOKS Y FILTROS NUEVOS (Fase 3)
+ * 
+ * @since 0.2.0
+ * 
+ * Filtros para personalizar la preparación del mensaje:
+ * 
+ * - 'rfq_prepare_message_subject': Personalizar el asunto
+ *   @param string $subject_template El asunto actual
+ *   @param string $event           Clave del evento
+ *   @param array  $context         Contexto del mensaje
+ *   @return string Asunto personalizado
+ * 
+ * - 'rfq_prepare_message_body': Personalizar el cuerpo del mensaje
+ *   @param string $body_template Cuerpo del mensaje actual
+ *   @param string $event         Clave del evento
+ *   @param array  $context       Contexto del mensaje
+ *   @return string Cuerpo personalizado
+ * 
+ * - 'rfq_prepare_message_vars': Personalizar las variables del template
+ *   @param array  $variables Array de variables para el template
+ *   @param string $event     Clave del evento
+ *   @param array  $context   Contexto del mensaje
+ *   @return array Variables personalizadas
+ * 
+ * Filtros para personalizar el envío:
+ * 
+ * - 'rfq_before_send_email': Modificar destinatarios antes del envío
+ *   @param array  $recipients Lista de destinatarios
+ *   @param string $subject    Asunto del email
+ *   @param string $html       Contenido HTML
+ *   @param string $text       Contenido texto plano
+ *   @param array  $headers    Headers del email
+ *   @return array Destinatarios modificados
+ * 
+ * - 'rfq_before_send_email_subject': Modificar asunto antes del envío
+ * - 'rfq_before_send_email_html': Modificar contenido HTML antes del envío
+ * - 'rfq_before_send_email_headers': Modificar headers antes del envío
+ * 
+ * Acciones post-envío:
+ * 
+ * - 'rfq_after_send_email': Ejecutar acciones después del envío
+ *   @param bool   $result     Resultado del wp_mail()
+ *   @param array  $recipients Lista de destinatarios
+ *   @param string $subject    Asunto enviado
+ *   @param string $html       Contenido HTML enviado
+ *   @param array  $headers    Headers enviados
+ */

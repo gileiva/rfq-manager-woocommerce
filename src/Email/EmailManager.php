@@ -13,6 +13,7 @@ use GiVendor\GiPlugin\Email\Notifications\UserNotifications;
 use GiVendor\GiPlugin\Email\Notifications\SupplierNotifications;
 use GiVendor\GiPlugin\Email\Notifications\AdminNotifications;
 use GiVendor\GiPlugin\Email\Notifications\Custom\NotificationManager;
+use GiVendor\GiPlugin\Utils\RfqLogger;
 
 
 /**
@@ -369,20 +370,18 @@ class EmailManager {
         $valid_bcc = [];
         foreach ($all_bcc as $email) {
             $email = trim(strtolower($email));
-            if (!empty($email) && is_email($email)) {
-                $valid_bcc[] = $email;
-            } elseif (!empty($email)) {
-                // Log warning para emails inválidos
-                if (class_exists('GiVendor\\GiPlugin\\Utils\\RfqLogger')) {
-                    \GiVendor\GiPlugin\Utils\RfqLogger::warning(
-                        'BCC email inválido descartado: ' . $email,
-                        ['context' => 'EmailManager::process_global_bcc']
-                    );
+                if (!empty($email) && is_email($email)) {
+                    $valid_bcc[] = $email;
+                } elseif (!empty($email)) {
+                    // Log warning para emails inválidos
+                    if (class_exists('GiVendor\\GiPlugin\\Utils\\RfqLogger')) {
+                        \GiVendor\GiPlugin\Utils\RfqLogger::warn(
+                            'BCC email inválido descartado: ' . $email,
+                            ['context' => 'EmailManager::process_global_bcc']
+                        );
+                    }
                 }
-            }
-        }
-        
-        // 6. Deduplicar
+            }        // 6. Deduplicar
         $valid_bcc = array_unique($valid_bcc);
         
         // 7. Aplicar filtro final
@@ -397,6 +396,75 @@ class EmailManager {
         }
         
         return array_values($final_bcc);
+    }
+    
+    /**
+     * Pipeline consolidado: envío único de emails
+     *
+     * @since  0.2.0
+     * @param  string|array $to      Destinatario(s) - string o array
+     * @param  string       $subject Asunto del email
+     * @param  string       $html    Contenido HTML
+     * @param  string       $text    Contenido texto plano (preparado para futuro)
+     * @param  array        $headers Headers del email (array de strings)
+     * @return bool Resultado del envío
+     */
+    public static function send($to, string $subject, string $html, string $text, array $headers): bool {
+        // Normalizar destinatarios
+        $recipients = is_array($to) ? $to : [$to];
+        $valid_recipients = [];
+        
+        foreach ($recipients as $recipient) {
+            $clean_email = sanitize_email(trim($recipient));
+            if (!empty($clean_email) && is_email($clean_email)) {
+                $valid_recipients[] = $clean_email;
+            } else {
+                RfqLogger::warn('[send] Destinatario inválido descartado: ' . $recipient);
+            }
+        }
+        
+        if (empty($valid_recipients)) {
+            RfqLogger::warn('[send] Sin destinatarios válidos para envío', [
+                'original_to' => $to,
+                'subject' => $subject
+            ]);
+            return false;
+        }
+        
+        // Aplicar filtros antes del envío
+        $filtered_to = apply_filters('rfq_before_send_email', $valid_recipients, $subject, $html, $text, $headers);
+        $filtered_subject = apply_filters('rfq_before_send_email_subject', $subject, $valid_recipients, $html, $text, $headers);
+        $filtered_html = apply_filters('rfq_before_send_email_html', $html, $valid_recipients, $subject, $text, $headers);
+        $filtered_headers = apply_filters('rfq_before_send_email_headers', $headers, $valid_recipients, $subject, $html, $text);
+        
+        // Log intento de envío
+        RfqLogger::info('[send] intento', [
+            'to_count' => count($filtered_to),
+            'len_html' => strlen($filtered_html),
+            'subject_preview' => substr($filtered_subject, 0, 50)
+        ]);
+        
+        // Envío (por ahora solo HTML como indica la fase 3)
+        $result = wp_mail($filtered_to, $filtered_subject, $filtered_html, $filtered_headers);
+        
+        // Log resultado
+        if (!$result) {
+            RfqLogger::warn('[send] Error en wp_mail', [
+                'to_count' => count($filtered_to),
+                'subject' => $filtered_subject,
+                'wp_mail_error' => 'wp_mail devolvió false'
+            ]);
+        } else {
+            RfqLogger::info('[send] exitoso', [
+                'to_count' => count($filtered_to),
+                'subject_preview' => substr($filtered_subject, 0, 50)
+            ]);
+        }
+        
+        // Aplicar filtro post-envío
+        do_action('rfq_after_send_email', $result, $filtered_to, $filtered_subject, $filtered_html, $filtered_headers);
+        
+        return $result;
     }
     
 }

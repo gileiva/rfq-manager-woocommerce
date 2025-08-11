@@ -11,7 +11,7 @@
  * Plugin Name:       TCD Manager for WooCommerce
  * Plugin URI:        https://weloveweb.eu
  * Description:       Request for Quote management system for WooCommerce
- * Version:           0.4.0
+ * Version:           1.7.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            WeLoveWeb

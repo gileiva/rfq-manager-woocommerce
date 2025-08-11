@@ -67,29 +67,14 @@ class SupplierNotifications {
         $suppliers = self::get_suppliers_for_notification($solicitud_id);
     
         if (empty($suppliers)) {
-            error_log("[RFQ-INFO] No hay proveedores activos para notificar solicitud {$solicitud_id}");
+            RfqLogger::info("No hay proveedores activos para notificar solicitud {$solicitud_id}");
             return true;
         }
     
-        // Plantillas y datos comunes
-        $notification_manager  = NotificationManager::getInstance();
-        $subject_template      = $notification_manager->getCurrentSubject('supplier', 'solicitud_created');
-        $content_template      = $notification_manager->getCurrentTemplate('supplier', 'solicitud_created');
-    
+        // Datos comunes para el contexto
         $raw_items = get_post_meta($solicitud_id, '_solicitud_items', true);
-        $items     = is_string($raw_items) ? json_decode($raw_items, true) : $raw_items;
-        $formatted = self::format_items_for_email($items ?? []);
-    
-        // Datos comunes (sin nombre/email individual)
-        $template_args = [
-            'solicitud_id' => $solicitud_id,
-            'productos'    => $formatted,
-        ];
+        $items = is_string($raw_items) ? json_decode($raw_items, true) : $raw_items;
         
-        // Obtener pie legal
-        $legal_footer = get_option('rfq_email_legal_footer', '');
-        $legal_footer = wp_kses_post($legal_footer);
-    
         // Partir en batches de 20
         $batches = array_chunk($suppliers, 20);
     
@@ -117,28 +102,24 @@ class SupplierNotifications {
                 continue;
             }
 
-            // Sanitizar BCC emails y construir headers centralizados
-            $sanitized_bcc = [];
-            foreach ($bcc_list as $email) {
-                $clean_email = sanitize_email(trim($email));
-                if (!empty($clean_email) && is_email($clean_email)) {
-                    $sanitized_bcc[] = $clean_email;
-                } else {
-                    RfqLogger::warn("Email BCC inválido descartado", ['email' => $email]);
-                }
-            }
+            // 1. Construir contexto para el pipeline consolidado
+            $context = [
+                'role' => 'supplier',
+                'event' => 'solicitud_created',
+                'solicitud_id' => $solicitud_id,
+                'productos' => self::format_items_for_email($items ?? []),
+                'extra_headers' => [
+                    'Bcc' => implode(',', array_unique(array_filter(array_map('sanitize_email', $bcc_list))))
+                ]
+            ];
             
-            // Remover duplicados
-            $sanitized_bcc = array_unique($sanitized_bcc);
-            
-            $extra_headers = [];
-            if (!empty($sanitized_bcc)) {
-                $extra_headers['Bcc'] = implode(',', $sanitized_bcc);
-            }
-            
-            $headers = EmailManager::build_headers($extra_headers);
+            // Mergear datos adicionales
+            $context = array_merge($context, $data);
 
-            // Destinatario genérico (puede ser admin_email)
+            // 2. Preparar mensaje con el pipeline consolidado
+            $message = NotificationManager::prepare_message('supplier_solicitud_created', $context);
+
+            // 3. Resolver destinatario genérico para el batch
             $to = apply_filters(
                 'rfq_supplier_notification_batch_to',
                 get_option('admin_email'),
@@ -146,18 +127,9 @@ class SupplierNotifications {
                 $batch,
                 $data
             );
-    
-            // Renderizar asunto y cuerpo
-            $subject = TemplateParser::render($subject_template, $template_args);
-            $message = TemplateRenderer::render_html(
-                $content_template, 
-                $template_args, 
-                $legal_footer,
-                ['notification_type' => 'supplier_solicitud_created', 'solicitud_id' => $solicitud_id, 'batch_size' => count($bcc_list)]
-            );
-    
-            // Envío
-            $result = wp_mail($to, $subject, $message, $headers);
+
+            // 4. Enviar usando el pipeline consolidado
+            $result = EmailManager::send($to, $message['subject'], $message['html'], $message['text'], $message['headers']);
 
             // Log usando el nuevo sistema con contexto estructurado
             $context = [

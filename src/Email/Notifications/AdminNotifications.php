@@ -64,45 +64,10 @@ class AdminNotifications {
     public static function send_solicitud_created_notification(int $solicitud_id, array $data): bool {
         $admin_recipients = self::get_admin_recipients('solicitud_created', $solicitud_id);
         if (empty($admin_recipients)) {
-            error_log('[RFQ-WARN] No hay destinatarios admin para notificación de solicitud_created: ' . $solicitud_id);
+            RfqLogger::warn('No hay destinatarios admin para notificación de solicitud_created: ' . $solicitud_id);
             return true; // No es un error si no hay admins configurados
         }
-        
-        $notification_manager = NotificationManager::getInstance();
-        $subject_template = $notification_manager->getCurrentSubject('admin', 'solicitud_created');
-        $content_template = $notification_manager->getCurrentTemplate('admin', 'solicitud_created');
 
-        $user_id_creator = get_post_field('post_author', $solicitud_id);
-        $user_creator = get_userdata($user_id_creator);
-
-        $solicitud_items_raw = get_post_meta($solicitud_id, '_solicitud_items', true);
-        $solicitud_items = is_string($solicitud_items_raw) ? json_decode($solicitud_items_raw, true) : $solicitud_items_raw;
-
-        // Resolver first_name y last_name del usuario creador
-        $names = NotificationManager::resolve_user_names($user_id_creator);
-
-        $template_args = array_merge($data, [
-            'solicitud_id' => $solicitud_id,
-            'user_name' => $user_creator ? $user_creator->display_name : __('Usuario Desconocido', 'rfq-manager-woocommerce'),
-            'user_email' => $user_creator ? $user_creator->user_email : '',
-            'first_name' => $names['first_name'] ?: '',
-            'last_name' => $names['last_name'] ?: '',
-            'productos' => self::format_items_for_email($solicitud_items ?? []),
-            'request_title' => get_the_title($solicitud_id),
-            'request_status' => get_post_status($solicitud_id),
-            'request_link' => admin_url("admin.php?page=rfq-solicitudes&action=edit&post={$solicitud_id}"),
-        ]);
-        
-        // Usar TemplateRenderer para generar HTML con pie legal
-        $legal_footer = get_option('rfq_email_legal_footer', '');
-        $legal_footer = wp_kses_post($legal_footer);
-        $message = TemplateRenderer::render_html(
-            $content_template, 
-            $template_args, 
-            $legal_footer,
-            ['notification_type' => 'admin_solicitud_created', 'solicitud_id' => $solicitud_id]
-        );
-        
         // Normalizar destinatarios a array si es string
         if (is_string($admin_recipients)) {
             $admin_recipients = array_filter(array_map('trim', explode(',', $admin_recipients)));
@@ -112,9 +77,41 @@ class AdminNotifications {
         
         // Validar y limpiar destinatarios admin
         $validated_recipients = self::validateAdminRecipients($admin_recipients);
-        $headers = EmailManager::build_headers();
-        $result = wp_mail($validated_recipients, TemplateParser::render($subject_template, $template_args), $message, $headers);
         
+        if (empty($validated_recipients)) {
+            RfqLogger::warn('Sin destinatarios admin válidos para solicitud_created: ' . $solicitud_id);
+            return false;
+        }
+
+        // 1. Construir contexto para el pipeline consolidado
+        $user_id_creator = get_post_field('post_author', $solicitud_id);
+        $user_creator = get_userdata($user_id_creator);
+        $solicitud_items_raw = get_post_meta($solicitud_id, '_solicitud_items', true);
+        $solicitud_items = is_string($solicitud_items_raw) ? json_decode($solicitud_items_raw, true) : $solicitud_items_raw;
+
+        $context = [
+            'role' => 'admin',
+            'event' => 'solicitud_created',
+            'solicitud_id' => $solicitud_id,
+            'user_id' => $user_id_creator,
+            'user_name' => $user_creator ? $user_creator->display_name : __('Usuario Desconocido', 'rfq-manager-woocommerce'),
+            'user_email' => $user_creator ? $user_creator->user_email : '',
+            'productos' => self::format_items_for_email($solicitud_items ?? []),
+            'request_title' => get_the_title($solicitud_id),
+            'request_status' => get_post_status($solicitud_id),
+            'request_link' => admin_url("admin.php?page=rfq-solicitudes&action=edit&post={$solicitud_id}"),
+        ];
+        
+        // Mergear datos adicionales
+        $context = array_merge($context, $data);
+
+        // 2. Preparar mensaje con el pipeline consolidado
+        $message = NotificationManager::prepare_message('admin_solicitud_created', $context);
+
+        // 3. Enviar usando el pipeline consolidado
+        $result = EmailManager::send($validated_recipients, $message['subject'], $message['html'], $message['text'], $message['headers']);
+        
+        // 4. Log resultado
         self::log_result($result, 'solicitud_created', $validated_recipients, $solicitud_id);
         return $result;
     }
