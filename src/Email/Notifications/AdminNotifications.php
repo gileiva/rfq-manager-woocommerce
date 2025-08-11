@@ -11,6 +11,8 @@ namespace GiVendor\GiPlugin\Email\Notifications;
 use GiVendor\GiPlugin\Email\Templates\NotificationTemplateFactory;
 use GiVendor\GiPlugin\Email\Notifications\Custom\NotificationManager;
 use GiVendor\GiPlugin\Email\Templates\TemplateParser;
+use GiVendor\GiPlugin\Utils\RfqLogger;
+use GiVendor\GiPlugin\Email\EmailManager;
 
 /**
  * AdminNotifications - Gestiona las notificaciones por email para administradores
@@ -87,10 +89,19 @@ class AdminNotifications {
         
         $message = NotificationTemplateFactory::create('admin', $subject_template, $content_template, $template_args);
         
-        $headers = self::get_email_headers();
-        $result = wp_mail($admin_recipients, TemplateParser::render($subject_template, $template_args), $message, $headers);
+        // Normalizar destinatarios a array si es string
+        if (is_string($admin_recipients)) {
+            $admin_recipients = array_filter(array_map('trim', explode(',', $admin_recipients)));
+        } elseif (!is_array($admin_recipients)) {
+            $admin_recipients = [$admin_recipients];
+        }
         
-        self::log_result($result, 'solicitud_created', $admin_recipients, $solicitud_id);
+        // Validar y limpiar destinatarios admin
+        $validated_recipients = self::validateAdminRecipients($admin_recipients);
+        $headers = EmailManager::build_headers();
+        $result = wp_mail($validated_recipients, TemplateParser::render($subject_template, $template_args), $message, $headers);
+        
+        self::log_result($result, 'solicitud_created', $validated_recipients, $solicitud_id);
         return $result;
     }
     
@@ -136,10 +147,18 @@ class AdminNotifications {
         
         $message = NotificationTemplateFactory::create('admin', $subject_template, $content_template, $template_args);
         
-        $headers = self::get_email_headers();
-        $result = wp_mail($admin_recipients, TemplateParser::render($subject_template, $template_args), $message, $headers);
+        // Normalizar destinatarios a array si es string
+        if (is_string($admin_recipients)) {
+            $admin_recipients = array_filter(array_map('trim', explode(',', $admin_recipients)));
+        } elseif (!is_array($admin_recipients)) {
+            $admin_recipients = [$admin_recipients];
+        }
         
-        self::log_result($result, 'cotizacion_submitted', $admin_recipients, $cotizacion_id);
+        $validated_recipients = self::validateAdminRecipients($admin_recipients);
+        $headers = EmailManager::build_headers();
+        $result = wp_mail($validated_recipients, TemplateParser::render($subject_template, $template_args), $message, $headers);
+        
+        self::log_result($result, 'cotizacion_submitted', $validated_recipients, $cotizacion_id);
         return $result;
     }
     
@@ -185,10 +204,18 @@ class AdminNotifications {
         
         $message = NotificationTemplateFactory::create('admin', $subject_template, $content_template, $template_args);
         
-        $headers = self::get_email_headers();
-        $result = wp_mail($admin_recipients, TemplateParser::render($subject_template, $template_args), $message, $headers);
+        // Normalizar destinatarios a array si es string
+        if (is_string($admin_recipients)) {
+            $admin_recipients = array_filter(array_map('trim', explode(',', $admin_recipients)));
+        } elseif (!is_array($admin_recipients)) {
+            $admin_recipients = [$admin_recipients];
+        }
         
-        self::log_result($result, 'cotizacion_accepted', $admin_recipients, $cotizacion_id);
+        $validated_recipients = self::validateAdminRecipients($admin_recipients);
+        $headers = EmailManager::build_headers();
+        $result = wp_mail($validated_recipients, TemplateParser::render($subject_template, $template_args), $message, $headers);
+        
+        self::log_result($result, 'cotizacion_accepted', $validated_recipients, $cotizacion_id);
         return $result;
     }
     
@@ -212,22 +239,6 @@ class AdminNotifications {
         
         // Asegurarse de que sea un array o un string de emails separados por coma
         return $recipients;
-    }
-    
-    /**
-     * Obtiene las cabeceras para los emails
-     *
-     * @since  0.1.0
-     * @return string
-     */
-    protected static function get_email_headers(): string {
-        $from_name = apply_filters('rfq_email_from_name', get_bloginfo('name'));
-        $from_email = apply_filters('rfq_email_from_address', get_option('admin_email'));
-        
-        $headers = "Content-Type: text/html; charset=UTF-8\r\n";
-        $headers .= "From: " . esc_html($from_name) . " <" . sanitize_email($from_email) . ">\r\n";
-        
-        return apply_filters('rfq_email_headers', $headers);
     }
     
     /**
@@ -401,10 +412,42 @@ class AdminNotifications {
 
     private static function log_result(bool $result, string $notification_type, $recipients, int $post_id): void {
         $recipient_str = is_array($recipients) ? implode(', ', $recipients) : $recipients;
+        $context = [
+            'notification_type' => $notification_type,
+            'recipients' => $recipient_str,
+            'post_id' => $post_id,
+            'recipient_count' => is_array($recipients) ? count($recipients) : 1
+        ];
+        
         if (!$result) {
-            error_log(sprintf('[RFQ-ERROR] Error al enviar notificación admin de %s a %s para el post #%d', $notification_type, $recipient_str, $post_id));
+            RfqLogger::email("Error enviando notificación admin de {$notification_type}", RfqLogger::LEVEL_ERROR, $context);
         } else {
-            error_log(sprintf('[RFQ-SUCCESS] Notificación admin de %s enviada a %s para el post #%d', $notification_type, $recipient_str, $post_id));
+            RfqLogger::email("Notificación admin de {$notification_type} enviada exitosamente", RfqLogger::LEVEL_SUCCESS, $context);
         }
+    }
+    
+    /**
+     * Valida y limpia destinatarios admin
+     *
+     * @since  0.1.0
+     * @param  array $recipients Lista de destinatarios
+     * @return array Destinatarios válidos sin duplicados
+     */
+    private static function validateAdminRecipients(array $recipients): array {
+        $validated = [];
+        
+        foreach ($recipients as $recipient) {
+            $clean_email = sanitize_email(trim($recipient));
+            if (!empty($clean_email) && is_email($clean_email)) {
+                $validated[] = $clean_email;
+            } else {
+                RfqLogger::warn("Email admin inválido descartado", [
+                    'original_email' => $recipient,
+                    'sanitized_email' => $clean_email
+                ]);
+            }
+        }
+        
+        return array_unique($validated);
     }
 }

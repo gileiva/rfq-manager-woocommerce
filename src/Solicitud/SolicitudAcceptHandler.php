@@ -5,6 +5,7 @@ use WP_Post;
 use WP_User;
 use WP_Error;
 use GiVendor\GiPlugin\Order\OfferOrderCreator;
+use GiVendor\GiPlugin\Utils\RfqLogger;
 
 class SolicitudAcceptHandler {
     public static function can_accept(WP_User $user, WP_Post $solicitud, WP_Post $cotizacion): bool {
@@ -49,11 +50,15 @@ class SolicitudAcceptHandler {
      * @return array|WP_Error Array con datos de éxito o WP_Error si falla
      */
     public static function accept(WP_User $user, WP_Post $solicitud, WP_Post $cotizacion) {
-        error_log('[RFQ] SolicitudAcceptHandler::accept iniciado - Usuario: ' . $user->ID . ', Solicitud: ' . $solicitud->ID . ', Cotización: ' . $cotizacion->ID);
+        RfqLogger::logCotizacionAcceptance('accept_initiated', $cotizacion->ID, $solicitud->ID, $user->ID);
 
         // Validar primero con can_accept(). Si no se puede, devolver WP_Error.
         if (!self::can_accept($user, $solicitud, $cotizacion)) {
-            error_log('[RFQ] Error: No se puede aceptar la cotización - validación fallida');
+            RfqLogger::error('No se puede aceptar la cotización - validación fallida', [
+                'user_id' => $user->ID,
+                'solicitud_id' => $solicitud->ID,
+                'cotizacion_id' => $cotizacion->ID
+            ]);
             return new WP_Error('cannot_accept', __('No se puede aceptar esta cotización.', 'rfq-manager-woocommerce'));
         }
 
@@ -61,11 +66,21 @@ class SolicitudAcceptHandler {
         $order_id = OfferOrderCreator::create_from_accepted_offer($user, $solicitud, $cotizacion);
         
         if (is_wp_error($order_id)) {
-            error_log('[RFQ] Error creando orden: ' . $order_id->get_error_message());
+            RfqLogger::order('Error creando orden: ' . $order_id->get_error_message(), RfqLogger::LEVEL_ERROR, [
+                'cotizacion_id' => $cotizacion->ID,
+                'solicitud_id' => $solicitud->ID,
+                'user_id' => $user->ID,
+                'error_code' => $order_id->get_error_code()
+            ]);
             return $order_id;
         }
 
-        error_log('[RFQ] Orden creada exitosamente: ' . $order_id);
+        RfqLogger::order('Orden creada exitosamente', RfqLogger::LEVEL_SUCCESS, [
+            'order_id' => $order_id,
+            'cotizacion_id' => $cotizacion->ID,
+            'solicitud_id' => $solicitud->ID,
+            'user_id' => $user->ID
+        ]);
 
         // Cambiar estado de cotización a rfq-accepted
         $cotizacion_update = wp_update_post([
@@ -125,13 +140,21 @@ class SolicitudAcceptHandler {
         update_post_meta($cotizacion->ID, '_rfq_generated_order_id', $order_id);
 
         // Disparar hook de aceptación con todos los datos
+        RfqLogger::logHook('rfq_cotizacion_accepted', [$cotizacion->ID, $solicitud->ID, $order_id, $user->ID], 'firing');
         do_action('rfq_cotizacion_accepted', $cotizacion->ID, $solicitud->ID, $order_id, $user->ID);
+        
+        // Nuevo hook específico para aceptación por usuario (Fase 0)
+        RfqLogger::logHook('rfq_cotizacion_accepted_by_user', [$cotizacion->ID, $solicitud->ID, $order_id, $user->ID], 'firing');
+        do_action('rfq_cotizacion_accepted_by_user', $cotizacion->ID, $solicitud->ID, $order_id, $user->ID);
 
-        error_log('[RFQ] Proceso de aceptación completado exitosamente - Orden: ' . $order_id);
+        RfqLogger::logCotizacionAcceptance('process_completed', $cotizacion->ID, $solicitud->ID, $user->ID, $order_id);
 
         // Obtener URL de checkout
         $checkout_url = OfferOrderCreator::get_checkout_url($order_id);
-        error_log('[RFQ] URL de checkout generada: ' . $checkout_url);
+        RfqLogger::order('URL de checkout generada', RfqLogger::LEVEL_INFO, [
+            'order_id' => $order_id,
+            'checkout_url' => $checkout_url
+        ]);
 
         // Retornar datos para redirección
         $result = [

@@ -51,4 +51,18 @@ add_action('plugins_loaded', function() {
     if (class_exists('GiVendor\\GiPlugin\\GiHandler')) {
         GiVendor\GiPlugin\GiHandler::run();
     }
+    
+    // Phase 0 test listeners (only in debug mode)
+    if (class_exists('GiVendor\\GiPlugin\\Hooks\\Phase0Listeners')) {
+        GiVendor\GiPlugin\Hooks\Phase0Listeners::init();
+    }
+    
+    if (class_exists('GiVendor\\GiPlugin\\Utils\\TemplateDeprecation')) {
+        GiVendor\GiPlugin\Utils\TemplateDeprecation::init();
+    }
+}, 15);
+
+// Load textdomain at proper time
+add_action('init', function() {
+    load_plugin_textdomain('rfq-manager-woocommerce', false, dirname(plugin_basename(__FILE__)) . '/languages/');
 });

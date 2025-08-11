@@ -11,6 +11,8 @@ namespace GiVendor\GiPlugin\Email\Notifications;
 use GiVendor\GiPlugin\Email\Templates\NotificationTemplateFactory;
 use GiVendor\GiPlugin\Email\Notifications\Custom\NotificationManager;
 use GiVendor\GiPlugin\Email\Templates\TemplateParser;
+use GiVendor\GiPlugin\Utils\RfqLogger;
+use GiVendor\GiPlugin\Email\EmailManager;
 
 /**
  * UserNotifications - Gestiona las notificaciones por email para usuarios
@@ -89,7 +91,7 @@ class UserNotifications {
         
         $message = NotificationTemplateFactory::create('user', $subject_template, $content_template, $template_args);
         
-        $headers = self::get_email_headers();
+        $headers = EmailManager::build_headers();
         $result = wp_mail($to, TemplateParser::render($subject_template, $template_args), $message, $headers); // Asunto parseado aquí por si wp_mail lo necesita así
         
         self::log_result($result, 'solicitud_created', $user, $solicitud_id);
@@ -156,7 +158,7 @@ class UserNotifications {
         
         $message = NotificationTemplateFactory::create('user', $subject_template, $content_template, $template_args);
         
-        $headers = self::get_email_headers();
+        $headers = EmailManager::build_headers();
         $result = wp_mail($to, TemplateParser::render($subject_template, $template_args), $message, $headers);
         
         self::log_result($result, 'cotizacion_received', $user, $cotizacion_id);
@@ -266,7 +268,7 @@ class UserNotifications {
 
         $message = NotificationTemplateFactory::create('user', $subject_template, $content_template, $template_args);
         
-        $headers = self::get_email_headers();
+        $headers = EmailManager::build_headers();
         // El asunto final ya está parseado por NotificationTemplateFactory::create, pero wp_mail lo necesita parseado explícitamente
         $final_subject = TemplateParser::render($subject_template, $template_args);
         $result = wp_mail($to, $final_subject, $message, $headers);
@@ -330,27 +332,11 @@ class UserNotifications {
         
         $message = NotificationTemplateFactory::create('user', $subject_template, $content_template, $template_args);
         
-        $headers = self::get_email_headers();
+        $headers = EmailManager::build_headers();
         $result = wp_mail($to, TemplateParser::render($subject_template, $template_args), $message, $headers);
         
         self::log_result($result, 'cotizacion_accepted', $user, $cotizacion_id);
         return $result;
-    }
-    
-    /**
-     * Obtiene las cabeceras para los emails
-     *
-     * @since  0.1.0
-     * @return string
-     */
-    protected static function get_email_headers(): string {
-        $from_name = apply_filters('rfq_email_from_name', get_bloginfo('name'));
-        $from_email = apply_filters('rfq_email_from_address', get_option('admin_email'));
-        
-        $headers = "Content-Type: text/html; charset=UTF-8\r\n";
-        $headers .= "From: " . esc_html($from_name) . " <" . sanitize_email($from_email) . ">\r\n";
-        
-        return apply_filters('rfq_email_headers', $headers);
     }
     
     /**
@@ -483,10 +469,18 @@ class UserNotifications {
     }
     
     private static function log_result(bool $result, string $notification_type, \WP_User $user, int $post_id): void {
+        $context = [
+            'notification_type' => $notification_type,
+            'user_name' => $user->display_name,
+            'user_email' => $user->user_email,
+            'user_id' => $user->ID,
+            'post_id' => $post_id
+        ];
+        
         if (!$result) {
-            error_log(sprintf('[RFQ-ERROR] Error al enviar notificación de %s al usuario %s (ID: %d) para el post #%d', $notification_type, $user->display_name, $user->ID, $post_id));
+            RfqLogger::email("Error enviando notificación {$notification_type} a usuario {$user->display_name}", RfqLogger::LEVEL_ERROR, $context);
         } else {
-            error_log(sprintf('[RFQ-SUCCESS] Notificación de %s enviada a %s (ID: %d) para el post #%d', $notification_type, $user->user_email, $user->ID, $post_id));
+            RfqLogger::email("Notificación {$notification_type} enviada exitosamente a usuario {$user->display_name}", RfqLogger::LEVEL_SUCCESS, $context);
         }
     }
 }

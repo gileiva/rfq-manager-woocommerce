@@ -49,10 +49,10 @@ class TemplateParser {
             '{request_description}' => (string)($data['request_description'] ?? ''),
             '{request_expiry}' => (string)($data['request_expiry'] ?? ''),
             '{request_link}' => (string)($data['request_link'] ?? ''),
-            '{request_details}' => (string)($data['request_details'] ?? $data['productos'] ?? ''),
+            '{request_details}' => self::normalize_for_template($data['request_details'] ?? $data['productos'] ?? ''),
             '{request_status}' => (string)($data['request_status'] ?? ''),
-            '{productos}' => (string)($data['productos'] ?? $data['items'] ?? ''),
-            '{productos_cotizados}' => (string)($data['productos_cotizados'] ?? $data['items'] ?? ''),
+            '{productos}' => self::normalize_for_template($data['productos'] ?? $data['items'] ?? ''),
+            '{productos_cotizados}' => self::normalize_for_template($data['productos_cotizados'] ?? $data['items'] ?? ''),
             
             // Placeholders de cotización
             '{quote_id}' => (string)($data['quote_id'] ?? $data['cotizacion_id'] ?? ''),
@@ -224,5 +224,25 @@ class TemplateParser {
         }
 
         return $template;
+    }
+    
+    /**
+     * Normaliza un valor para usar en plantillas (convierte arrays a string)
+     *
+     * @since  0.1.0
+     * @param  mixed $value El valor a normalizar
+     * @return string El valor como string
+     */
+    private static function normalize_for_template($value): string {
+        if (is_array($value)) {
+            // Si es un array de strings simples, unir con comas
+            if (!empty($value) && array_values($value) === $value) {
+                return implode(', ', array_map('strval', $value));
+            }
+            // Si es un array asociativo o complejo, puede que ya esté formateado como HTML
+            return '';
+        }
+        
+        return (string)$value;
     }
 } 

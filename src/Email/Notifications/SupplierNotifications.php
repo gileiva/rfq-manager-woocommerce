@@ -11,6 +11,8 @@ namespace GiVendor\GiPlugin\Email\Notifications;
 use GiVendor\GiPlugin\Email\Templates\NotificationTemplateFactory;
 use GiVendor\GiPlugin\Email\Notifications\Custom\NotificationManager;
 use GiVendor\GiPlugin\Email\Templates\TemplateParser;
+use GiVendor\GiPlugin\Utils\RfqLogger;
+use GiVendor\GiPlugin\Email\EmailManager;
 
 /**
  * SupplierNotifications - Gestiona las notificaciones por email para proveedores
@@ -104,16 +106,33 @@ class SupplierNotifications {
                     $bcc_list[] = $email;
                 }
             }
-    
+
             if (empty($bcc_list)) {
-                error_log("[RFQ-WARN] Ningún email válido en batch de solicitud {$solicitud_id}");
+                RfqLogger::warn("Ningún email válido en batch de solicitud {$solicitud_id}");
                 continue;
             }
-    
-            // Cabeceras con Bcc
-            $headers  = self::get_email_headers();
-            $headers .= 'Bcc: ' . implode(',', $bcc_list) . "\r\n";
-    
+
+            // Sanitizar BCC emails y construir headers centralizados
+            $sanitized_bcc = [];
+            foreach ($bcc_list as $email) {
+                $clean_email = sanitize_email(trim($email));
+                if (!empty($clean_email) && is_email($clean_email)) {
+                    $sanitized_bcc[] = $clean_email;
+                } else {
+                    RfqLogger::warn("Email BCC inválido descartado", ['email' => $email]);
+                }
+            }
+            
+            // Remover duplicados
+            $sanitized_bcc = array_unique($sanitized_bcc);
+            
+            $extra_headers = [];
+            if (!empty($sanitized_bcc)) {
+                $extra_headers['Bcc'] = implode(',', $sanitized_bcc);
+            }
+            
+            $headers = EmailManager::build_headers($extra_headers);
+
             // Destinatario genérico (puede ser admin_email)
             $to = apply_filters(
                 'rfq_supplier_notification_batch_to',
@@ -129,20 +148,18 @@ class SupplierNotifications {
     
             // Envío
             $result = wp_mail($to, $subject, $message, $headers);
-    
-            // Loguear por batch (podrías adaptar log_result para arrays)
+
+            // Log usando el nuevo sistema con contexto estructurado
+            $context = [
+                'batch_size' => count($bcc_list),
+                'solicitud_id' => $solicitud_id,
+                'recipients' => $bcc_list
+            ];
+            
             if ($result) {
-                error_log(sprintf(
-                    '[RFQ-SUCCESS] solicitud_created BCC a %d proveedores (solicitud #%d)',
-                    count($bcc_list),
-                    $solicitud_id
-                ));
+                RfqLogger::email("solicitud_created BCC enviada a {$context['batch_size']} proveedores", RfqLogger::LEVEL_SUCCESS, $context);
             } else {
-                error_log(sprintf(
-                    '[RFQ-ERROR] fallo envío solicitud_created BCC a %d proveedores (solicitud #%d)',
-                    count($bcc_list),
-                    $solicitud_id
-                ));
+                RfqLogger::email("Error enviando solicitud_created BCC a {$context['batch_size']} proveedores", RfqLogger::LEVEL_ERROR, $context);
                 $success_all = false;
             }
         }
@@ -193,7 +210,7 @@ class SupplierNotifications {
         
         $message = NotificationTemplateFactory::create('supplier', $subject_template, $content_template, $template_args);
         
-        $headers = self::get_email_headers();
+        $headers = EmailManager::build_headers();
         $result = wp_mail($to, TemplateParser::render($subject_template, $template_args), $message, $headers);
         
         self::log_result($result, 'cotizacion_accepted', $supplier, $cotizacion_id);
@@ -269,7 +286,7 @@ class SupplierNotifications {
         
         $message = NotificationTemplateFactory::create('supplier', $subject_template, $content_template, $template_args);
         
-        $headers = self::get_email_headers();
+        $headers = EmailManager::build_headers();
         $result = wp_mail($to, TemplateParser::render($subject_template, $template_args), $message, $headers);
         
         self::log_result($result, 'cotizacion_submitted', $supplier, $cotizacion_id);
@@ -294,22 +311,6 @@ class SupplierNotifications {
         $suppliers = get_users($args);
         
         return apply_filters('rfq_suppliers_for_notification', $suppliers, $solicitud_id);
-    }
-    
-    /**
-     * Obtiene las cabeceras para los emails
-     *
-     * @since  0.1.0
-     * @return string
-     */
-    protected static function get_email_headers(): string {
-        $from_name = apply_filters('rfq_email_from_name', get_bloginfo('name'));
-        $from_email = apply_filters('rfq_email_from_address', get_option('admin_email'));
-        
-        $headers = "Content-Type: text/html; charset=UTF-8\r\n";
-        $headers .= "From: " . esc_html($from_name) . " <" . sanitize_email($from_email) . ">\r\n";
-        
-        return apply_filters('rfq_email_headers', $headers);
     }
     
     /**
@@ -524,10 +525,18 @@ class SupplierNotifications {
     }
 
     private static function log_result(bool $result, string $notification_type, \WP_User $user, int $post_id): void {
+        $context = [
+            'notification_type' => $notification_type,
+            'supplier_name' => $user->display_name,
+            'supplier_email' => $user->user_email,
+            'supplier_id' => $user->ID,
+            'post_id' => $post_id
+        ];
+        
         if (!$result) {
-            error_log(sprintf('[RFQ-ERROR] Error al enviar notificación de %s al proveedor %s (ID: %d) para el post #%d', $notification_type, $user->display_name, $user->ID, $post_id));
+            RfqLogger::email("Error enviando notificación {$notification_type} a proveedor {$user->display_name}", RfqLogger::LEVEL_ERROR, $context);
         } else {
-            error_log(sprintf('[RFQ-SUCCESS] Notificación de %s enviada a %s (ID: %d) para el post #%d', $notification_type, $user->user_email, $user->ID, $post_id));
+            RfqLogger::email("Notificación {$notification_type} enviada exitosamente a proveedor {$user->display_name}", RfqLogger::LEVEL_SUCCESS, $context);
         }
     }
 }

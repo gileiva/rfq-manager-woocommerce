@@ -208,11 +208,11 @@ jQuery(document).ready(function($) {
         var cotizacionId = $(this).data('cotizacion-id');
         var orderId = $(this).data('order-id');
         
-        console.log('[RFQ-PAGO] Click en botón pagar - Cotización:', cotizacionId, 'Orden:', orderId);
+        // console.log('[RFQ-PAGO] Click en botón pagar - Cotización:', cotizacionId, 'Orden:', orderId);
         
         // Si tenemos order-id, obtener la URL de pago via AJAX
         if (orderId) {
-            console.log('[RFQ-PAGO] Obteniendo URL de pago para orden:', orderId);
+            // console.log('[RFQ-PAGO] Obteniendo URL de pago para orden:', orderId);
             
             // Hacer una petición AJAX para obtener la URL de pago correcta
             $.ajax({
@@ -225,21 +225,21 @@ jQuery(document).ready(function($) {
                 },
                 success: function(response) {
                     if (response.success && response.data.payment_url) {
-                        console.log('[RFQ-PAGO] URL de pago obtenida:', response.data.payment_url);
+                        // console.log('[RFQ-PAGO] URL de pago obtenida:', response.data.payment_url);
                         window.location.href = response.data.payment_url;
                     } else {
-                        console.error('[RFQ-PAGO] Error obteniendo URL de pago:', response);
+                        // console.error('[RFQ-PAGO] Error obteniendo URL de pago:', response);
                         showToast('Error obteniendo URL de pago. Por favor, inténtelo de nuevo.', true);
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('[RFQ-PAGO] Error AJAX obteniendo URL de pago:', error);
+                    // console.error('[RFQ-PAGO] Error AJAX obteniendo URL de pago:', error);
                     showToast('Error de conexión. Por favor, inténtelo de nuevo.', true);
                 }
             });
         } else {
             // Sin order-id, mostrar error al usuario
-            console.error('[RFQ-PAGO] No se encontró ID de orden para la cotización:', cotizacionId);
+            // console.error('[RFQ-PAGO] No se encontró ID de orden para la cotización:', cotizacionId);
             showToast('Error: No se pudo encontrar la orden de pago. Por favor, contacte con soporte.', true);
         }
     });
@@ -295,22 +295,22 @@ jQuery(document).ready(function($) {
     // Handler para botón Pago Pendiente
     $(document).on('click', '.rfq-pending-payment-btn', function(e) {
         e.preventDefault();
-        console.log('[RFQ-PAGO] Click en botón pago pendiente');
+        // console.log('[RFQ-PAGO] Click en botón pago pendiente');
         
         var $btn = $(this);
         var orderId = $btn.data('order-id');
         
-        console.log('[RFQ-PAGO] Order ID:', orderId);
+        // console.log('[RFQ-PAGO] Order ID:', orderId);
         
         if (!orderId) {
-            console.error('[RFQ-PAGO] ID de orden inválido');
+            // console.error('[RFQ-PAGO] ID de orden inválido');
             showToast('Error: ID de orden inválido.', true);
             return;
         }
         
         // Verificar que rfqManagerL10n esté disponible
         if (typeof rfqManagerL10n === 'undefined') {
-            console.error('[RFQ-PAGO] rfqManagerL10n no disponible');
+            // console.error('[RFQ-PAGO] rfqManagerL10n no disponible');
             showToast('Error: No se pudo verificar la seguridad. Recargue la página.', true);
             return;
         }
@@ -318,19 +318,19 @@ jQuery(document).ready(function($) {
         // Usar el nonce disponible (puede ser 'nonce' o 'solicitudStatusNonce')
         var nonceToUse = rfqManagerL10n.solicitudStatusNonce || rfqManagerL10n.nonce;
         if (!nonceToUse) {
-            console.error('[RFQ-PAGO] Ningún nonce disponible en rfqManagerL10n:', rfqManagerL10n);
+            // console.error('[RFQ-PAGO] Ningún nonce disponible en rfqManagerL10n:', rfqManagerL10n);
             showToast('Error: No se pudo verificar la seguridad. Recargue la página.', true);
             return;
         }
         
-        console.log('[RFQ-PAGO] Usando nonce:', nonceToUse);
+        // console.log('[RFQ-PAGO] Usando nonce:', nonceToUse);
         
         // Deshabilitar botón y mostrar loading
         $btn.prop('disabled', true);
         var originalText = $btn.html();
         $btn.html('<span class="rfq-payment-icon">⏳</span> Procesando...');
         
-        console.log('[RFQ-PAGO] Obteniendo URL de pago para orden:', orderId);
+        // console.log('[RFQ-PAGO] Obteniendo URL de pago para orden:', orderId);
         
         $.ajax({
             url: rfqManagerL10n.ajaxurl,
@@ -342,21 +342,21 @@ jQuery(document).ready(function($) {
                 nonce: nonceToUse
             },
             success: function(response) {
-                console.log('[RFQ-PAGO] Respuesta AJAX:', response);
+                // console.log('[RFQ-PAGO] Respuesta AJAX:', response);
                 
                 if (response.success && response.data && response.data.payment_url) {
-                    console.log('[RFQ-PAGO] Redirigiendo a URL de pago:', response.data.payment_url);
+                    // console.log('[RFQ-PAGO] Redirigiendo a URL de pago:', response.data.payment_url);
                     window.location.href = response.data.payment_url;
                 } else {
                     var msg = (response.data && response.data.message) ? response.data.message : 'Error obteniendo URL de pago';
-                    console.error('[RFQ-PAGO] Error:', msg);
+                    // console.error('[RFQ-PAGO] Error:', msg);
                     showToast(msg, true);
                     $btn.prop('disabled', false);
                     $btn.html(originalText);
                 }
             },
             error: function(xhr) {
-                console.error('[RFQ-PAGO] Error AJAX:', xhr);
+                // console.error('[RFQ-PAGO] Error AJAX:', xhr);
                 var msg = 'Error de conexión al obtener URL de pago';
                 if (xhr.responseJSON && xhr.responseJSON.data) {
                     msg = xhr.responseJSON.data;

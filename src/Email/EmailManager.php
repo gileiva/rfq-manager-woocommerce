@@ -264,4 +264,50 @@ class EmailManager {
         ]);
     }
     
+    /**
+     * Construye headers centralizados para emails
+     *
+     * @since  0.1.0
+     * @param  array $extra Headers adicionales
+     * @return array Array de strings listos para wp_mail()
+     */
+    public static function build_headers(array $extra = []): array {
+        $headers = [];
+        
+        // Content-Type obligatorio
+        $headers[] = 'Content-Type: text/html; charset=UTF-8';
+        
+        // From header con validación
+        $from_name = sanitize_text_field(
+            get_option('rfq_manager_from_name', get_bloginfo('name'))
+        );
+        $from_email = sanitize_email(
+            get_option('rfq_manager_from_email', get_option('admin_email'))
+        );
+        
+        // Fallback a filtros WP si faltan configuraciones
+        if (empty($from_name)) {
+            $from_name = apply_filters('wp_mail_from_name', get_bloginfo('name'));
+        }
+        if (empty($from_email) || !is_email($from_email)) {
+            $from_email = apply_filters('wp_mail_from', get_option('admin_email'));
+        }
+        
+        $headers[] = "From: " . esc_html($from_name) . " <" . sanitize_email($from_email) . ">";
+        
+        // Mezclar headers adicionales
+        foreach ($extra as $key => $value) {
+            if (is_string($key)) {
+                // Header con clave (ej: 'Bcc' => 'email@domain.com')
+                $headers[] = sanitize_text_field($key) . ': ' . sanitize_text_field($value);
+            } else {
+                // Header directo (ej: 'Reply-To: email@domain.com')
+                $headers[] = sanitize_text_field($value);
+            }
+        }
+        
+        // Aplicar filtro para personalización
+        return apply_filters('rfq_email_headers', $headers);
+    }
+    
 }
