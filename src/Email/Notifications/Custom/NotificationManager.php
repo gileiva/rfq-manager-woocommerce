@@ -101,6 +101,12 @@ class NotificationManager {
         add_action('admin_init', [self::class, 'register_settings']);
         add_action('admin_init', [self::class, 'register_default_options']);
         
+        // Extender KSES para elementos email-safe
+        add_filter('wp_kses_allowed_html', [self::class, 'extend_kses_for_emails'], 10, 2);
+        
+        // Encolar scripts del editor para TinyMCE completo
+        add_action('admin_enqueue_scripts', [self::class, 'enqueue_editor_scripts']);
+        
         // Inicializar manejador AJAX
         NotificationAjaxHandler::init();
     }
@@ -210,6 +216,126 @@ class NotificationManager {
                 'default' => ''
             ]
         );
+        
+        // Registrar configuración del BCC global
+        register_setting(
+            'rfq_legal_footer_group',
+            'rfq_email_bcc_global',
+            [
+                'type' => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default' => ''
+            ]
+        );
+    }
+
+    /**
+     * Extiende wp_kses para permitir atributos email-safe
+     *
+     * @since  0.2.0
+     * @param  array  $tags    Tags permitidos
+     * @param  string $context Contexto de sanitización
+     * @return array  Tags extendidos para emails
+     */
+    public static function extend_kses_for_emails($tags, $context) {
+        // Solo aplicar en contexto 'post' para no interferir con otros
+        if ($context !== 'post') {
+            return $tags;
+        }
+        
+        // Atributos comunes para elementos email-safe
+        $email_attrs = [
+            'style' => true,
+            'align' => true, 
+            'valign' => true,
+            'width' => true,
+            'height' => true,
+            'border' => true,
+            'cellpadding' => true,
+            'cellspacing' => true,
+            'bgcolor' => true,
+            'class' => true
+        ];
+        
+        // Extender elementos de tabla para emails
+        foreach (['table', 'tr', 'td', 'th', 'tbody', 'thead', 'tfoot'] as $table_tag) {
+            $tags[$table_tag] = array_merge($tags[$table_tag] ?? [], $email_attrs);
+        }
+        
+        // Extender imagen con atributos específicos
+        $tags['img'] = array_merge($tags['img'] ?? [], [
+            'src' => true,
+            'alt' => true,
+            'width' => true,
+            'height' => true,
+            'style' => true,
+            'border' => true,
+            'align' => true
+        ]);
+        
+        // Extender enlaces con atributos adicionales
+        $tags['a'] = array_merge($tags['a'] ?? [], [
+            'href' => true,
+            'target' => true,
+            'title' => true,
+            'style' => true,
+            'class' => true
+        ]);
+        
+        // Extender divs y spans para estructura email
+        foreach (['div', 'span'] as $container_tag) {
+            $tags[$container_tag] = array_merge($tags[$container_tag] ?? [], [
+                'style' => true,
+                'class' => true,
+                'align' => true
+            ]);
+        }
+        
+        return $tags;
+    }
+
+    /**
+     * Encola scripts necesarios para TinyMCE completo
+     *
+     * @since  0.2.0
+     * @param  string $hook Hook de la página admin
+     * @return void
+     */
+    public static function enqueue_editor_scripts($hook): void {
+        // Solo cargar en nuestra página de notificaciones
+        if (strpos($hook, 'rfq-notifications') === false) {
+            return;
+        }
+
+        // Encolar scripts del editor clásico
+        wp_enqueue_editor();
+        wp_enqueue_script('editor');
+        wp_enqueue_script('quicktags');
+        wp_enqueue_script('jquery');
+        
+        // CSS adicional para mejor presentación
+        wp_add_inline_style('wp-admin', '
+            .rfq-templates-form .wp-editor-container {
+                margin: 10px 0;
+            }
+            .rfq-templates-form .wp-editor-area {
+                min-height: 300px !important;
+            }
+            /* Corregir problema de texto blanco en modo Code */
+            .rfq-templates-form .wp-editor-wrap .wp-editor-area {
+                color: #23282d !important;
+                background: #fff !important;
+            }
+            .rfq-templates-form .wp-editor-wrap.html-active .wp-editor-area {
+                color: #23282d !important;
+                background: #f9f9f9 !important;
+                font-family: Consolas, Monaco, monospace;
+            }
+            /* Evitar duplicación de editores */
+            .rfq-templates-form .wp-editor-wrap .wp-editor-wrap {
+                display: none;
+            }
+        ');
     }
 
     public static function render_page(): void {
@@ -217,14 +343,17 @@ class NotificationManager {
             return;
         }
 
-        // Procesar la configuración del pie legal
+        // Procesar la configuración del pie legal y BCC global
         if (isset($_POST['rfq_save_legal_footer']) && wp_verify_nonce($_POST['rfq_legal_footer_nonce'], 'rfq_save_legal_footer')) {
             if (current_user_can('manage_options')) {
                 $legal_footer = wp_kses_post($_POST['rfq_email_legal_footer']);
                 update_option('rfq_email_legal_footer', $legal_footer);
                 
+                $bcc_global = sanitize_text_field($_POST['rfq_email_bcc_global']);
+                update_option('rfq_email_bcc_global', $bcc_global);
+                
                 echo '<div class="notice notice-success is-dismissible">';
-                echo '<p>' . __('Pie legal guardado correctamente.', 'rfq-manager-woocommerce') . '</p>';
+                echo '<p>' . __('Configuración guardada correctamente.', 'rfq-manager-woocommerce') . '</p>';
                 echo '</div>';
             }
         }
@@ -247,6 +376,16 @@ class NotificationManager {
         ?>
         <div class="wrap">
             <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
+            
+            <?php if (!user_can_richedit()): ?>
+                <div class="notice notice-warning">
+                    <p>
+                        <strong><?php _e('Editor Visual Desactivado:', 'rfq-manager-woocommerce'); ?></strong>
+                        <?php _e('Para usar el editor visual completo, desmarca "Desactivar el editor visual al escribir" en tu', 'rfq-manager-woocommerce'); ?>
+                        <a href="<?php echo admin_url('profile.php'); ?>"><?php _e('perfil de usuario', 'rfq-manager-woocommerce'); ?></a>.
+                    </p>
+                </div>
+            <?php endif; ?>
             
             <h2 class="nav-tab-wrapper">
                 <?php foreach (self::getInstance()->roles as $role) : ?>
@@ -296,6 +435,24 @@ class NotificationManager {
                                             </p>
                                         </td>
                                     </tr>
+                                    <tr>
+                                        <th scope="row">
+                                            <label for="rfq_email_bcc_global">
+                                                <?php _e('BCC Global (separar por comas)', 'rfq-manager-woocommerce'); ?>
+                                            </label>
+                                        </th>
+                                        <td>
+                                            <input type="text" 
+                                                   id="rfq_email_bcc_global" 
+                                                   name="rfq_email_bcc_global" 
+                                                   value="<?php echo esc_attr(get_option('rfq_email_bcc_global', '')); ?>" 
+                                                   class="regular-text" 
+                                                   placeholder="ejemplo1@correo.com, ejemplo2@correo.com" />
+                                            <p class="description">
+                                                <?php _e('Se añadirá como BCC a <strong>todas</strong> las notificaciones del sistema RFQ. Separar múltiples correos por comas.', 'rfq-manager-woocommerce'); ?>
+                                            </p>
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
                             <button type="submit" name="rfq_save_legal_footer" class="button button-primary">
@@ -306,13 +463,22 @@ class NotificationManager {
                     <div class="rfq-config-info">
                         <div class="rfq-config-help">
                             <h4><?php _e('Información', 'rfq-manager-woocommerce'); ?></h4>
-                            <p><?php _e('El pie legal se añadirá automáticamente a todas las notificaciones por email:', 'rfq-manager-woocommerce'); ?></p>
+                            <p><?php _e('Configuraciones que se aplican a todas las notificaciones por email:', 'rfq-manager-woocommerce'); ?></p>
+                            <ul>
+                                <li>• <strong><?php _e('Pie Legal:', 'rfq-manager-woocommerce'); ?></strong> <?php _e('Se añade al final de todos los emails', 'rfq-manager-woocommerce'); ?></li>
+                                <li>• <strong><?php _e('BCC Global:', 'rfq-manager-woocommerce'); ?></strong> <?php _e('Recibe copia oculta de todas las notificaciones', 'rfq-manager-woocommerce'); ?></li>
+                            </ul>
+                            <p><strong><?php _e('Tipos de notificaciones afectadas:', 'rfq-manager-woocommerce'); ?></strong></p>
                             <ul>
                                 <li>• <?php _e('Notificaciones a usuarios', 'rfq-manager-woocommerce'); ?></li>
                                 <li>• <?php _e('Notificaciones a proveedores', 'rfq-manager-woocommerce'); ?></li>
                                 <li>• <?php _e('Notificaciones a administradores', 'rfq-manager-woocommerce'); ?></li>
                             </ul>
-                            <p><strong><?php _e('Ejemplo de uso:', 'rfq-manager-woocommerce'); ?></strong></p>
+                            <p><strong><?php _e('Ejemplo BCC Global:', 'rfq-manager-woocommerce'); ?></strong></p>
+                            <div style="background: #f9f9f9; padding: 10px; border-left: 4px solid #0073aa; margin: 10px 0;">
+                                <code>admin@empresa.com, auditoria@empresa.com</code>
+                            </div>
+                            <p><strong><?php _e('Ejemplo Pie Legal:', 'rfq-manager-woocommerce'); ?></strong></p>
                             <div style="background: #f9f9f9; padding: 10px; border-left: 4px solid #0073aa; margin: 10px 0;">
                                 <code>
                                     &lt;p&gt;&lt;small&gt;Este email fue enviado automáticamente por el sistema TCD Manager.&lt;br&gt;
@@ -353,10 +519,29 @@ class NotificationManager {
                                                 $default_body = self::getInstance()->getDefaultMessage($active_tab, $event_key);
                                                 $saved_body = get_option("rfq_notification_{$active_tab}_{$event_key}_body", '');
                                                 $value = $saved_body !== '' ? $saved_body : $default_body;
+                                                $field_name = "rfq_notification_{$active_tab}_{$event_key}_body";
+                                                $editor_id = "rfq_tpl_{$active_tab}_{$event_key}_body";
+                                                
+                                                wp_editor($value, $editor_id, [
+                                                    'textarea_name' => $field_name,
+                                                    'textarea_rows' => 16,
+                                                    'teeny' => false,  // Activar barra completa TinyMCE
+                                                    'media_buttons' => false,  // No subir medios
+                                                    'drag_drop_upload' => false,
+                                                    'wpautop' => true,  // Ayuda para párrafos automáticos
+                                                    'quicktags' => true,  // Pestaña "Texto" (HTML)
+                                                    'editor_css' => '<style>#wp-' . $editor_id . '-editor-container .wp-editor-area{min-height:300px;}</style>',
+                                                    'tinymce' => [
+                                                        'toolbar1' => 'formatselect,bold,italic,underline,blockquote,alignleft,aligncenter,alignright,bullist,numlist,link,unlink,removeformat,code',
+                                                        'toolbar2' => 'table,outdent,indent',
+                                                        'block_formats' => 'Paragraph=p; Heading 2=h2; Heading 3=h3; Heading 4=h4',
+                                                        'paste_as_text' => true,  // Evita basura al pegar
+                                                        'menubar' => false,
+                                                        'branding' => false,
+                                                        'setup' => 'function(editor) { editor.on("init", function() { console.log("TinyMCE inicializado para: " + editor.id); }); }'
+                                                    ]
+                                                ]);
                                                 ?>
-                                        <textarea name="<?php echo esc_attr("rfq_notification_{$active_tab}_{$event_key}_body"); ?>"
-                                                  id="<?php echo esc_attr("rfq_notification_{$active_tab}_{$event_key}_body"); ?>"
-                                                          rows="10" class="large-text code"><?php echo esc_textarea($value); ?></textarea>
                                         </p>
                                 </td>
                             </tr>
@@ -484,6 +669,9 @@ class NotificationManager {
 
         <script>
         jQuery(function($) {
+            // Los editores TinyMCE ya están inicializados por wp_editor()
+            // Solo necesitamos manejar eventos y funcionalidad adicional
+
             // Preview template
             $('.preview-template').click(function(e) {
                 e.preventDefault();
@@ -538,16 +726,32 @@ class NotificationManager {
             // Hacer los placeholders clickeables
             $('.rfq-placeholder-item code').click(function() {
                 var placeholder = $(this).text();
-                var activeElement = document.activeElement;
+                var activeEditor = null;
                 
-                if (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT') {
-                    var start = activeElement.selectionStart;
-                    var end = activeElement.selectionEnd;
-                    var text = activeElement.value;
+                // Intentar con TinyMCE activo primero
+                if (typeof tinymce !== 'undefined') {
+                    activeEditor = tinymce.activeEditor;
+                    if (activeEditor && !activeEditor.isHidden()) {
+                        activeEditor.execCommand('mceInsertContent', false, placeholder);
+                        return;
+                    }
+                }
+                
+                // Fallback: buscar textarea activo o con foco
+                var $activeTextarea = $('textarea:focus');
+                if ($activeTextarea.length === 0) {
+                    $activeTextarea = $('.rfq-templates-form:visible textarea').first();
+                }
+                
+                if ($activeTextarea.length > 0) {
+                    var textarea = $activeTextarea[0];
+                    var start = textarea.selectionStart;
+                    var end = textarea.selectionEnd;
+                    var text = textarea.value;
                     
-                    activeElement.value = text.substring(0, start) + placeholder + text.substring(end);
-                    activeElement.selectionStart = activeElement.selectionEnd = start + placeholder.length;
-                    activeElement.focus();
+                    textarea.value = text.substring(0, start) + placeholder + text.substring(end);
+                    textarea.selectionStart = textarea.selectionEnd = start + placeholder.length;
+                    textarea.focus();
                 }
             });
         });

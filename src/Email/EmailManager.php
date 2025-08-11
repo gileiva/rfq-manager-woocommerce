@@ -303,10 +303,20 @@ class EmailManager {
         
         $headers[] = "From: " . esc_html($from_name) . " <" . sanitize_email($from_email) . ">";
         
-        // Mezclar headers adicionales
+        // Procesar BCC global
+        $bcc_emails = self::process_global_bcc($extra);
+        if (!empty($bcc_emails)) {
+            $headers[] = 'Bcc: ' . implode(',', $bcc_emails);
+        }
+        
+        // Mezclar headers adicionales (excluyendo Bcc que ya se procesó)
         foreach ($extra as $key => $value) {
             if (is_string($key)) {
-                // Header con clave (ej: 'Bcc' => 'email@domain.com')
+                // Skip Bcc porque ya se procesó en process_global_bcc()
+                if (strtolower($key) === 'bcc') {
+                    continue;
+                }
+                // Header con clave (ej: 'Reply-To' => 'email@domain.com')
                 $headers[] = sanitize_text_field($key) . ': ' . sanitize_text_field($value);
             } else {
                 // Header directo (ej: 'Reply-To: email@domain.com')
@@ -316,6 +326,77 @@ class EmailManager {
         
         // Aplicar filtro para personalización
         return apply_filters('rfq_email_headers', $headers);
+    }
+
+    /**
+     * Procesa el BCC global y lo combina con BCC específicos
+     *
+     * @since  0.2.0
+     * @param  array $extra Headers adicionales que pueden contener Bcc
+     * @return array Array de emails BCC válidos y deduplicados
+     */
+    private static function process_global_bcc(array $extra = []): array {
+        // 1. Obtener BCC global de configuración
+        $bcc_global_raw = get_option('rfq_email_bcc_global', '');
+        $bcc_global_raw = apply_filters('rfq_email_bcc_global', $bcc_global_raw);
+        
+        // 2. Parsear BCC global (CSV a array)
+        $bcc_global = [];
+        if (!empty($bcc_global_raw)) {
+            $bcc_global = array_map('trim', explode(',', $bcc_global_raw));
+        }
+        
+        // 3. Obtener BCC específico de $extra si existe
+        $bcc_specific = [];
+        if (isset($extra['Bcc'])) {
+            if (is_string($extra['Bcc'])) {
+                $bcc_specific = array_map('trim', explode(',', $extra['Bcc']));
+            } elseif (is_array($extra['Bcc'])) {
+                $bcc_specific = $extra['Bcc'];
+            }
+        } elseif (isset($extra['bcc'])) {
+            if (is_string($extra['bcc'])) {
+                $bcc_specific = array_map('trim', explode(',', $extra['bcc']));
+            } elseif (is_array($extra['bcc'])) {
+                $bcc_specific = $extra['bcc'];
+            }
+        }
+        
+        // 4. Combinar ambos arrays
+        $all_bcc = array_merge($bcc_global, $bcc_specific);
+        
+        // 5. Validar emails y descartar inválidos
+        $valid_bcc = [];
+        foreach ($all_bcc as $email) {
+            $email = trim(strtolower($email));
+            if (!empty($email) && is_email($email)) {
+                $valid_bcc[] = $email;
+            } elseif (!empty($email)) {
+                // Log warning para emails inválidos
+                if (class_exists('GiVendor\\GiPlugin\\Utils\\RfqLogger')) {
+                    \GiVendor\GiPlugin\Utils\RfqLogger::warning(
+                        'BCC email inválido descartado: ' . $email,
+                        ['context' => 'EmailManager::process_global_bcc']
+                    );
+                }
+            }
+        }
+        
+        // 6. Deduplicar
+        $valid_bcc = array_unique($valid_bcc);
+        
+        // 7. Aplicar filtro final
+        $final_bcc = apply_filters('rfq_email_bcc_recipients', $valid_bcc);
+        
+        // 8. Log resultado final (solo cantidad para no exponer emails)
+        if (!empty($final_bcc) && class_exists('GiVendor\\GiPlugin\\Utils\\RfqLogger')) {
+            \GiVendor\GiPlugin\Utils\RfqLogger::info(
+                'BCC global procesado: ' . count($final_bcc) . ' destinatarios',
+                ['context' => 'EmailManager::process_global_bcc']
+            );
+        }
+        
+        return array_values($final_bcc);
     }
     
 }
