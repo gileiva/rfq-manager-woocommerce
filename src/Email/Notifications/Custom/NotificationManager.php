@@ -1096,17 +1096,16 @@ class NotificationManager {
                 '{site_url}' => __('URL del sitio', 'rfq-manager-woocommerce'),
                 '{admin_email}' => __('Email del administrador', 'rfq-manager-woocommerce'),
                 '{fecha}' => __('Fecha y hora actual', 'rfq-manager-woocommerce'),
-                '{current_year}' => __('Año actual', 'rfq-manager-woocommerce'),
-                '{user_dashboard_link}' => __('Enlace al panel del usuario (Mi Cuenta)', 'rfq-manager-woocommerce'),
-                '{supplier_dashboard_link}' => __('Enlace al panel del proveedor', 'rfq-manager-woocommerce'),
+                '{user_dashboard_link}' => __('Enlace al panel del usuario (/mi-perfil/)', 'rfq-manager-woocommerce'),
+                '{supplier_dashboard_link}' => __('Enlace al panel del proveedor (/mi-perfil/)', 'rfq-manager-woocommerce'),
                 '{admin_dashboard_link}' => __('Enlace al panel de administración de RFQ', 'rfq-manager-woocommerce'),
             ],
             'request' => [
-                '{request_id}' => __('ID de la solicitud', 'rfq-manager-woocommerce'),
-                '{request_uuid}' => __('UUID de la solicitud', 'rfq-manager-woocommerce'),
+                '{request_id}' => __('ID de la solicitud (formato TCD-XXXXX)', 'rfq-manager-woocommerce'),
+                '{request_uuid}' => __('UUID completo de la solicitud', 'rfq-manager-woocommerce'),
                 '{request_title}' => __('Título de la solicitud', 'rfq-manager-woocommerce'),
                 '{request_description}' => __('Descripción de la solicitud', 'rfq-manager-woocommerce'),
-                '{request_status}' => __('Estado de la solicitud', 'rfq-manager-woocommerce'),
+                '{request_status}' => __('Estado actual de la solicitud', 'rfq-manager-woocommerce'),
                 '{request_expiry}' => __('Fecha de expiración de la solicitud', 'rfq-manager-woocommerce'),
                 '{request_link}' => __('Enlace a la solicitud', 'rfq-manager-woocommerce'),
                 '{quotes_count}' => __('Número de cotizaciones recibidas para la solicitud', 'rfq-manager-woocommerce'),
@@ -1120,7 +1119,7 @@ class NotificationManager {
                 '{quote_link}' => __('Enlace a la cotización', 'rfq-manager-woocommerce'),
             ],
             'supplier_specific' => [
-                '{supplier_name}' => __('Nombre del proveedor', 'rfq-manager-woocommerce'),
+                '{supplier_name}' => __('Nombre del proveedor (empresa o nombre de usuario)', 'rfq-manager-woocommerce'),
                 '{supplier_email}' => __('Email del proveedor', 'rfq-manager-woocommerce'),
             ],
             'user_specific' => [
@@ -1129,7 +1128,7 @@ class NotificationManager {
                 '{first_name}' => __('Nombre de pila del usuario', 'rfq-manager-woocommerce'),
                 '{last_name}' => __('Apellidos del usuario', 'rfq-manager-woocommerce'),
                 '{new_request_link}' => __('Enlace para crear nueva solicitud', 'rfq-manager-woocommerce'),
-                '{history_link}' => __('Enlace al historial de solicitudes', 'rfq-manager-woocommerce'),
+                '{history_link}' => __('Enlace al historial de solicitudes (/lista-solicitudes/)', 'rfq-manager-woocommerce'),
             ],
             'admin_specific' => [
                 '{admin_name}' => __('Nombre del administrador (destinatario)', 'rfq-manager-woocommerce'),
@@ -1146,7 +1145,7 @@ class NotificationManager {
                 '{porcentaje_ahorro}' => __('Porcentaje de ahorro (si aplica)', 'rfq-manager-woocommerce'),
             ],
             'item_lists' => [
-                 '{items}' => __('Lista de productos/items (genérico)', 'rfq-manager-woocommerce'),
+                '{productos}' => __('Lista de productos solicitados (formato bullet)', 'rfq-manager-woocommerce'),
             ]
         ];
 
@@ -1621,11 +1620,17 @@ class NotificationManager {
      */
     private static function build_base_variables(array $context, string $role): array {
         $vars = [
+            // Variables comunes básicas
             'site_name' => get_bloginfo('name'),
             'site_url' => get_bloginfo('url'),
             'admin_email' => get_option('admin_email'),
             'fecha' => date_i18n(get_option('date_format') . ' ' . get_option('time_format')),
-            'current_year' => date('Y')
+            
+            // Enlaces de dashboard según el rol
+            'user_dashboard_link' => home_url('/mi-perfil/'),
+            'supplier_dashboard_link' => home_url('/mi-perfil/'),
+            'admin_dashboard_link' => admin_url('admin.php?page=rfq-manager'),
+            'history_link' => home_url('/lista-solicitudes/')
         ];
         
         // Resolver first_name y last_name si hay usuario en contexto
@@ -1635,33 +1640,137 @@ class NotificationManager {
             $vars['last_name'] = $names['last_name'];
         }
         
-        // Resolver nombres de usuario creador si hay solicitud
+        // Resolver datos de solicitud si existe
         if (isset($context['solicitud_id'])) {
-            $author_id = get_post_field('post_author', $context['solicitud_id']);
-            if ($author_id) {
-                $author = get_userdata($author_id);
-                $author_names = self::resolve_user_names($author_id);
-                $vars['customer_name'] = $author ? $author->display_name : '';
-                $vars['customer_email'] = $author ? $author->user_email : '';
-                $vars['customer_first_name'] = $author_names['first_name'];
-                $vars['customer_last_name'] = $author_names['last_name'];
+            $solicitud_id = $context['solicitud_id'];
+            $solicitud = get_post($solicitud_id);
+            
+            if ($solicitud) {
+                // Request ID: TCD-{ÚLTIMOS 5 NÚMEROS DEL UUID}
+                $uuid = get_post_meta($solicitud_id, '_solicitud_uuid', true);
+                if ($uuid && strlen($uuid) >= 5) {
+                    $last_5_chars = substr(preg_replace('/[^0-9]/', '', $uuid), -5);
+                    $vars['request_id'] = 'TCD-' . str_pad($last_5_chars, 5, '0', STR_PAD_LEFT);
+                } else {
+                    // Fallback al ID del post si no hay UUID
+                    $vars['request_id'] = 'TCD-' . str_pad($solicitud_id, 5, '0', STR_PAD_LEFT);
+                }
                 
-                // Para usuario también es user_name
-                if ($role === 'user') {
-                    $vars['user_name'] = $vars['customer_name'];
-                    $vars['user_email'] = $vars['customer_email'];
+                // Datos básicos de la solicitud
+                $vars['request_uuid'] = $uuid;
+                $vars['request_title'] = $solicitud->post_title ?: __('Solicitud sin título', 'rfq-manager-woocommerce');
+                $vars['request_status'] = $solicitud->post_status;
+                $vars['request_link'] = get_permalink($solicitud_id) ?: admin_url("post.php?post={$solicitud_id}&action=edit");
+                
+                // Fecha de expiración
+                $expiry = get_post_meta($solicitud_id, '_solicitud_expiry', true);
+                $vars['request_expiry'] = $expiry ? date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($expiry)) : __('No definida', 'rfq-manager-woocommerce');
+                
+                // Productos (items de la solicitud)
+                $items = get_post_meta($solicitud_id, '_solicitud_items', true);
+                if (is_string($items)) {
+                    $items = json_decode($items, true);
+                }
+                
+                $productos_text = '';
+                if (is_array($items) && !empty($items)) {
+                    foreach ($items as $item) {
+                        $productos_text .= "• " . ($item['name'] ?? 'Producto') . " x " . ($item['quantity'] ?? 1) . "\n";
+                    }
+                } else {
+                    $productos_text = __('No se encontraron productos', 'rfq-manager-woocommerce');
+                }
+                $vars['productos'] = trim($productos_text);
+                
+                // Contar cotizaciones recibidas
+                $quotes_query = new \WP_Query([
+                    'post_type' => 'cotizacion',
+                    'meta_query' => [
+                        [
+                            'key' => '_solicitud_parent',
+                            'value' => $solicitud_id,
+                            'compare' => '='
+                        ]
+                    ],
+                    'post_status' => ['publish', 'draft', 'rfq-accepted'],
+                    'fields' => 'ids'
+                ]);
+                $vars['quotes_count'] = $quotes_query->found_posts;
+                wp_reset_postdata();
+                
+                // Datos del autor de la solicitud (cliente)
+                $author_id = $solicitud->post_author;
+                if ($author_id) {
+                    $author = get_userdata($author_id);
+                    $author_names = self::resolve_user_names($author_id);
+                    
+                    if ($author) {
+                        $vars['customer_name'] = $author->display_name;
+                        $vars['customer_email'] = $author->user_email;
+                        $vars['first_name'] = $author_names['first_name'];
+                        $vars['last_name'] = $author_names['last_name'];
+                        
+                        // Para usuario también es user_name
+                        if ($role === 'user') {
+                            $vars['user_name'] = $vars['customer_name'];
+                            $vars['user_email'] = $vars['customer_email'];
+                        }
+                    }
                 }
             }
         }
         
-        // Resolver datos de proveedor si hay supplier_id
+        // Resolver datos de cotización si existe
+        if (isset($context['cotizacion_id'])) {
+            $cotizacion_id = $context['cotizacion_id'];
+            $cotizacion = get_post($cotizacion_id);
+            
+            if ($cotizacion) {
+                // Datos básicos de la cotización
+                $total = get_post_meta($cotizacion_id, '_total', true);
+                $vars['total'] = $total ? wc_price($total) : __('No definido', 'rfq-manager-woocommerce');
+                
+                $created_date = $cotizacion->post_date;
+                $vars['quote_date'] = date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($created_date));
+                
+                $vars['quote_link'] = admin_url("post.php?post={$cotizacion_id}&action=edit");
+            }
+        }
+        
+        // Resolver datos de proveedor si hay supplier_id en contexto
         if (isset($context['supplier_id'])) {
-            $supplier = get_userdata($context['supplier_id']);
-            $supplier_names = self::resolve_user_names($context['supplier_id']);
-            $vars['supplier_name'] = $supplier ? $supplier->display_name : '';
-            $vars['supplier_email'] = $supplier ? $supplier->user_email : '';
-            $vars['supplier_first_name'] = $supplier_names['first_name'];
-            $vars['supplier_last_name'] = $supplier_names['last_name'];
+            $supplier_id = $context['supplier_id'];
+            $supplier = get_userdata($supplier_id);
+            
+            if ($supplier) {
+                // Para proveedores, intentar obtener nombre de empresa primero
+                $empresa_name = get_user_meta($supplier_id, 'billing_company', true);
+                if (empty($empresa_name)) {
+                    $empresa_name = get_user_meta($supplier_id, 'company', true);
+                }
+                
+                $vars['supplier_name'] = !empty($empresa_name) ? $empresa_name : $supplier->display_name;
+                $vars['supplier_email'] = $supplier->user_email;
+            }
+        }
+        
+        // Datos de cambio de estado si existen
+        if (isset($context['new_status'])) {
+            $vars['status_new'] = $context['new_status'];
+        }
+        if (isset($context['old_status'])) {
+            $vars['status_old'] = $context['old_status'];
+        }
+        
+        // Datos del administrador
+        $admin_user = get_userdata(1); // Usuario ID 1 suele ser el admin principal
+        if (!$admin_user) {
+            $admin_users = get_users(['role' => 'administrator', 'number' => 1]);
+            $admin_user = !empty($admin_users) ? $admin_users[0] : null;
+        }
+        
+        if ($admin_user) {
+            $vars['admin_name'] = $admin_user->display_name;
         }
         
         return $vars;
