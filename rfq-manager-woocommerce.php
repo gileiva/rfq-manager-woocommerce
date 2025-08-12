@@ -11,9 +11,7 @@
  * Plugin Name:       TCD Manager for WooCommerce
  * Plugin URI:        https://weloveweb.eu
  * Description:       Request for Quote management system for WooCommerce
- * Version:           1.7.0
- * Requires at least: 5.8
- * Requires PHP:      7.4
+ * Version:           1.1.0
  * Author:            WeLoveWeb
  * Author URI:        https://weloveweb.eu
  * Text Domain:       rfq-manager-woocommerce

@@ -47,6 +47,7 @@ class AdminNotifications {
         add_action('rfq_solicitud_created', [__CLASS__, 'send_solicitud_created_notification'], 10, 2);
         add_action('rfq_cotizacion_submitted', [__CLASS__, 'send_cotizacion_submitted_notification'], 10, 2);
         add_action('rfq_cotizacion_accepted', [__CLASS__, 'send_cotizacion_accepted_notification'], 10, 2);
+        add_action('rfq_solicitud_cancelada', [__CLASS__, 'send_solicitud_cancelada_notification'], 10, 3);
         
         if (defined('WP_DEBUG') && WP_DEBUG) {
             // error_log('[RFQ-DEBUG] AdminNotifications registrado en hooks');
@@ -130,10 +131,6 @@ class AdminNotifications {
             error_log('[RFQ-WARN] No hay destinatarios admin para notificación de cotizacion_submitted: ' . $cotizacion_id);
             return true;
         }
-        
-        $notification_manager = NotificationManager::getInstance();
-        $subject_template = $notification_manager->getCurrentSubject('admin', 'cotizacion_submitted');
-        $content_template = $notification_manager->getCurrentTemplate('admin', 'cotizacion_submitted');
 
         $supplier_id = get_post_field('post_author', $cotizacion_id);
         $supplier = get_userdata($supplier_id);
@@ -143,38 +140,7 @@ class AdminNotifications {
         $precio_items_raw = get_post_meta($cotizacion_id, '_precio_items', true);
         $precio_items = is_string($precio_items_raw) ? json_decode($precio_items_raw, true) : $precio_items_raw;
         
-        // Resolver first_name y last_name del cliente y proveedor si aplica
-        $user_names = NotificationManager::resolve_user_names($user_id);
-        $supplier_names = NotificationManager::resolve_user_names($supplier_id);
-        
-        $template_args = [
-            'solicitud_id' => $solicitud_id,
-            'cotizacion_id' => $cotizacion_id,
-            'supplier_name' => $supplier ? $supplier->display_name : __('Proveedor Desconocido', 'rfq-manager-woocommerce'),
-            'supplier_email' => $supplier ? $supplier->user_email : '',
-            'user_name' => $user ? $user->display_name : __('Cliente Desconocido', 'rfq-manager-woocommerce'),
-            'user_email' => $user ? $user->user_email : '',
-            'first_name' => $user_names['first_name'] ?: '',
-            'last_name' => $user_names['last_name'] ?: '',
-            'supplier_first_name' => $supplier_names['first_name'] ?: '',
-            'supplier_last_name' => $supplier_names['last_name'] ?: '',
-            'quote_amount' => get_post_meta($cotizacion_id, '_total', true),
-            'request_title' => get_the_title($solicitud_id),
-            'quote_link' => admin_url("admin.php?page=rfq-cotizaciones&action=edit&post={$cotizacion_id}"),
-            'productos_cotizados' => self::format_quoted_items_for_email($precio_items ?? []),
-        ];
-        
-        // Usar TemplateRenderer para generar HTML con pie legal
-        $legal_footer = get_option('rfq_email_legal_footer', '');
-        $legal_footer = wp_kses_post($legal_footer);
-        $message = TemplateRenderer::render_html(
-            $content_template, 
-            $template_args, 
-            $legal_footer,
-            ['notification_type' => 'admin_cotizacion_submitted', 'cotizacion_id' => $cotizacion_id]
-        );
-        
-        // Normalizar destinatarios a array si es string
+        // Normalizar destinatarios a array
         if (is_string($admin_recipients)) {
             $admin_recipients = array_filter(array_map('trim', explode(',', $admin_recipients)));
         } elseif (!is_array($admin_recipients)) {
@@ -182,8 +148,25 @@ class AdminNotifications {
         }
         
         $validated_recipients = self::validateAdminRecipients($admin_recipients);
-        $headers = EmailManager::build_headers();
-        $result = wp_mail($validated_recipients, TemplateParser::render($subject_template, $template_args), $message, $headers);
+        
+        // Construir contexto para el pipeline
+        $context = [
+            'role' => 'admin',
+            'event' => 'cotizacion_submitted',
+            'solicitud_id' => $solicitud_id,
+            'cotizacion_id' => $cotizacion_id,
+            'supplier_name' => $supplier ? $supplier->display_name : __('Proveedor Desconocido', 'rfq-manager-woocommerce'),
+            'supplier_email' => $supplier ? $supplier->user_email : '',
+            'user_name' => $user ? $user->display_name : __('Cliente Desconocido', 'rfq-manager-woocommerce'),
+            'user_email' => $user ? $user->user_email : '',
+            'quote_amount' => get_post_meta($cotizacion_id, '_total', true),
+            'request_title' => get_the_title($solicitud_id),
+            'quote_link' => admin_url("admin.php?page=rfq-cotizaciones&action=edit&post={$cotizacion_id}"),
+            'productos_cotizados' => self::format_quoted_items_for_email($precio_items ?? []),
+        ];
+        
+        // Usar el pipeline consolidado (no WhatsApp para admin por ahora)
+        $result = NotificationManager::send_notification('admin_cotizacion_submitted', $context, $validated_recipients);
         
         self::log_result($result, 'cotizacion_submitted', $validated_recipients, $cotizacion_id);
         return $result;
@@ -203,10 +186,6 @@ class AdminNotifications {
             error_log('[RFQ-WARN] No hay destinatarios admin para notificación de cotizacion_accepted: ' . $cotizacion_id);
             return true;
         }
-        
-        $notification_manager = NotificationManager::getInstance();
-        $subject_template = $notification_manager->getCurrentSubject('admin', 'cotizacion_accepted');
-        $content_template = $notification_manager->getCurrentTemplate('admin', 'cotizacion_accepted');
 
         $supplier_id = get_post_field('post_author', $cotizacion_id);
         $supplier = get_userdata($supplier_id);
@@ -216,38 +195,7 @@ class AdminNotifications {
         $precio_items_raw = get_post_meta($cotizacion_id, '_precio_items', true);
         $precio_items = is_string($precio_items_raw) ? json_decode($precio_items_raw, true) : $precio_items_raw;
         
-        // Resolver first_name y last_name del cliente y proveedor si aplica
-        $user_names = NotificationManager::resolve_user_names($user_id);
-        $supplier_names = NotificationManager::resolve_user_names($supplier_id);
-        
-        $template_args = [
-            'solicitud_id' => $solicitud_id,
-            'cotizacion_id' => $cotizacion_id,
-            'supplier_name' => $supplier ? $supplier->display_name : __('Proveedor Desconocido', 'rfq-manager-woocommerce'),
-            'supplier_email' => $supplier ? $supplier->user_email : '',
-            'user_name' => $user ? $user->display_name : __('Cliente Desconocido', 'rfq-manager-woocommerce'),
-            'user_email' => $user ? $user->user_email : '',
-            'first_name' => $user_names['first_name'] ?: '',
-            'last_name' => $user_names['last_name'] ?: '',
-            'supplier_first_name' => $supplier_names['first_name'] ?: '',
-            'supplier_last_name' => $supplier_names['last_name'] ?: '',
-            'quote_amount' => get_post_meta($cotizacion_id, '_total', true),
-            'request_title' => get_the_title($solicitud_id),
-            'quote_link' => admin_url("admin.php?page=rfq-cotizaciones&action=edit&post={$cotizacion_id}"),
-            'productos_cotizados' => self::format_quoted_items_for_email($precio_items ?? []),
-        ];
-        
-        // Usar TemplateRenderer para generar HTML con pie legal
-        $legal_footer = get_option('rfq_email_legal_footer', '');
-        $legal_footer = wp_kses_post($legal_footer);
-        $message = TemplateRenderer::render_html(
-            $content_template, 
-            $template_args, 
-            $legal_footer,
-            ['notification_type' => 'admin_cotizacion_accepted', 'cotizacion_id' => $cotizacion_id]
-        );
-        
-        // Normalizar destinatarios a array si es string
+        // Normalizar destinatarios a array
         if (is_string($admin_recipients)) {
             $admin_recipients = array_filter(array_map('trim', explode(',', $admin_recipients)));
         } elseif (!is_array($admin_recipients)) {
@@ -255,8 +203,25 @@ class AdminNotifications {
         }
         
         $validated_recipients = self::validateAdminRecipients($admin_recipients);
-        $headers = EmailManager::build_headers();
-        $result = wp_mail($validated_recipients, TemplateParser::render($subject_template, $template_args), $message, $headers);
+        
+        // Construir contexto para el pipeline
+        $context = [
+            'role' => 'admin',
+            'event' => 'cotizacion_accepted',
+            'solicitud_id' => $solicitud_id,
+            'cotizacion_id' => $cotizacion_id,
+            'supplier_name' => $supplier ? $supplier->display_name : __('Proveedor Desconocido', 'rfq-manager-woocommerce'),
+            'supplier_email' => $supplier ? $supplier->user_email : '',
+            'user_name' => $user ? $user->display_name : __('Cliente Desconocido', 'rfq-manager-woocommerce'),
+            'user_email' => $user ? $user->user_email : '',
+            'quote_amount' => get_post_meta($cotizacion_id, '_total', true),
+            'request_title' => get_the_title($solicitud_id),
+            'quote_link' => admin_url("admin.php?page=rfq-cotizaciones&action=edit&post={$cotizacion_id}"),
+            'productos_cotizados' => self::format_quoted_items_for_email($precio_items ?? []),
+        ];
+        
+        // Usar el pipeline consolidado (no WhatsApp para admin por ahora)
+        $result = NotificationManager::send_notification('admin_cotizacion_accepted', $context, $validated_recipients);
         
         self::log_result($result, 'cotizacion_accepted', $validated_recipients, $cotizacion_id);
         return $result;
@@ -492,5 +457,52 @@ class AdminNotifications {
         }
         
         return array_unique($validated);
+    }
+    
+    /**
+     * Envía notificación al administrador cuando un usuario cancela una solicitud
+     *
+     * @since  0.1.0
+     * @param  int $solicitud_id ID de la solicitud cancelada
+     * @param  int $user_id ID del usuario que canceló
+     * @param  string $cancel_reason Motivo de la cancelación (opcional)
+     * @return bool
+     */
+    public static function send_solicitud_cancelada_notification(int $solicitud_id, int $user_id, string $cancel_reason = ''): bool {
+        $user = get_userdata($user_id);
+        
+        if (!$user) {
+            error_log("[RFQ-ERROR] Usuario no encontrado para admin solicitud_cancelada {$solicitud_id}");
+            return false;
+        }
+        
+        // 1. Resolver destinatarios admin
+        $recipients = self::get_admin_recipients('solicitud_cancelada', $solicitud_id);
+        if (empty($recipients)) {
+            error_log("[RFQ-ERROR] No se encontraron destinatarios admin para solicitud_cancelada");
+            return false;
+        }
+        
+        // 2. Construir contexto para el pipeline
+        $context = [
+            'role' => 'admin',
+            'event' => 'solicitud_cancelada',
+            'solicitud_id' => $solicitud_id,
+            'request_id' => $solicitud_id,
+            'request_title' => get_the_title($solicitud_id),
+            'request_link' => admin_url("post.php?post={$solicitud_id}&action=edit"),
+            'site_name' => get_bloginfo('name'),
+            'user_id' => $user_id,
+            'user_name' => $user->display_name,
+            'user_email' => $user->user_email,
+            'cancel_reason' => $cancel_reason,
+        ];
+        
+        // 3. Usar el pipeline consolidado
+        $result = NotificationManager::send_notification('admin_solicitud_cancelada', $context, $recipients);
+        
+        // 4. Log resultado
+        self::log_result($result, 'solicitud_cancelada', $recipients, $solicitud_id);
+        return $result;
     }
 }

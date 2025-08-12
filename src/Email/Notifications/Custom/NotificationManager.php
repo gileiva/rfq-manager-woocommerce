@@ -5,6 +5,8 @@ use GiVendor\GiPlugin\Email\Templates\TemplateParser;
 use GiVendor\GiPlugin\Email\Templates\TemplateRenderer;
 use GiVendor\GiPlugin\Email\EmailManager;
 use GiVendor\GiPlugin\Utils\RfqLogger;
+use GiVendor\GiPlugin\Notifications\WhatsAppNotifier;
+use GiVendor\GiPlugin\Notifications\WhatsAppPhone;
 
 class NotificationManager {
     private static $instance = null;
@@ -14,7 +16,8 @@ class NotificationManager {
         'user' => [
             'solicitud_created' => 'Solicitud Creada',
             'cotizacion_submitted' => 'Cotización Recibida',
-            'cotizacion_accepted' => 'Cotización Aceptada'
+            'cotizacion_accepted' => 'Cotización Aceptada',
+            'solicitud_cancelada' => 'Solicitud Cancelada'
         ],
         'supplier' => [
             'solicitud_created' => 'Nueva solicitud',
@@ -24,7 +27,8 @@ class NotificationManager {
         'admin' => [
         'solicitud_created' => 'Solicitud created',
         'cotizacion_submitted' => 'Cotización submitted',
-        'cotizacion_accepted' => 'Cotización accepted'
+        'cotizacion_accepted' => 'Cotización accepted',
+        'solicitud_cancelada' => 'Solicitud Cancelada'
         ]
     ];
 
@@ -206,6 +210,17 @@ class NotificationManager {
                         'default' => self::getInstance()->getDefaultMessage($role, $event_key)
                     ]
                 );
+                
+                // Registrar toggle de WhatsApp para esta plantilla
+                register_setting(
+                    $group,
+                    "rfq_whatsapp_enable_{$role}_{$event_key}",
+                    [
+                        'type' => 'string',
+                        'sanitize_callback' => 'sanitize_text_field',
+                        'default' => 'no'
+                    ]
+                );
             }
         }
         
@@ -220,6 +235,17 @@ class NotificationManager {
             ]
         );
         
+        // Registrar configuración del remitente global
+        register_setting(
+            'rfq_legal_footer_group',
+            'rfq_email_from_global',
+            [
+                'type' => 'string',
+                'sanitize_callback' => 'sanitize_email',
+                'default' => ''
+            ]
+        );
+        
         // Registrar configuración del BCC global
         register_setting(
             'rfq_legal_footer_group',
@@ -228,6 +254,47 @@ class NotificationManager {
                 'type' => 'string',
                 'sanitize_callback' => 'sanitize_text_field',
                 'default' => ''
+            ]
+        );
+        
+        // Registrar configuraciones de WhatsApp
+        register_setting(
+            'rfq_legal_footer_group',
+            'rfq_whatsapp_enabled',
+            [
+                'type' => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default' => 'no'
+            ]
+        );
+        
+        register_setting(
+            'rfq_legal_footer_group',
+            'rfq_whatsapp_api_key',
+            [
+                'type' => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default' => ''
+            ]
+        );
+        
+        register_setting(
+            'rfq_legal_footer_group',
+            'rfq_whatsapp_sender',
+            [
+                'type' => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default' => ''
+            ]
+        );
+        
+        register_setting(
+            'rfq_legal_footer_group',
+            'rfq_whatsapp_lang',
+            [
+                'type' => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default' => 'es'
             ]
         );
     }
@@ -352,8 +419,24 @@ class NotificationManager {
                 $legal_footer = wp_kses_post($_POST['rfq_email_legal_footer']);
                 update_option('rfq_email_legal_footer', $legal_footer);
                 
+                $from_global = sanitize_email($_POST['rfq_email_from_global']);
+                update_option('rfq_email_from_global', $from_global);
+                
                 $bcc_global = sanitize_text_field($_POST['rfq_email_bcc_global']);
                 update_option('rfq_email_bcc_global', $bcc_global);
+                
+                // Procesar configuración de WhatsApp
+                $whatsapp_enabled = isset($_POST['rfq_whatsapp_enabled']) ? 'yes' : 'no';
+                update_option('rfq_whatsapp_enabled', $whatsapp_enabled);
+                
+                $whatsapp_api_key = sanitize_text_field($_POST['rfq_whatsapp_api_key'] ?? '');
+                update_option('rfq_whatsapp_api_key', $whatsapp_api_key);
+                
+                $whatsapp_sender = sanitize_text_field($_POST['rfq_whatsapp_sender'] ?? '');
+                update_option('rfq_whatsapp_sender', $whatsapp_sender);
+                
+                $whatsapp_lang = sanitize_text_field($_POST['rfq_whatsapp_lang'] ?? 'es');
+                update_option('rfq_whatsapp_lang', $whatsapp_lang);
                 
                 echo '<div class="notice notice-success is-dismissible">';
                 echo '<p>' . __('Configuración guardada correctamente.', 'rfq-manager-woocommerce') . '</p>';
@@ -440,6 +523,24 @@ class NotificationManager {
                                     </tr>
                                     <tr>
                                         <th scope="row">
+                                            <label for="rfq_email_from_global">
+                                                <?php _e('Remitente Global (Email)', 'rfq-manager-woocommerce'); ?>
+                                            </label>
+                                        </th>
+                                        <td>
+                                            <input type="email" 
+                                                   id="rfq_email_from_global" 
+                                                   name="rfq_email_from_global" 
+                                                   value="<?php echo esc_attr(get_option('rfq_email_from_global', '')); ?>" 
+                                                   class="regular-text" 
+                                                   placeholder="<?php echo esc_attr(get_option('admin_email')); ?>" />
+                                            <p class="description">
+                                                <?php _e('Email del remitente para <strong>todas</strong> las notificaciones del sistema RFQ. Si se deja vacío, se usará el email por defecto del sitio.', 'rfq-manager-woocommerce'); ?>
+                                            </p>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">
                                             <label for="rfq_email_bcc_global">
                                                 <?php _e('BCC Global (separar por comas)', 'rfq-manager-woocommerce'); ?>
                                             </label>
@@ -453,6 +554,88 @@ class NotificationManager {
                                                    placeholder="ejemplo1@correo.com, ejemplo2@correo.com" />
                                             <p class="description">
                                                 <?php _e('Se añadirá como BCC a <strong>todas</strong> las notificaciones del sistema RFQ. Separar múltiples correos por comas.', 'rfq-manager-woocommerce'); ?>
+                                            </p>
+                                        </td>
+                                    </tr>
+                                    
+                                    <!-- Sección WhatsApp -->
+                                    <tr>
+                                        <th scope="row" colspan="2" style="padding: 20px 0 10px 0; border-bottom: 1px solid #ddd;">
+                                            <h3 style="margin: 0;"><?php _e('Configuración WhatsApp', 'rfq-manager-woocommerce'); ?></h3>
+                                        </th>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <th scope="row">
+                                            <?php _e('Habilitar WhatsApp', 'rfq-manager-woocommerce'); ?>
+                                        </th>
+                                        <td>
+                                            <label for="rfq_whatsapp_enabled">
+                                                <input type="checkbox" 
+                                                       id="rfq_whatsapp_enabled" 
+                                                       name="rfq_whatsapp_enabled" 
+                                                       value="1" 
+                                                       <?php checked(get_option('rfq_whatsapp_enabled'), 'yes'); ?> />
+                                                <?php _e('Activar notificaciones por WhatsApp', 'rfq-manager-woocommerce'); ?>
+                                            </label>
+                                            <p class="description">
+                                                <?php _e('Los usuarios podrán recibir notificaciones por WhatsApp si tienen el opt-in activado.', 'rfq-manager-woocommerce'); ?>
+                                            </p>
+                                        </td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <th scope="row">
+                                            <label for="rfq_whatsapp_api_key">
+                                                <?php _e('API Key de WhatsApp Business', 'rfq-manager-woocommerce'); ?>
+                                            </label>
+                                        </th>
+                                        <td>
+                                            <input type="password" 
+                                                   id="rfq_whatsapp_api_key" 
+                                                   name="rfq_whatsapp_api_key" 
+                                                   value="<?php echo esc_attr(get_option('rfq_whatsapp_api_key', '')); ?>" 
+                                                   class="regular-text" 
+                                                   placeholder="EAAAbcd123..." />
+                                            <p class="description">
+                                                <?php _e('Token de acceso permanente de tu app de WhatsApp Business API.', 'rfq-manager-woocommerce'); ?>
+                                            </p>
+                                        </td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <th scope="row">
+                                            <label for="rfq_whatsapp_sender">
+                                                <?php _e('ID del Remitente', 'rfq-manager-woocommerce'); ?>
+                                            </label>
+                                        </th>
+                                        <td>
+                                            <input type="text" 
+                                                   id="rfq_whatsapp_sender" 
+                                                   name="rfq_whatsapp_sender" 
+                                                   value="<?php echo esc_attr(get_option('rfq_whatsapp_sender', '')); ?>" 
+                                                   class="regular-text" 
+                                                   placeholder="123456789012345" />
+                                            <p class="description">
+                                                <?php _e('ID numérico del número de teléfono registrado en WhatsApp Business.', 'rfq-manager-woocommerce'); ?>
+                                            </p>
+                                        </td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <th scope="row">
+                                            <label for="rfq_whatsapp_lang">
+                                                <?php _e('Idioma por defecto', 'rfq-manager-woocommerce'); ?>
+                                            </label>
+                                        </th>
+                                        <td>
+                                            <select id="rfq_whatsapp_lang" name="rfq_whatsapp_lang">
+                                                <option value="es" <?php selected(get_option('rfq_whatsapp_lang', 'es'), 'es'); ?>>Español</option>
+                                                <option value="en" <?php selected(get_option('rfq_whatsapp_lang', 'es'), 'en'); ?>>English</option>
+                                                <option value="pt" <?php selected(get_option('rfq_whatsapp_lang', 'es'), 'pt'); ?>>Português</option>
+                                            </select>
+                                            <p class="description">
+                                                <?php _e('Idioma usado para plantillas de WhatsApp Business (futuro uso).', 'rfq-manager-woocommerce'); ?>
                                             </p>
                                         </td>
                                     </tr>
@@ -545,6 +728,21 @@ class NotificationManager {
                                                     ]
                                                 ]);
                                                 ?>
+                                        </p>
+                                        
+                                        <!-- Toggle para WhatsApp -->
+                                        <p style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 15px;">
+                                            <label for="<?php echo esc_attr("rfq_whatsapp_enable_{$active_tab}_{$event_key}"); ?>">
+                                                <input type="checkbox" 
+                                                       id="<?php echo esc_attr("rfq_whatsapp_enable_{$active_tab}_{$event_key}"); ?>"
+                                                       name="<?php echo esc_attr("rfq_whatsapp_enable_{$active_tab}_{$event_key}"); ?>"
+                                                       value="yes"
+                                                       <?php checked(get_option("rfq_whatsapp_enable_{$active_tab}_{$event_key}"), 'yes'); ?> />
+                                                <strong><?php _e('📱 Habilitar envío por WhatsApp', 'rfq-manager-woocommerce'); ?></strong>
+                                            </label>
+                                            <br><small style="color: #666;">
+                                                <?php _e('Los usuarios con opt-in activado recibirán esta notificación también por WhatsApp.', 'rfq-manager-woocommerce'); ?>
+                                            </small>
                                         </p>
                                 </td>
                             </tr>
@@ -819,7 +1017,9 @@ class NotificationManager {
             'user' => [
                 'solicitud_created' => 'Nueva solicitud de cotización creada',
                 'cotizacion_submitted' => 'Cotización recibida para tu solicitud',
-                'cotizacion_accepted' => 'Tu cotización ha sido aceptada'
+                'cotizacion_accepted' => 'Tu cotización ha sido aceptada',
+                'status_changed' => 'Tu solicitud ha cambiado de estado',
+                'solicitud_cancelada' => 'Has cancelado tu solicitud'
             ],
             'supplier' => [
                 'solicitud_created' => 'Nueva solicitud de cotización disponible',
@@ -829,7 +1029,8 @@ class NotificationManager {
             'admin' => [
                 'solicitud_created' => 'Nueva solicitud de cotización recibida',
                 'cotizacion_submitted' => 'Nueva cotización enviada',
-                'cotizacion_accepted' => 'Cotización aceptada por el cliente'
+                'cotizacion_accepted' => 'Cotización aceptada por el cliente',
+                'solicitud_cancelada' => 'Un cliente ha cancelado una solicitud'
             ]
         ];
 
@@ -842,7 +1043,8 @@ class NotificationManager {
                 'solicitud_created' => 'Hola {user_name},<br><br>Tu solicitud de cotización ha sido creada exitosamente.<br><br>Detalles de la solicitud:<br>ID: {request_id}<br>Título: {request_title}<br>Fecha de expiración: {request_expiry}<br><br>Puedes ver el estado de tu solicitud en: {request_link}',
                 'cotizacion_received' => 'Hola {user_name},<br><br>Has recibido una nueva cotización para tu solicitud {request_title}.<br><br>Detalles de la cotización:<br>ID: {quote_id}<br>Proveedor: {supplier_name}<br>Monto total: {quote_amount}<br><br>Puedes ver la cotización en: {quote_link}',
                 'cotizacion_accepted' => 'Hola {user_name},<br><br>Has aceptado una cotización para tu solicitud {request_title}.<br><br>Detalles de la cotización aceptada:<br>ID: {quote_id}<br>Proveedor: {supplier_name}<br>Monto total: {quote_amount}<br><br>El proveedor se pondrá en contacto contigo para coordinar los detalles.',
-                'status_changed' => 'Hola {user_name},<br><br>El estado de tu solicitud {request_title} ha cambiado de {status_old} a {status_new}.<br><br>Puedes ver los detalles en: {request_link}'
+                'status_changed' => 'Hola {user_name},<br><br>Tu solicitud "<strong>{request_title}</strong>" ha pasado a estado <em>Histórica</em>. Esto puede deberse a que la fecha de vigencia ha expirado o a que decidiste cancelarla.<br><br>Si lo deseas, puedes volver a enviarla fácilmente desde tu lista de solicitudes:<br>{request_link}<br><br>Gracias por utilizar nuestros servicios.<br><br>— El equipo de {site_name}',
+                'solicitud_cancelada' => 'Hola {user_name},<br><br>Tu solicitud "{request_title}" ha sido cancelada correctamente.<br><br>Puedes consultar el historial o crear una nueva solicitud desde tu panel:<br>{request_link}<br><br>Gracias por confiar en {site_name}.'
             ],
             'supplier' => [
                 'solicitud_created' => 'Hola {supplier_name},<br><br>Hay una nueva solicitud de cotización disponible.<br><br>Detalles de la solicitud:<br>ID: {request_id}<br>Título: {request_title}<br>Cliente: {customer_name}<br>Fecha de expiración: {request_expiry}<br><br>Productos solicitados:<br>{productos}<br><br>Puedes enviar tu cotización en: {request_link}',
@@ -852,7 +1054,8 @@ class NotificationManager {
             'admin' => [
                 'solicitud_created' => 'Hola Administrador,<br><br>Se ha creado una nueva solicitud de cotización.<br><br>Detalles de la solicitud:<br>ID: {request_id}<br>Título: {request_title}<br>Cliente: {user_name}<br>Estado: {request_status}<br>Fecha de expiración: {request_expiry}<br><br>Puedes ver los detalles en: {request_link}',
                 'cotizacion_submitted' => 'Hola Administrador,<br><br>Se ha enviado una nueva cotización.<br><br>Detalles de la cotización:<br>ID: {quote_id}<br>Solicitud: {request_title}<br>Proveedor: {supplier_name}<br>Cliente: {user_name}<br>Monto total: {quote_amount}<br><br>Puedes ver los detalles en: {quote_link}',
-                'cotizacion_accepted' => 'Hola Administrador,<br><br>Una cotización ha sido aceptada.<br><br>Detalles:<br>ID de cotización: {quote_id}<br>Solicitud: {request_title}<br>Proveedor: {supplier_name}<br>Cliente: {user_name}<br>Monto total: {quote_amount}<br><br>Puedes ver los detalles en: {quote_link}'
+                'cotizacion_accepted' => 'Hola Administrador,<br><br>Una cotización ha sido aceptada.<br><br>Detalles:<br>ID de cotización: {quote_id}<br>Solicitud: {request_title}<br>Proveedor: {supplier_name}<br>Cliente: {user_name}<br>Monto total: {quote_amount}<br><br>Puedes ver los detalles en: {quote_link}',
+                'solicitud_cancelada' => 'Estimado administrador,<br><br>El cliente {user_name} ({user_email}) ha cancelado la solicitud "{request_title}".<br><br>Puedes revisar los detalles en el panel de administración:<br>{request_link}'
             ]
         ];
 
@@ -1185,6 +1388,200 @@ class NotificationManager {
             'text' => $text,
             'headers' => $headers
         ];
+    }
+    
+    /**
+     * Pipeline completo: prepara + envía email + intenta WhatsApp
+     * 
+     * @since 0.2.0
+     * @param string $event Clave del evento (ej: 'user_solicitud_created')
+     * @param array $context Array con datos del contexto
+     * @param string|array $to Destinatario(s) de email
+     * @return bool Resultado del envío de email
+     */
+    public static function send_notification(string $event, array $context, $to): bool {
+        try {
+            // 1. Preparar mensaje
+            $message = self::prepare_message($event, $context);
+            
+            // 2. Enviar email
+            $email_result = EmailManager::send($to, $message['subject'], $message['html'], $message['text'], $message['headers']);
+            
+            // 3. Intentar WhatsApp (solo para eventos de usuario, no bloquea si falla)
+            if (str_starts_with($event, 'user_')) {
+                self::maybe_send_whatsapp($event, $context, $message);
+            }
+            
+            return $email_result;
+            
+        } catch (\Throwable $e) {
+            RfqLogger::error('[send_notification] Excepción', [
+                'event' => $event,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return false;
+        }
+    }
+    
+    /**
+     * Envía notificación por WhatsApp si está habilitado y el usuario tiene opt-in
+     * 
+     * @param string $event Evento como 'user_solicitud_created'
+     * @param array $context Contexto del mensaje
+     * @param array $message Mensaje preparado por prepare_message()
+     * @return void
+     */
+    public static function maybe_send_whatsapp(string $event, array $context, array $message): void {
+        try {
+            // Verificar si WhatsApp está habilitado globalmente
+            if (!WhatsAppNotifier::is_enabled()) {
+                RfqLogger::debug('[whatsapp] Sistema deshabilitado o sin configurar');
+                return;
+            }
+            
+            // Extraer rol del evento
+            $role = self::extract_role_from_event($event);
+            if (!$role) {
+                RfqLogger::warn('[whatsapp] No se pudo extraer rol del evento: ' . $event);
+                return;
+            }
+            
+            $clean_event = str_replace($role . '_', '', $event);
+            
+            // Verificar toggle por plantilla
+            $template_option = "rfq_whatsapp_enable_{$role}_{$clean_event}";
+            if (get_option($template_option) !== 'yes') {
+                RfqLogger::debug('[whatsapp] Template deshabilitado', [
+                    'option' => $template_option,
+                    'event' => $event
+                ]);
+                return;
+            }
+            
+            // Permitir override global por filtro
+            $enabled_for_event = apply_filters('rfq_whatsapp_enabled_for_event', true, $event, $context);
+            if (!$enabled_for_event) {
+                RfqLogger::debug('[whatsapp] Deshabilitado por filtro para evento: ' . $event);
+                return;
+            }
+            
+            // Obtener destinatarios según el contexto
+            $recipients = self::get_whatsapp_recipients($event, $context);
+            
+            if (empty($recipients)) {
+                RfqLogger::debug('[whatsapp] No hay destinatarios válidos para: ' . $event);
+                return;
+            }
+            
+            // Preparar texto para WhatsApp
+            $whatsapp_text = self::prepare_whatsapp_text($event, $context, $message);
+            if (empty($whatsapp_text)) {
+                RfqLogger::warn('[whatsapp] No se pudo preparar texto para: ' . $event);
+                return;
+            }
+            
+            // Enviar a cada destinatario
+            $sent_count = 0;
+            foreach ($recipients as $recipient) {
+                if (WhatsAppNotifier::send_message($recipient['phone'], $whatsapp_text)) {
+                    $sent_count++;
+                    RfqLogger::info('[whatsapp] Enviado', [
+                        'event' => $event,
+                        'user_id' => $recipient['user_id'],
+                        'phone' => $recipient['phone']
+                    ]);
+                }
+            }
+            
+            // Hook post-envío
+            do_action('rfq_after_send_whatsapp', $sent_count > 0, $event, $context);
+            
+        } catch (\Throwable $e) {
+            RfqLogger::error('[whatsapp] Excepción en maybe_send_whatsapp', [
+                'event' => $event,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+    
+    /**
+     * Obtiene destinatarios válidos para WhatsApp según el evento
+     * 
+     * @param string $event
+     * @param array $context
+     * @return array Array de ['user_id' => int, 'phone' => string]
+     */
+    private static function get_whatsapp_recipients(string $event, array $context): array {
+        $recipients = [];
+        
+        // Solo procesamos eventos de usuario por ahora
+        if (!str_starts_with($event, 'user_')) {
+            return [];
+        }
+        
+        $user_id = $context['user_id'] ?? null;
+        if (!$user_id) {
+            return [];
+        }
+        
+        // Verificar opt-in del usuario (meta key exacto del plugin gi-user-register)
+        $has_optin = get_user_meta($user_id, 'whatsapp_notifications', true);
+        if (!$has_optin || $has_optin !== '1') {
+            RfqLogger::debug('[whatsapp] Usuario sin opt-in', ['user_id' => $user_id]);
+            return [];
+        }
+        
+        // Obtener y validar teléfono
+        $phone = WhatsAppPhone::get_user_phone($user_id);
+        if (!$phone) {
+            RfqLogger::debug('[whatsapp] Usuario sin teléfono válido', ['user_id' => $user_id]);
+            return [];
+        }
+        
+        $recipients[] = [
+            'user_id' => $user_id,
+            'phone' => $phone
+        ];
+        
+        return $recipients;
+    }
+    
+    /**
+     * Prepara el texto a enviar por WhatsApp desde el mensaje preparado
+     * 
+     * @param string $event
+     * @param array $context
+     * @param array $message
+     * @return string
+     */
+    private static function prepare_whatsapp_text(string $event, array $context, array $message): string {
+        // Empezar con el texto plano si existe
+        $text = $message['text'] ?? '';
+        
+        // Si no hay texto plano, derivar del subject + extracto del HTML
+        if (empty($text) && !empty($message['html'])) {
+            $subject = $message['subject'] ?? '';
+            
+            // Extraer texto del HTML removiendo tags
+            $html_text = wp_strip_all_tags($message['html']);
+            
+            // Limpiar espacios en blanco excesivos
+            $html_text = preg_replace('/\s+/', ' ', trim($html_text));
+            
+            // Truncar si es muy largo (WhatsApp tiene límites)
+            if (strlen($html_text) > 300) {
+                $html_text = substr($html_text, 0, 297) . '...';
+            }
+            
+            $text = $subject . "\n\n" . $html_text;
+        }
+        
+        // Filtro para personalizar el texto
+        $text = apply_filters('rfq_whatsapp_text', $text, $event, $context, $message);
+        
+        return trim($text);
     }
     
     /**

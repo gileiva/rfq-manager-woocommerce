@@ -48,6 +48,7 @@ class UserNotifications {
         add_action('rfq_cotizacion_submitted', [__CLASS__, 'send_cotizacion_received_notification'], 10, 2);
         add_action('rfq_solicitud_status_changed', [__CLASS__, 'send_status_changed_notification'], 10, 3);
         add_action('rfq_cotizacion_accepted_by_user', [__CLASS__, 'send_cotizacion_accepted_notification'], 10, 2);
+        add_action('rfq_solicitud_cancelada', [__CLASS__, 'send_solicitud_cancelada_notification'], 10, 3);
         
         if (defined('WP_DEBUG') && WP_DEBUG) {
             // error_log('[RFQ-DEBUG] UserNotifications registrado en hooks');
@@ -86,20 +87,17 @@ class UserNotifications {
         // Mergear datos adicionales del evento
         $context = array_merge($context, $data);
 
-        // 2. Preparar mensaje con el pipeline consolidado
-        $message = NotificationManager::prepare_message('user_solicitud_created', $context);
-
-        // 3. Resolver destinatario
+        // 2. Resolver destinatario con filtro específico
         $to = apply_filters('rfq_user_notification_recipient_solicitud_created', $user->user_email, $solicitud_id, $user);
         if (empty($to)) {
             RfqLogger::warn('No se envió notificación: Destinatario vacío para solicitud_created ' . $solicitud_id);
             return false;
         }
 
-        // 4. Enviar usando el pipeline consolidado
-        $result = EmailManager::send($to, $message['subject'], $message['html'], $message['text'], $message['headers']);
+        // 3. Preparar mensaje y enviar usando método central
+        $result = NotificationManager::send_notification('user_solicitud_created', $context, $to);
         
-        // 5. Log resultado
+        // 4. Log resultado
         if ($result) {
             RfqLogger::info('Notificación user solicitud_created enviada exitosamente', [
                 'solicitud_id' => $solicitud_id,
@@ -165,20 +163,17 @@ class UserNotifications {
             'productos' => self::format_items_for_email($solicitud_items ?? []),
         ];
 
-        // 2. Preparar mensaje con el pipeline consolidado
-        $message = NotificationManager::prepare_message('user_cotizacion_received', $context);
-
-        // 3. Resolver destinatario
+        // 2. Resolver destinatario
         $to = apply_filters('rfq_user_notification_recipient_cotizacion_received', $user->user_email, $cotizacion_id, $solicitud_id, $user);
         if (empty($to)) {
             RfqLogger::warn('No se envió notificación: Destinatario vacío para cotizacion_received ' . $cotizacion_id);
             return false;
         }
 
-        // 4. Enviar usando el pipeline consolidado
-        $result = EmailManager::send($to, $message['subject'], $message['html'], $message['text'], $message['headers']);
+        // 3. Preparar mensaje y enviar usando método central
+        $result = NotificationManager::send_notification('user_cotizacion_submitted', $context, $to);
         
-        // 5. Log resultado
+        // 4. Log resultado
         self::log_result($result, 'cotizacion_received', $user, $cotizacion_id);
         return $result;
     }
@@ -201,9 +196,9 @@ class UserNotifications {
             return false;
         }
 
-        $notify_status_changes = apply_filters('rfq_user_notify_status_changes', ['activa', 'aceptada', 'historica', 'pagada'], $solicitud_id, $new_status, $old_status);
-        if (!in_array($new_status, $notify_status_changes)) {
-            error_log("[RFQ-FLOW] No se notificará cambio de estado a: {$new_status}");
+        // Solo notificar cambios de estado a 'historica' (equivalente a post_status 'rfq-historic')
+        if ($new_status !== 'historica') {
+            error_log("[RFQ-FLOW] No se notificará cambio de estado a: {$new_status}. Solo se notifica cambio a 'historica'");
             return true; 
         }
 
@@ -231,19 +226,9 @@ class UserNotifications {
             return false;
         }
         
-        $notification_manager = NotificationManager::getInstance();
-        $event_key = 'status_changed_' . $new_status; // ej. status_changed_activa
-        $subject_template = $notification_manager->getCurrentSubject('user', $event_key, false);
-        $content_template = $notification_manager->getCurrentTemplate('user', $event_key, false);
-
-        // Fallback si no hay plantilla/asunto específico para el nuevo estado
-        if (!$subject_template || !$content_template) {
-            $subject_template = $notification_manager->getCurrentSubject('user', 'status_changed');
-            $content_template = $notification_manager->getCurrentTemplate('user', 'status_changed');
-        }
-        
+        // Calcular porcentaje ahorro para estados aceptada/pagada
         $porcentaje_ahorro = 0;
-        if ($new_status === 'aceptada' || $new_status === 'pagada') { // 'pagada' implica que fue aceptada antes
+        if ($new_status === 'aceptada' || $new_status === 'pagada') {
             $cotizacion_id_ahorro = get_post_meta($solicitud_id, '_rfq_accepted_cotizacion', true);
             if ($cotizacion_id_ahorro) {
                 $total_cotizacion = get_post_meta($cotizacion_id_ahorro, '_total', true);
@@ -261,47 +246,26 @@ class UserNotifications {
             }
         }
 
-        // Resolver first_name y last_name
-        $names = NotificationManager::resolve_user_names($user_id);
-        
-        $template_args = [
+        // Construir contexto para el pipeline
+        $context = [
+            'role' => 'user',
+            'event' => 'status_changed',
             'solicitud_id' => $solicitud_id,
+            'request_id' => $solicitud_id,
+            'request_title' => get_the_title($solicitud_id),
+            'request_link' => get_permalink($solicitud_id) ?: admin_url("post.php?post={$solicitud_id}&action=edit"),
+            'site_name' => get_bloginfo('name'),
             'user_id' => $user_id,
+            'recipient_user_id' => $user_id,
             'user_name' => $user->display_name,
             'user_email' => $user->user_email,
-            'first_name' => $names['first_name'] ?: '',
-            'last_name' => $names['last_name'] ?: '',
-            'nombre' => $user->display_name,
             'new_status' => $new_status, 
             'old_status' => $old_status,
-            'porcentaje_ahorro' => $porcentaje_ahorro, 
+            'porcentaje_ahorro' => $porcentaje_ahorro,
         ];
         
-        // Si el subject_template todavía es genérico o es un placeholder, intentamos hacerlo más específico
-        $rendered_subject_check = TemplateParser::render($subject_template, $template_args);
-        if (strpos($subject_template, '{new_status}') !== false || strpos($rendered_subject_check, $new_status) === false) {
-             $status_labels = [
-                'activa' => __('Tu solicitud {request_title} ha recibido cotizaciones', 'rfq-manager-woocommerce'),
-                'aceptada' => __('Has aceptado una cotización para {request_title}', 'rfq-manager-woocommerce'),
-                'historica' => __('Tu solicitud {request_title} ha pasado al historial', 'rfq-manager-woocommerce'),
-                'pagada' => __('El pago para {request_title} ha sido confirmado', 'rfq-manager-woocommerce'),
-            ];
-            $subject_template = $status_labels[$new_status] ?? sprintf(__('El estado de tu solicitud {request_title} es ahora: %s', 'rfq-manager-woocommerce'), $new_status);
-        }
-
-        // Usar TemplateRenderer para generar HTML con pie legal
-        $legal_footer = get_option('rfq_email_legal_footer', '');
-        $legal_footer = wp_kses_post($legal_footer);
-        $message = TemplateRenderer::render_html(
-            $content_template, 
-            $template_args, 
-            $legal_footer,
-            ['notification_type' => 'status_change', 'user_id' => $user_id, 'new_status' => $new_status]
-        );
-        
-        $headers = EmailManager::build_headers();
-        $final_subject = TemplateParser::render($subject_template, $template_args);
-        $result = wp_mail($to, $final_subject, $message, $headers);
+        // Usar el pipeline consolidado
+        $result = NotificationManager::send_notification('user_status_changed', $context, $to);
         
         self::log_result($result, 'status_changed_to_' . $new_status, $user, $solicitud_id);
         return $result;
@@ -330,10 +294,7 @@ class UserNotifications {
             return false;
         }
         
-        $notification_manager = NotificationManager::getInstance();
-        $subject_template = $notification_manager->getCurrentSubject('user', 'cotizacion_accepted');
-        $content_template = $notification_manager->getCurrentTemplate('user', 'cotizacion_accepted');
-        
+        // Calcular porcentaje ahorro
         $porcentaje_ahorro = 0;
         $total_cotizacion = get_post_meta($cotizacion_id, '_total', true);
         $items_solicitud_raw = get_post_meta($solicitud_id, '_solicitud_items', true);
@@ -348,35 +309,22 @@ class UserNotifications {
             $porcentaje_ahorro = (($gran_total_solicitud - floatval($total_cotizacion)) / $gran_total_solicitud) * 100;
         }
         
-        // Resolver first_name y last_name
-        $names = NotificationManager::resolve_user_names($user_id);
-        
-        $template_args = [
+        // Construir contexto para el pipeline
+        $context = [
+            'role' => 'user',
+            'event' => 'cotizacion_accepted',
             'solicitud_id' => $solicitud_id,
             'cotizacion_id' => $cotizacion_id,
             'user_id' => $user_id,
+            'recipient_user_id' => $user_id,
             'user_name' => $user->display_name,
             'user_email' => $user->user_email,
-            'first_name' => $names['first_name'] ?: '',
-            'last_name' => $names['last_name'] ?: '',
-            'nombre' => $user->display_name,
             'productos' => self::format_items_for_email($items_solicitud ?? []),
             'porcentaje_ahorro' => $porcentaje_ahorro,
-            // El proveedor se añade en prepareCommonData si cotizacion_id está presente
         ];
         
-        // Usar TemplateRenderer para generar HTML con pie legal
-        $legal_footer = get_option('rfq_email_legal_footer', '');
-        $legal_footer = wp_kses_post($legal_footer);
-        $message = TemplateRenderer::render_html(
-            $content_template, 
-            $template_args, 
-            $legal_footer,
-            ['notification_type' => 'cotizacion_accepted', 'user_id' => $user_id]
-        );
-        
-        $headers = EmailManager::build_headers();
-        $result = wp_mail($to, TemplateParser::render($subject_template, $template_args), $message, $headers);
+        // Usar el pipeline consolidado
+        $result = NotificationManager::send_notification('user_cotizacion_accepted', $context, $to);
         
         self::log_result($result, 'cotizacion_accepted', $user, $cotizacion_id);
         return $result;
@@ -509,6 +457,53 @@ class UserNotifications {
         </html>';
         
         return $content;
+    }
+    
+    /**
+     * Envía notificación al usuario cuando cancela una solicitud
+     *
+     * @since  0.1.0
+     * @param  int $solicitud_id ID de la solicitud cancelada
+     * @param  int $user_id ID del usuario que canceló
+     * @param  string $cancel_reason Motivo de la cancelación (opcional)
+     * @return bool
+     */
+    public static function send_solicitud_cancelada_notification(int $solicitud_id, int $user_id, string $cancel_reason = ''): bool {
+        $user = get_userdata($user_id);
+        
+        if (!$user) {
+            error_log("[RFQ-ERROR] Usuario no encontrado para solicitud_cancelada {$solicitud_id}");
+            return false;
+        }
+        
+        // 1. Construir contexto para el pipeline
+        $context = [
+            'role' => 'user',
+            'event' => 'solicitud_cancelada',
+            'solicitud_id' => $solicitud_id,
+            'request_id' => $solicitud_id,
+            'request_title' => get_the_title($solicitud_id),
+            'request_link' => get_permalink($solicitud_id) ?: admin_url("post.php?post={$solicitud_id}&action=edit"),
+            'site_name' => get_bloginfo('name'),
+            'user_id' => $user_id,
+            'recipient_user_id' => $user_id,
+            'user_name' => $user->display_name,
+            'user_email' => $user->user_email,
+        ];
+        
+        // 2. Resolver destinatario
+        $to = apply_filters('rfq_user_notification_recipient_solicitud_cancelada', $user->user_email, $solicitud_id, $user_id, $user);
+        if (empty($to)) {
+            error_log("[RFQ-ERROR] No se envió notificación: Destinatario vacío para solicitud_cancelada {$solicitud_id}");
+            return false;
+        }
+        
+        // 3. Usar el pipeline consolidado
+        $result = NotificationManager::send_notification('user_solicitud_cancelada', $context, $to);
+        
+        // 4. Log resultado
+        self::log_result($result, 'solicitud_cancelada', $user, $solicitud_id);
+        return $result;
     }
     
     private static function log_result(bool $result, string $notification_type, \WP_User $user, int $post_id): void {

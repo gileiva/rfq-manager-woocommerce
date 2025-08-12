@@ -1054,6 +1054,11 @@ class SolicitudView {
                 delete_transient('rfq_ajax_status_update_' . $solicitud_id);
                 wp_send_json_error(['message' => __('Error al actualizar el estado', 'rfq-manager-woocommerce')]);
             }
+            
+            // Si es una cancelación (cambio a histórico) disparar hook de cancelación
+            if ($is_cancellation && $current_status !== 'rfq-historic') {
+                do_action('rfq_solicitud_cancelada', $solicitud_id, $user->ID, '');
+            }
         }
 
         // Actualizar fecha de expiración si se proporcionó (solo admins)

@@ -32,9 +32,10 @@ class SolicitudCancelationHandler
      *
      * @param int $solicitud_id
      * @param WP_User $user
+     * @param string $cancel_reason Motivo de la cancelación (opcional)
      * @return bool|\WP_Error
      */
-    public static function cancel(int $solicitud_id, WP_User $user)
+    public static function cancel(int $solicitud_id, WP_User $user, string $cancel_reason = '')
     {
         $solicitud = get_post($solicitud_id);
         if (!$solicitud || $solicitud->post_type !== 'solicitud') {
@@ -46,9 +47,16 @@ class SolicitudCancelationHandler
         }
 
         // Cambiar el estado
-        return wp_update_post([
+        $result = wp_update_post([
             'ID' => $solicitud_id,
             'post_status' => 'rfq-historic',
         ], true);
+        
+        // Si la actualización fue exitosa, disparar el hook de notificación
+        if (!is_wp_error($result)) {
+            do_action('rfq_solicitud_cancelada', $solicitud_id, $user->ID, $cancel_reason);
+        }
+        
+        return $result;
     }
 }

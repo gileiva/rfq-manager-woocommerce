@@ -172,43 +172,32 @@ class SupplierNotifications {
             error_log('[RFQ-ERROR] No se envió notificación: Destinatario vacío para cotizacion_accepted ' . $cotizacion_id);
             return false;
         }
-        
-        $notification_manager = NotificationManager::getInstance();
-        $subject_template = $notification_manager->getCurrentSubject('supplier', 'cotizacion_accepted');
-        $content_template = $notification_manager->getCurrentTemplate('supplier', 'cotizacion_accepted');
 
         $precio_items_raw = get_post_meta($cotizacion_id, '_precio_items', true);
         $precio_items = is_string($precio_items_raw) ? json_decode($precio_items_raw, true) : $precio_items_raw;
         
-        // Resolver first_name y last_name del proveedor
-        $names = NotificationManager::resolve_user_names($supplier->ID);
-        
-        $template_args = [
+        // Construir contexto para el pipeline
+        $context = [
+            'role' => 'supplier',
+            'event' => 'cotizacion_accepted',
             'solicitud_id' => $solicitud_id,
             'cotizacion_id' => $cotizacion_id,
             'supplier_id' => $supplier->ID,
+            'recipient_user_id' => $supplier->ID,
             'supplier_name' => $supplier->display_name,
             'supplier_email' => $supplier->user_email,
-            'first_name' => $names['first_name'] ?: '',
-            'last_name' => $names['last_name'] ?: '',
-            'nombre' => $supplier->display_name,
             'productos_cotizados' => self::format_quoted_items_for_email($precio_items ?? []),
         ];
         
-        // Usar TemplateRenderer para generar HTML con pie legal
-        $legal_footer = get_option('rfq_email_legal_footer', '');
-        $legal_footer = wp_kses_post($legal_footer);
-        $message = TemplateRenderer::render_html(
-            $content_template, 
-            $template_args, 
-            $legal_footer,
-            ['notification_type' => 'supplier_cotizacion_accepted', 'supplier_id' => $supplier->ID, 'cotizacion_id' => $cotizacion_id]
-        );
+        // Usar el pipeline consolidado (no WhatsApp para proveedores por ahora)
+        $result = NotificationManager::send_notification('supplier_cotizacion_accepted', $context, $to);
         
-        $headers = EmailManager::build_headers();
-        $result = wp_mail($to, TemplateParser::render($subject_template, $template_args), $message, $headers);
+        RfqLogger::info('Notificación supplier cotizacion_accepted', [
+            'result' => $result,
+            'cotizacion_id' => $cotizacion_id,
+            'supplier_id' => $supplier->ID
+        ]);
         
-        self::log_result($result, 'cotizacion_accepted', $supplier, $cotizacion_id);
         return $result;
     }
     
@@ -235,10 +224,6 @@ class SupplierNotifications {
             return false;
         }
         
-        $notification_manager = NotificationManager::getInstance();
-        $subject_template = $notification_manager->getCurrentSubject('supplier', 'cotizacion_submitted');
-        $content_template = $notification_manager->getCurrentTemplate('supplier', 'cotizacion_submitted');
-
         // Obtener y validar los items cotizados
         $precio_items_raw = get_post_meta($cotizacion_id, '_precio_items', true);
         error_log('[RFQ-DEBUG] send_cotizacion_submitted_notification: precio_items_raw = ' . print_r($precio_items_raw, true));
@@ -269,33 +254,21 @@ class SupplierNotifications {
 
         error_log('[RFQ-DEBUG] send_cotizacion_submitted_notification: precio_items procesados = ' . print_r($precio_items, true));
 
-        // Resolver first_name y last_name del proveedor
-        $names = NotificationManager::resolve_user_names($supplier->ID);
-
-        $template_args = [
+        // Construir contexto para el pipeline
+        $context = [
+            'role' => 'supplier',
+            'event' => 'cotizacion_submitted',
             'solicitud_id' => $solicitud_id,
             'cotizacion_id' => $cotizacion_id,
             'supplier_id' => $supplier->ID,
+            'recipient_user_id' => $supplier->ID,
             'supplier_name' => $supplier->display_name,
             'supplier_email' => $supplier->user_email,
-            'first_name' => $names['first_name'] ?: '',
-            'last_name' => $names['last_name'] ?: '',
-            'nombre' => $supplier->display_name,
             'productos_cotizados' => self::format_quoted_items_for_email($precio_items),
         ];
         
-        // Usar TemplateRenderer para generar HTML con pie legal
-        $legal_footer = get_option('rfq_email_legal_footer', '');
-        $legal_footer = wp_kses_post($legal_footer);
-        $message = TemplateRenderer::render_html(
-            $content_template, 
-            $template_args, 
-            $legal_footer,
-            ['notification_type' => 'supplier_cotizacion_submitted', 'supplier_id' => $supplier->ID, 'cotizacion_id' => $cotizacion_id]
-        );
-        
-        $headers = EmailManager::build_headers();
-        $result = wp_mail($to, TemplateParser::render($subject_template, $template_args), $message, $headers);
+        // Usar el pipeline consolidado (no WhatsApp para proveedores por ahora)
+        $result = NotificationManager::send_notification('supplier_cotizacion_submitted', $context, $to);
         
         self::log_result($result, 'cotizacion_submitted', $supplier, $cotizacion_id);
         return $result;

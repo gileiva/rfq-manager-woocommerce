@@ -95,6 +95,11 @@ class EmailManager {
         if (class_exists('GiVendor\GiPlugin\Email\Notifications\Custom\NotificationManager')) {
             NotificationManager::init();
         }
+        
+        // Inicializar componentes de WhatsApp
+        if (class_exists('GiVendor\GiPlugin\Notifications\WhatsAppUserProfile')) {
+            \GiVendor\GiPlugin\Notifications\WhatsAppUserProfile::init();
+        }
     }
     
     /**
@@ -290,9 +295,16 @@ class EmailManager {
         $from_name = sanitize_text_field(
             get_option('rfq_manager_from_name', get_bloginfo('name'))
         );
-        $from_email = sanitize_email(
-            get_option('rfq_manager_from_email', get_option('admin_email'))
-        );
+        
+        // Usar el remitente global configurado en el backend o fallback
+        $from_email_global = get_option('rfq_email_from_global', '');
+        if (!empty($from_email_global) && is_email($from_email_global)) {
+            $from_email = $from_email_global;
+        } else {
+            $from_email = sanitize_email(
+                get_option('rfq_manager_from_email', get_option('admin_email'))
+            );
+        }
         
         // Fallback a filtros WP si faltan configuraciones
         if (empty($from_name)) {
